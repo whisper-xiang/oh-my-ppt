@@ -393,6 +393,8 @@ export function buildEditModeInjectScript(previewScale = 1): string {
   };
 
   const promoteToWrapper = (element) => {
+    // Elements with their own data-block-id have a stable identity — don't promote.
+    if (element.getAttribute("data-block-id")) return element;
     const contentRoot = getContentRoot(element);
     if (!contentRoot) return element;
     let candidate = element.parentElement;
