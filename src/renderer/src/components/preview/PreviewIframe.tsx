@@ -31,6 +31,10 @@ export interface PreviewIframeHandle {
     selector: string,
     style: { x: number; y: number; width?: number; height?: number }
   ) => void
+  applyChildUpdates: (
+    selector: string,
+    childUpdates: Array<{ path: number[]; width?: number; height?: number }>
+  ) => void
 }
 
 export const PreviewIframe = forwardRef<
@@ -245,6 +249,31 @@ export const PreviewIframe = forwardRef<
           `__el.style.translate = 'var(--ppt-drag-x, 0px) var(--ppt-drag-y, 0px)';` +
           (style.width != null ? `__el.style.width = ${JSON.stringify(style.width + 'px')};` : '') +
           (style.height != null ? `__el.style.height = ${JSON.stringify(style.height + 'px')};` : '')
+        )
+      },
+      applyChildUpdates(
+        selector: string,
+        childUpdates: Array<{ path: number[]; width?: number; height?: number }>
+      ): void {
+        const wv = webviewRef.current
+        if (!wv || childUpdates.length === 0) return
+        const updatesJs = childUpdates
+          .map(
+            (u) =>
+              `{path:${JSON.stringify(u.path)},width:${u.width != null ? u.width : 'null'},height:${u.height != null ? u.height : 'null'}}`
+          )
+          .join(',')
+        safeExecuteJavaScript(
+          wv,
+          `var __parent = document.querySelector(${JSON.stringify(selector)}); if (!__parent) return;` +
+          `var __ups = [${updatesJs}];` +
+          `for (var __i = 0; __i < __ups.length; __i++) {` +
+          `  var __u = __ups[__i]; var __c = __parent;` +
+          `  for (var __j = 0; __j < __u.path.length; __j++) { __c = __c.children[__u.path[__j]]; if (!__c) break; }` +
+          `  if (!__c) continue;` +
+          `  if (__u.width !== null) __c.style.width = __u.width + 'px';` +
+          `  if (__u.height !== null) __c.style.height = __u.height + 'px';` +
+          `}`
         )
       }
     }),

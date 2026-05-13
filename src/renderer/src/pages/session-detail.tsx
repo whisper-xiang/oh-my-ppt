@@ -905,12 +905,16 @@ export function SessionDetailPage(): React.JSX.Element {
     }
     setIsSavingEdits(true)
     try {
+      // Filter out drag/text edits for elements that are also pending deletion
+      const deletedSelectors = new Set(snapshot.deletes.map((d) => d.selector))
+      const safeDragEdits = snapshot.dragEdits.filter((e) => !deletedSelectors.has(e.selector))
+      const safeTextEdits = snapshot.textEdits.filter((e) => !deletedSelectors.has(e.selector))
       const result = await ipc.saveEditBatch({
         sessionId: id,
         htmlPath: selectedPage.htmlPath,
         pageId: selectedPage.pageId,
-        dragEdits: snapshot.dragEdits,
-        textEdits: snapshot.textEdits,
+        dragEdits: safeDragEdits,
+        textEdits: safeTextEdits,
         deletes: snapshot.deletes
       })
       if (!result.success) throw new Error(t('sessionDetail.layoutSaveFailed'))
@@ -921,7 +925,7 @@ export function SessionDetailPage(): React.JSX.Element {
       useSessionDetailUiStore.getState().bumpThumbnailVersion(selectedPage.pageId)
       setPreviewRefreshKey((key) => key + 1)
       useSessionDetailUiStore.getState().setInteractionMode('preview')
-      const totalCount = result.dragCount + result.textCount
+      const totalCount = result.dragCount + result.textCount + result.deleteCount
       toastSuccess(t('sessionDetail.adjustmentsSaved', { count: totalCount }))
     } catch (error) {
       toastError(error instanceof Error ? error.message : t('sessionDetail.layoutSaveFailed'))
@@ -1043,6 +1047,9 @@ export function SessionDetailPage(): React.JSX.Element {
         width: d.width ?? undefined,
         height: d.height ?? undefined
       })
+      if (d.childUpdates.length > 0) {
+        iframe.applyChildUpdates(d.selector, d.childUpdates)
+      }
     }
     for (const t of snapshot.textEdits) {
       iframe.liveUpdateElement(t.selector, {
@@ -1053,8 +1060,7 @@ export function SessionDetailPage(): React.JSX.Element {
   }
 
   const handleUndo = (): void => {
-    const snapshot = editHistory.undo()
-    if (!snapshot) return
+    if (!editHistory.undo()) return
     previewIframeRef.current?.clearEditModeSelection()
     setTextSelection(null)
     setTextDraft(EMPTY_ELEMENT_DRAFT)
@@ -1062,8 +1068,7 @@ export function SessionDetailPage(): React.JSX.Element {
   }
 
   const handleRedo = (): void => {
-    const snapshot = editHistory.redo()
-    if (!snapshot) return
+    if (!editHistory.redo()) return
     previewIframeRef.current?.clearEditModeSelection()
     setTextSelection(null)
     setTextDraft(EMPTY_ELEMENT_DRAFT)

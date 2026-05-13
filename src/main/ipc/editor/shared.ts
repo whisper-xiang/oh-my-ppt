@@ -225,11 +225,9 @@ export function patchDraggedElementStyle(
   try {
     target = $(selector).first()
   } catch {
-    throw new Error('无法定位拖拽元素：selector 无效')
+    return html
   }
-  if (!target || target.length === 0) {
-    throw new Error('无法定位拖拽元素：页面内容可能已经变化')
-  }
+  if (!target || target.length === 0) return html
 
   const styleMap = parseStyle(target.attr('style') || '')
   const tagName = String(target.get(0)?.tagName || '').toLowerCase()
@@ -314,11 +312,9 @@ export function patchElementProperties(
   try {
     target = $(selector).first()
   } catch {
-    throw new Error('无法定位文字元素：selector 无效')
+    return html
   }
-  if (!target || target.length === 0) {
-    throw new Error('无法定位文字元素：页面内容可能已经变化')
-  }
+  if (!target || target.length === 0) return html
 
   const node = target.get(0) as { tagName?: string } | undefined
   const tagName = String(node?.tagName || '').toLowerCase()

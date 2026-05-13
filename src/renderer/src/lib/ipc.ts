@@ -427,6 +427,7 @@ export const ipc = {
       success: boolean
       dragCount: number
       textCount: number
+      deleteCount: number
     }>,
   openFile: (filePath: string, sessionId?: string) =>
     getIpc().invoke('file:open', { path: filePath, sessionId }) as Promise<string>,

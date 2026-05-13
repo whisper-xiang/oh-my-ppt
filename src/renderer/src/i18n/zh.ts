@@ -375,7 +375,7 @@ export const zh = {
     adjustLayout: '调整位置/大小',
     saveAdjustments: '保存调整',
     deleteElement: '删除元素',
-    deleteElementConfirm: '确定删除该元素吗？删除后将无法恢复。',
+    deleteElementConfirm: '确定删除该元素吗？',
     deleteElementFailed: '删除元素失败',
     exitInspect: '退出检选',
     inspectElement: '检选元素',
