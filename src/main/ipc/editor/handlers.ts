@@ -122,6 +122,7 @@ export function registerEditorHandlers(ctx: IpcContext): void {
       htmlPath?: unknown
       dragEdits?: unknown
       textEdits?: unknown
+      deletes?: unknown
     }
     const sessionId = normalizeSessionId(record.sessionId)
     const pageId = typeof record.pageId === 'string' ? record.pageId.trim() : ''
@@ -132,6 +133,7 @@ export function registerEditorHandlers(ctx: IpcContext): void {
 
     const rawDrag = Array.isArray(record.dragEdits) ? record.dragEdits : []
     const rawText = Array.isArray(record.textEdits) ? record.textEdits : []
+    const rawDeletes = Array.isArray(record.deletes) ? record.deletes : []
 
     const safeHtmlPath = await assertPathInAllowedRoots({
       filePath: htmlPath,
@@ -140,8 +142,24 @@ export function registerEditorHandlers(ctx: IpcContext): void {
       htmlOnly: true
     })
 
+    let deleteCount = 0
     await withHtmlFileLock(safeHtmlPath, async () => {
       let html = await fs.promises.readFile(safeHtmlPath, 'utf-8')
+
+      // Apply deletes first
+      for (const item of rawDeletes) {
+        if (!item || typeof item !== 'object') continue
+        const d = item as { selector?: unknown }
+        const selector = typeof d.selector === 'string' ? d.selector.trim() : ''
+        if (!selector) continue
+        const $ = cheerio.load(html, { scriptingEnabled: false })
+        const target = $(selector).first()
+        if (target.length > 0) {
+          target.remove()
+          html = $.html()
+          deleteCount++
+        }
+      }
 
       // Apply drag edits
       for (const item of rawDrag) {
@@ -207,10 +225,10 @@ export function registerEditorHandlers(ctx: IpcContext): void {
       type: 'edit',
       scope: 'selector',
       prompt: '手动调整',
-      metadata: { pageId, dragCount, textCount }
+      metadata: { pageId, dragCount, textCount, deleteCount }
     })
 
-    return { success: true, dragCount, textCount }
+    return { success: true, dragCount, textCount, deleteCount }
   })
 
   // ─── drag-editor:update-element-layout ──────────────────

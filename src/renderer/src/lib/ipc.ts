@@ -421,6 +421,7 @@ export const ipc = {
     pageId: string
     dragEdits: unknown[]
     textEdits: unknown[]
+    deletes?: unknown[]
   }) =>
     getIpc().invoke('edit:save-batch', payload) as Promise<{
       success: boolean

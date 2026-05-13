@@ -25,6 +25,12 @@ export interface PreviewIframeHandle {
     layout: { x?: number; y?: number; width?: number; height?: number }
   ) => void
   clearEditModeSelection: () => void
+  hideElement: (selector: string) => void
+  showElement: (selector: string) => void
+  applyDragStyle: (
+    selector: string,
+    style: { x: number; y: number; width?: number; height?: number }
+  ) => void
 }
 
 export const PreviewIframe = forwardRef<
@@ -47,6 +53,7 @@ export const PreviewIframe = forwardRef<
     onElementMoved?: (payload: EditModeMovePayload) => void
     onElementSelected?: (payload: EditSelectionPayload) => void
     onInspectExit?: () => void
+    onDidReload?: () => void
   }
 >(function PreviewIframe(
   {
@@ -60,7 +67,8 @@ export const PreviewIframe = forwardRef<
     onSelectorSelected,
     onElementMoved,
     onElementSelected,
-    onInspectExit
+    onInspectExit,
+    onDidReload
   },
   ref
 ) {
@@ -203,6 +211,41 @@ export const PreviewIframe = forwardRef<
           wv,
           `if (window.__pptEditModeClearSelection) window.__pptEditModeClearSelection();`
         )
+      },
+      hideElement(selector: string): void {
+        const wv = webviewRef.current
+        if (!wv) return
+        safeExecuteJavaScript(
+          wv,
+          `var __el = document.querySelector(${JSON.stringify(selector)}); if (__el) { __el.style.setProperty('display', 'none', 'important'); __el.setAttribute('data-ppt-pending-delete', '1'); }`
+        )
+      },
+      showElement(selector: string): void {
+        const wv = webviewRef.current
+        if (!wv) return
+        safeExecuteJavaScript(
+          wv,
+          `var __el = document.querySelector(${JSON.stringify(selector)}); if (__el && __el.getAttribute('data-ppt-pending-delete') === '1') { __el.style.removeProperty('display'); __el.removeAttribute('data-ppt-pending-delete'); }`
+        )
+      },
+      applyDragStyle(
+        selector: string,
+        style: { x: number; y: number; width?: number; height?: number }
+      ): void {
+        const wv = webviewRef.current
+        if (!wv) return
+        safeExecuteJavaScript(
+          wv,
+          `var __el = document.querySelector(${JSON.stringify(selector)}); if (!__el) return;` +
+          `var __pos = __el.style.position || getComputedStyle(__el).position;` +
+          `if (!__pos || __pos === 'static') __el.style.position = 'relative';` +
+          `if (!__el.style.zIndex) __el.style.zIndex = '10';` +
+          `__el.style.setProperty('--ppt-drag-x', ${JSON.stringify(style.x + 'px')});` +
+          `__el.style.setProperty('--ppt-drag-y', ${JSON.stringify(style.y + 'px')});` +
+          `__el.style.translate = 'var(--ppt-drag-x, 0px) var(--ppt-drag-y, 0px)';` +
+          (style.width != null ? `__el.style.width = ${JSON.stringify(style.width + 'px')};` : '') +
+          (style.height != null ? `__el.style.height = ${JSON.stringify(style.height + 'px')};` : '')
+        )
       }
     }),
     []
@@ -245,14 +288,18 @@ export const PreviewIframe = forwardRef<
     }
 
     runEditModeLifecycle()
-    const handleDomReady = (): void => runEditModeLifecycle()
+    const handleDomReady = (): void => {
+      runEditModeLifecycle()
+      // Fire after script injection so caller can replay edits
+      if (editMode) onDidReload?.()
+    }
     webview.addEventListener('dom-ready', handleDomReady as EventListener)
 
     return () => {
       webview.removeEventListener('dom-ready', handleDomReady as EventListener)
       safeExecuteJavaScript(webview, buildEditModeCleanupScript())
     }
-  }, [inspectable, editMode, webviewSrc, webviewElement])
+  }, [inspectable, editMode, webviewSrc, webviewElement, onDidReload])
 
   useEffect(() => {
     const webview = webviewElement

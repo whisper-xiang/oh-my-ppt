@@ -1,5 +1,13 @@
-import { useState } from 'react'
 import { Trash2, X } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '../ui/AlertDialog'
 import { Input, Textarea } from '../ui/Input'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../ui/Select'
 import type { EditSelectionPayload } from '../preview/edit-mode-script'
@@ -38,7 +46,6 @@ export function ElementInspectorPanel({
 }): React.JSX.Element {
   const t = useT()
   const isText = selection?.isText ?? false
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
     <div className="flex h-full w-[320px] shrink-0 flex-col border-l border-[#d9cfbd]/60 bg-[#fffaf1]/96 shadow-[-8px_0_24px_rgba(93,107,77,0.06)]">
@@ -159,41 +166,32 @@ export function ElementInspectorPanel({
         {/* Delete element */}
         {onDelete && (
           <div className="!mt-4 border-t border-[#dfd2bd]/70 pt-3">
-            {confirmDelete ? (
-              <div className="space-y-2">
-                <p className="text-xs text-[#8e5a53]">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full h-8 items-center justify-center gap-1.5 rounded-[9px] border border-[#e8c8c6]/80 text-xs font-medium text-[#8e5a53] transition-colors hover:border-[#c0392b]/40 hover:bg-[#fdf0ef]"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t('sessionDetail.deleteElement')}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogTitle>{t('sessionDetail.deleteElement')}</AlertDialogTitle>
+                <AlertDialogDescription>
                   {t('sessionDetail.deleteElementConfirm')}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="flex-1 h-8 rounded-[9px] bg-[#c0392b] text-xs font-medium text-white transition-colors hover:bg-[#a93226]"
-                    onClick={() => {
-                      onDelete()
-                      setConfirmDelete(false)
-                    }}
+                </AlertDialogDescription>
+                <div className="flex justify-end gap-2">
+                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-[#c0392b] text-white hover:bg-[#a93226]"
+                    onClick={onDelete}
                   >
                     {t('common.delete')}
-                  </button>
-                  <button
-                    type="button"
-                    className="flex-1 h-8 rounded-[9px] border border-[#d7cbb7]/80 bg-[#fffdf8]/92 text-xs font-medium text-[#657058] transition-colors hover:bg-[#f5efe4]"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    {t('common.cancel')}
-                  </button>
+                  </AlertDialogAction>
                 </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="flex w-full h-8 items-center justify-center gap-1.5 rounded-[9px] border border-[#e8c8c6]/80 text-xs font-medium text-[#8e5a53] transition-colors hover:border-[#c0392b]/40 hover:bg-[#fdf0ef]"
-                onClick={() => setConfirmDelete(true)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {t('sessionDetail.deleteElement')}
-              </button>
-            )}
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>

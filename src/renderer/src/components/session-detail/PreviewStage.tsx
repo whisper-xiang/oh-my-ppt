@@ -1,5 +1,5 @@
 import { useEffect, forwardRef } from 'react'
-import { Check, Loader2, Pencil, Sparkles } from 'lucide-react'
+import { Check, Loader2, Pencil, Redo2, Sparkles, Undo2 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useSessionDetailUiStore } from '@renderer/store/sessionDetailStore'
 import { useToastStore } from '@renderer/store/toastStore'
@@ -19,9 +19,15 @@ export const PreviewStage = forwardRef<
     progressLabel?: string
     previewRefreshKey?: number
     isSavingEdits?: boolean
+    canUndo: boolean
+    canRedo: boolean
+    hasPendingEdits: boolean
     onElementMoved: (payload: EditModeMovePayload) => void
     onElementSelected: (payload: EditSelectionPayload) => void
     onCancelTextEdit: () => void
+    onUndo: () => void
+    onRedo: () => void
+    onReplayPendingEdits: () => void
     onSaveAllEdits: () => void
     onDiscardAllEdits: () => void
   }
@@ -33,9 +39,15 @@ export const PreviewStage = forwardRef<
     progressLabel,
     previewRefreshKey = 0,
     isSavingEdits = false,
+    canUndo,
+    canRedo,
+    hasPendingEdits,
     onElementMoved,
     onElementSelected,
     onCancelTextEdit,
+    onUndo,
+    onRedo,
+    onReplayPendingEdits,
     onSaveAllEdits,
     onDiscardAllEdits
   },
@@ -103,7 +115,35 @@ export const PreviewStage = forwardRef<
                 setInteractionMode('preview')
                 onCancelTextEdit()
               }}
+              onDidReload={onReplayPendingEdits}
             />
+            {/* Top-left toolbar: undo/redo in edit mode */}
+            {selectedPage.htmlPath && interactionMode === 'edit' && (
+              <div className="absolute left-4 top-3 z-20 flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-[7px] border-transparent bg-[#fffaf1]/90 px-2 text-[10px] leading-none text-[#59664b] shadow-[0_8px_20px_rgba(74,59,42,0.10)] hover:bg-[#d4e4c1]/78 disabled:opacity-40"
+                  onClick={onUndo}
+                  disabled={isGenerating || isSavingEdits || !canUndo}
+                >
+                  <Undo2 className="mr-0.5 h-2.5 w-2.5" />
+                  {t('sessionDetail.undo')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-[7px] border-transparent bg-[#fffaf1]/90 px-2 text-[10px] leading-none text-[#59664b] shadow-[0_8px_20px_rgba(74,59,42,0.10)] hover:bg-[#d4e4c1]/78 disabled:opacity-40"
+                  onClick={onRedo}
+                  disabled={isGenerating || isSavingEdits || !canRedo}
+                >
+                  <Redo2 className="mr-0.5 h-2.5 w-2.5" />
+                  {t('sessionDetail.redo')}
+                </Button>
+              </div>
+            )}
             {/* Top-right toolbar */}
             {selectedPage.htmlPath && (
               <div className="absolute right-4 top-3 z-20">
@@ -150,6 +190,7 @@ export const PreviewStage = forwardRef<
                 )}
                 {interactionMode === 'edit' && (
                   <div className="flex items-center gap-1.5">
+                    {hasPendingEdits && (
                       <Button
                         type="button"
                         variant="default"
@@ -165,6 +206,7 @@ export const PreviewStage = forwardRef<
                         )}
                         {t('sessionDetail.exitAndSave')}
                       </Button>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
@@ -173,7 +215,7 @@ export const PreviewStage = forwardRef<
                       onClick={onDiscardAllEdits}
                       disabled={isGenerating || isSavingEdits}
                     >
-                      {t('sessionDetail.exitWithoutSaving')}
+                      {t('sessionDetail.exitEditMode')}
                     </Button>
                   </div>
                 )}
