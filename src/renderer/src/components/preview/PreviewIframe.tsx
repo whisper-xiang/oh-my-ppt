@@ -312,6 +312,10 @@ export const PreviewIframe = forwardRef<
   }, [inspectable, inspecting, webviewSrc, webviewElement])
 
   // Unified edit mode effect: handles click-to-select, drag, and resize.
+  // Use ref for onDidReload to avoid re-running effect on every parent re-render.
+  const onDidReloadRef = useRef(onDidReload)
+  onDidReloadRef.current = onDidReload
+
   useEffect(() => {
     const webview = webviewElement
     if (!webview || !inspectable) return
@@ -328,7 +332,7 @@ export const PreviewIframe = forwardRef<
     const handleDomReady = (): void => {
       runEditModeLifecycle()
       // Fire after script injection so caller can replay edits
-      if (editMode) onDidReload?.()
+      if (editMode) onDidReloadRef.current?.()
     }
     webview.addEventListener('dom-ready', handleDomReady as EventListener)
 
@@ -336,7 +340,7 @@ export const PreviewIframe = forwardRef<
       webview.removeEventListener('dom-ready', handleDomReady as EventListener)
       safeExecuteJavaScript(webview, buildEditModeCleanupScript())
     }
-  }, [inspectable, editMode, webviewSrc, webviewElement, onDidReload])
+  }, [inspectable, editMode, webviewSrc, webviewElement])
 
   useEffect(() => {
     const webview = webviewElement
@@ -345,6 +349,15 @@ export const PreviewIframe = forwardRef<
   }, [editMode, inspectable, previewScale, webviewElement])
 
   // Console message router: inspector + unified edit mode
+  // Use refs for callback props to avoid re-registering listener on every parent re-render
+  const onSelectorSelectedRef = useRef(onSelectorSelected)
+  onSelectorSelectedRef.current = onSelectorSelected
+  const onElementMovedRef = useRef(onElementMoved)
+  onElementMovedRef.current = onElementMoved
+  const onElementSelectedRef = useRef(onElementSelected)
+  onElementSelectedRef.current = onElementSelected
+  const onInspectExitRef = useRef(onInspectExit)
+  onInspectExitRef.current = onInspectExit
   useEffect(() => {
     const webview = webviewElement
     if (!webview || !inspectable) return
@@ -400,7 +413,7 @@ export const PreviewIframe = forwardRef<
               elementText: parsed.elementText,
               reason: 'inspect'
             })
-            onSelectorSelected?.(
+            onSelectorSelectedRef.current?.(
               anchoredSelector,
               anchoredSelector,
               parsed.elementTag,
@@ -419,7 +432,7 @@ export const PreviewIframe = forwardRef<
               elementText: parsed.elementText,
               reason: 'drag'
             })
-            onElementSelected?.({
+            onElementSelectedRef.current?.({
               selector: anchoredSelector,
               label: anchoredSelector,
               elementTag: parsed.elementTag || '',
@@ -468,7 +481,7 @@ export const PreviewIframe = forwardRef<
               elementTag: parsed.elementTag,
               reason: 'drag'
             })
-            onElementMoved?.({
+            onElementMovedRef.current?.({
               selector: anchoredSelector,
               label: anchoredSelector,
               elementTag: parsed.elementTag || '',
@@ -503,7 +516,7 @@ export const PreviewIframe = forwardRef<
 
         // Exit from either mode
         if (parsed.type === 'exit') {
-          onInspectExit?.()
+          onInspectExitRef.current?.()
         }
       } catch {
         // ignore parse error
@@ -516,10 +529,6 @@ export const PreviewIframe = forwardRef<
     }
   }, [
     inspectable,
-    onSelectorSelected,
-    onElementMoved,
-    onElementSelected,
-    onInspectExit,
     pageHtmlPath,
     pageId,
     webviewElement

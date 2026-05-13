@@ -379,6 +379,7 @@ export const zh = {
     saveAdjustments: '保存调整',
     deleteElement: '删除元素',
     deleteElementConfirm: '确定删除该元素吗？',
+    nonTextElementHint: '遇到点问题，目前还在完善中，\n可以先用AI模式检选元素操作',
     deleteElementFailed: '删除元素失败',
     exitInspect: '退出检选',
     inspectElement: '检选元素',

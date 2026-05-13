@@ -88,6 +88,13 @@ export function ElementInspectorPanel({
         </div>
 
         {/* Text editing (only for text elements) */}
+        {!isText && (
+          <div className="rounded-[1.15rem] border border-[#e8c8c6]/72 bg-[#fdf0ef]/82 px-3 py-4 text-center shadow-[0_6px_14px_rgba(74,59,42,0.08)]">
+            <p className="whitespace-pre-line text-[12px] leading-5 text-[#8e5a53]">
+              {t('sessionDetail.nonTextElementHint')}
+            </p>
+          </div>
+        )}
         {isText && (
           <>
             <div className="rounded-[1.15rem] border border-[#ded2bd]/72 bg-[#fffaf1]/82 px-3 py-2.5 shadow-[0_6px_14px_rgba(74,59,42,0.08)]">
