@@ -1,5 +1,19 @@
 # 更新日志 / Changelog
 
+## 2026-05-15 · v2.0.8
+
+### 中文
+
+- 优化数学公式导出：可编辑版 PPTX 中，公式以截图形式作为独立图片插入，确保在 PowerPoint 中正确显示。
+- 优化背景截图：导出时自动隐藏已截图的公式元素，避免公式重复出现在背景中。
+- 新增： 一键打包当前的html pptx为单个可执行文件（类似 PPTX），随时随地双击即可打开预览，无需安装任何软件（你有浏览器就行）。
+
+### English
+
+- Improved math formula export: formulas are captured as individual images in editable PPTX for correct display in PowerPoint.
+- Improved background capture: already-captured formula elements are hidden during background screenshot to avoid duplication.
+- Added one-click HTML pack: bundle the current HTML presentation into a single executable file — double-click to open and present anywhere, no installation needed (just a browser).
+
 ## 2026-05-14 · v2.0.7
 
 ### 中文

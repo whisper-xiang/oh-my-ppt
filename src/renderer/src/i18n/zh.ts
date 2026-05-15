@@ -428,7 +428,7 @@ export const zh = {
     pptxImageDescription: '每页以高清图片呈现，版式完全还原。',
     exportPptxEditable: '可编辑版导出',
     exportPptxImageOnly: '纯图版导出',
-    exportSlidePack: '打包预览',
+    exportSlidePack: '打包导出',
     exportSlidePackTooltip: '导出为单个可执行文件（类似 PPTX），随时随地双击即可打开预览，无需安装任何软件',
     slidePackPreparing: '正在打包预览文件...',
     slidePackPreparingDescription: '正在将演示打包为可独立运行的可执行文件',

@@ -446,7 +446,7 @@ Business presentations, product introductions, project summaries — formal but 
     pptxImageDescription: 'Each page is a high-resolution image for pixel-perfect fidelity.',
     exportPptxEditable: 'Editable Export',
     exportPptxImageOnly: 'Image Export',
-    exportSlidePack: 'Pack Preview',
+    exportSlidePack: 'Pack Export',
     exportSlidePackTooltip: 'Export as a single executable file (like PPTX) — double-click to preview anytime, anywhere, no installation needed',
     slidePackPreparing: 'Packaging preview...',
     slidePackPreparingDescription: 'Building standalone executable for browser preview',
