@@ -1,7 +1,9 @@
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import log from 'electron-log/main.js'
 import fs from 'fs'
 import path from 'path'
+import { execFile } from 'child_process'
+import { nanoid } from 'nanoid'
 import { PDFDocument } from 'pdf-lib'
 import type { IpcContext } from '../context'
 import { writeHtmlToPptx, type HtmlToPptxSlide } from '../../utils/html-pptx'
@@ -312,6 +314,90 @@ export function registerExportHandlers(ctx: IpcContext): void {
         sessionId,
         message
       })
+      throw error
+    }
+  })
+
+  // Export: slide-pack (standalone executable with embedded HTTP server)
+  ipcMain.handle('export:slidePack', async (_event, payload: unknown) => {
+    const sessionId = parseSessionId(payload)
+    if (!sessionId) throw new Error('Missing sessionId')
+
+    try {
+      const { session, projectDir } = await resolveSessionPageFiles(sessionId)
+
+      // Find slide-pack binary in resources
+      // Dev: resources/ lives next to package root (cwd)
+      // Prod: inside app.asar.unpacked/resources/
+      const resourcesDir = !app.isPackaged
+        ? path.join(process.cwd(), 'resources')
+        : path.join(process.resourcesPath, 'app.asar.unpacked', 'resources')
+      const arch = process.arch === 'arm64' ? 'arm64' : 'amd64'
+      const slidePackBin = process.platform === 'win32'
+        ? 'slide-pack-windows-amd64.exe'
+        : `slide-pack-darwin-${arch}`
+      const binPath = path.join(resourcesDir, slidePackBin)
+
+      if (!fs.existsSync(binPath)) {
+        throw new Error('slide-pack tool not found. Please build it first.')
+      }
+
+      const rawTitle = typeof session.title === 'string' && session.title.trim() ? session.title.trim() : 'slides'
+      const sessionName = rawTitle.replace(/[<>:"/\\|?*]/g, '').trim()
+
+      // Let user choose save directory
+      const saveResult = await dialog.showOpenDialog({
+        title: '选择打包导出目录',
+        properties: ['openDirectory', 'createDirectory'],
+        buttonLabel: '导出到此目录'
+      })
+      if (saveResult.canceled || !saveResult.filePaths[0]) {
+        return { success: false, cancelled: true }
+      }
+
+      // Create output folder: ohmyppt-$nanoid
+      const outputFolder = path.join(saveResult.filePaths[0], `ohmyppt-${nanoid(8)}`)
+      fs.mkdirSync(outputFolder, { recursive: true })
+      const outputPath = path.join(outputFolder, sessionName)
+
+      log.info('[export:slidePack] starting', { sessionId, projectDir, binPath, outputFolder })
+
+      await new Promise<void>((resolve, reject) => {
+        execFile(binPath, [projectDir, outputPath], { timeout: 120000 }, (err, stdout, stderr) => {
+          if (err) {
+            log.error('[export:slidePack] failed', { error: err.message, stderr })
+            reject(new Error('打包失败'))
+            return
+          }
+          if (stdout) log.info('[export:slidePack] output', { stdout })
+          resolve()
+        })
+      })
+
+      // Find generated files inside the output folder
+      const files = fs.readdirSync(outputFolder).filter(f =>
+        f.startsWith(sessionName)
+      )
+
+      if (files.length === 0) {
+        throw new Error('No output files generated')
+      }
+
+      // Open the output folder
+      await shell.openPath(outputFolder)
+
+      log.info('[export:slidePack] completed', { sessionId, outputFolder, files })
+
+      return {
+        success: true,
+        path: path.join(outputFolder, files[0]),
+        cancelled: false,
+        pageCount: files.length,
+        warnings: []
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      log.error('[export:slidePack] failed', { sessionId, message })
       throw error
     }
   })

@@ -298,6 +298,8 @@ export const ipc = {
     getIpc().invoke('export:png', { sessionId }) as Promise<ExportDeckResult>,
   exportPptx: (sessionId: string, options?: { imageOnly?: boolean }) =>
     getIpc().invoke('export:pptx', { sessionId, ...options }) as Promise<ExportDeckResult>,
+  exportSlidePack: (sessionId: string) =>
+    getIpc().invoke('export:slidePack', { sessionId }) as Promise<ExportDeckResult>,
   getSettings: () => getIpc().invoke('settings:get') as Promise<Record<string, unknown>>,
   listModelConfigs: () => getIpc().invoke('settings:listModelConfigs') as Promise<ModelConfig[]>,
   validateUploadPrerequisites: () =>

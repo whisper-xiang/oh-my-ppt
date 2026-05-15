@@ -13,6 +13,7 @@ interface SessionDetailUiStore {
   isExportingPdf: boolean
   isExportingPng: boolean
   isExportingPptx: boolean
+  isExportingSlidePack: boolean
   interactionMode: InteractionMode
   thumbnailVersions: Record<string, number>
   selectedSelector: string | null
@@ -38,6 +39,7 @@ interface SessionDetailUiStore {
   setIsExportingPdf: (isExporting: boolean) => void
   setIsExportingPng: (isExporting: boolean) => void
   setIsExportingPptx: (isExporting: boolean) => void
+  setIsExportingSlidePack: (isExporting: boolean) => void
   setInteractionMode: (mode: InteractionMode) => void
   setSelectedElement: (
     selector: string,
@@ -72,6 +74,7 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
   isExportingPdf: false,
   isExportingPng: false,
   isExportingPptx: false,
+  isExportingSlidePack: false,
   interactionMode: 'preview' as InteractionMode,
   thumbnailVersions: {},
   selectedSelector: null,
@@ -100,6 +103,7 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
   setIsExportingPdf: (isExportingPdf) => set({ isExportingPdf }),
   setIsExportingPng: (isExportingPng) => set({ isExportingPng }),
   setIsExportingPptx: (isExportingPptx) => set({ isExportingPptx }),
+  setIsExportingSlidePack: (isExportingSlidePack) => set({ isExportingSlidePack }),
   setInteractionMode: (interactionMode) => set({ interactionMode }),
   // Fix: only reset to preview when currently in preview mode.
   // In edit/ai-inspect mode, selecting an element should NOT change the mode.
