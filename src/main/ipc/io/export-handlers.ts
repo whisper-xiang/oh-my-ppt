@@ -144,27 +144,23 @@ export function registerExportHandlers(ctx: IpcContext): void {
       throw new Error('sessionId 不能为空')
     }
 
-    const { session, pages, projectDir } = await resolveSessionPageFiles(sessionId)
-    const sessionTitle =
-      typeof session.title === 'string' && session.title.trim().length > 0
-        ? session.title.trim()
-        : `ohmyppt-${sessionId}`
-    const sanitizedBaseName = sanitizeExportBaseName(sessionTitle, `ohmyppt-${sessionId}`)
+    const { pages, projectDir } = await resolveSessionPageFiles(sessionId)
 
     const ownerWindow =
       BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow() ?? mainWindow
     const directoryResult = await dialog.showOpenDialog(ownerWindow, {
-      title: '导出 PNG 图片',
-      defaultPath: path.join(projectDir, `${sanitizedBaseName}-png`),
-      buttonLabel: '导出到此文件夹',
-      properties: ['openDirectory', 'createDirectory', 'promptToCreate']
+      title: '选择 PNG 导出目录',
+      defaultPath: projectDir,
+      buttonLabel: '导出到此目录',
+      properties: ['openDirectory', 'createDirectory']
     })
 
     if (directoryResult.canceled || directoryResult.filePaths.length === 0) {
       return { success: false, cancelled: true }
     }
 
-    const outputDir = directoryResult.filePaths[0]
+    const outputParentDir = directoryResult.filePaths[0]
+    const outputDir = path.join(outputParentDir, `ohmyppt-export-image_${nanoid(8)}`)
     const warnings: string[] = []
 
     try {
