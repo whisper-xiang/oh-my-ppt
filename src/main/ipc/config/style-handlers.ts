@@ -27,6 +27,7 @@ type StyleBasePayload = {
   category: string
   aliases: string[]
   prompt: string
+  styleCase: string
 }
 
 type StylePayload = StyleBasePayload & {
@@ -47,6 +48,7 @@ export function registerStyleHandlers(ctx: IpcContext): void {
         description: string
         source?: 'builtin' | 'custom' | 'override'
         editable?: boolean
+        styleCase?: string
       }>
     > = {}
     for (const style of styles) {
@@ -57,7 +59,8 @@ export function registerStyleHandlers(ctx: IpcContext): void {
         label: style.label,
         description: style.description,
         source: style.source,
-        editable: style.editable
+        editable: style.editable,
+        styleCase: style.styleCase
       })
     }
     const defaultStyle =
@@ -80,6 +83,8 @@ export function registerStyleHandlers(ctx: IpcContext): void {
         category: row.category || (row.source === 'builtin' ? '内置' : '自定义'),
         source: row.source,
         editable: row.source !== 'builtin',
+        version: row.version,
+        styleCase: row.styleCase,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt
       }))
@@ -109,7 +114,8 @@ export function registerStyleHandlers(ctx: IpcContext): void {
       description,
       category,
       aliases,
-      prompt: styleSkill
+      prompt: styleSkill,
+      styleCase: String(record.styleCase || '').trim()
     }
   }
 

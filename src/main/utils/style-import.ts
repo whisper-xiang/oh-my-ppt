@@ -14,6 +14,7 @@ export interface StyleParseResult {
   category: string
   aliases: string[]
   styleSkill: string
+  styleCase: string
 }
 
 const ALLOWED_EXTENSIONS = new Set(['.md', '.txt', '.html', '.htm'])
@@ -110,7 +111,7 @@ async function runStyleImportAgent(args: {
       virtualMode: true
     }),
     systemPrompt:
-      'You are a style-import parsing agent. You must use read_file to read the uploaded file before generating the result. Return strict JSON only: label, description, category, aliases, styleSkill.'
+      'You are a style-import parsing agent. You must use read_file to read the uploaded file before generating the result. Return strict JSON only: label, description, category, aliases, styleCase, styleSkill.'
   })
 
   const stream = await agent.stream(
@@ -186,7 +187,8 @@ function parseStyleImportResponse(response: unknown): StyleParseResult {
     aliases: Array.isArray(parsed.aliases)
       ? parsed.aliases.map((item) => String(item || '').trim()).filter((item) => item.length > 0)
       : [],
-    styleSkill
+    styleSkill,
+    styleCase: String(parsed.styleCase || '').trim()
   }
 }
 

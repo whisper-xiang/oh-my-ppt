@@ -191,7 +191,8 @@ export function registerPptxImportHandlers(ctx: IpcContext): void {
           description: styleResult.description,
           category: styleResult.category,
           aliases: styleResult.aliases,
-          prompt: styleResult.styleSkill
+          prompt: styleResult.styleSkill,
+          styleCase: styleResult.styleCase
         })
         await db.updateSessionStyleId(sessionId, styleId)
         log.info('[pptx:import] auto style extracted', { sessionId, styleId })

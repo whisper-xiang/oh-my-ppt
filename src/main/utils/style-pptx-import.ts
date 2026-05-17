@@ -142,7 +142,7 @@ async function runStylePptxImportAgent(args: {
       virtualMode: true
     }),
     systemPrompt:
-      'You are a style-import parsing agent for PPTX-derived HTML files. You must use grep and read_file tools before generating the result. Return strict JSON only: label, description, category, aliases, styleSkill.'
+      'You are a style-import parsing agent for PPTX-derived HTML files. You must use grep and read_file tools before generating the result. Return strict JSON only: label, description, category, aliases, styleCase, styleSkill.'
   })
 
   const stream = await agent.stream(
@@ -218,7 +218,8 @@ export function parseStyleImportResponse(response: unknown): StyleParseResult {
     aliases: Array.isArray(parsed.aliases)
       ? parsed.aliases.map((item) => String(item || '').trim()).filter((item) => item.length > 0)
       : [],
-    styleSkill
+    styleSkill,
+    styleCase: String(parsed.styleCase || '').trim()
   }
 }
 

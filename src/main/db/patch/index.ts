@@ -7,6 +7,7 @@ import * as schema from '../schema'
 import type { GenerationPageStatus, GenerationRunStatus } from '../schema'
 import { defaultModelTimeoutMs } from '@shared/model-timeout'
 import { patchModelConfigMaxTokens } from './add-model-max-tokens'
+import { patchStylesColumns } from './add-styles-columns'
 
 type LibSqlClient = ReturnType<typeof createClient>
 type DrizzleDb = ReturnType<typeof drizzle>
@@ -175,6 +176,8 @@ CREATE TABLE IF NOT EXISTS styles (
   aliases TEXT NOT NULL DEFAULT '[]',
   source TEXT NOT NULL DEFAULT 'custom',
   style_skill TEXT NOT NULL DEFAULT '',
+  version INTEGER NOT NULL DEFAULT 1,
+  style_case TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -1105,6 +1108,7 @@ export const runDatabasePatches = async (args: {
   await enforceSessionPagesSchema(client)
   await enforceSessionOperationsSchema(client)
   await enforceSessionOperationPagesSchema(client)
+  await patchStylesColumns(client)
   await client.execute('PRAGMA foreign_keys = ON;')
   await ensureDefaultSettings(client)
   await patchProjectRootPaths({ client, resolveStoragePath })

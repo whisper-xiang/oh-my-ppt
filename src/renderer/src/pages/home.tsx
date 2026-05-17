@@ -78,7 +78,7 @@ export function HomePage(): ReactElement {
   const [selectedStyleId, setSelectedStyleId] = useState('')
   const [selectedFontPair, setSelectedFontPair] = useState('auto')
   const [styleOptions, setStyleOptions] = useState<
-    Array<{ id: string; label: string; description: string }>
+    Array<{ id: string; label: string; description: string; styleCase?: string }>
   >([])
   const [fontOptions, setFontOptions] = useState<
     Array<{ id: string; title: FontListItem; body: FontListItem }>
@@ -142,7 +142,8 @@ export function HomePage(): ReactElement {
         const options = sorted.map((item) => ({
           id: item.id,
           label: item.label,
-          description: item.description
+          description: item.description,
+          styleCase: item.styleCase
         }))
         setStyleOptions(options)
         setSelectedStyleId((current) => {
@@ -351,7 +352,8 @@ export function HomePage(): ReactElement {
       description: parsedStyle.description,
       category: parsedStyle.category,
       aliases: parsedStyle.aliases,
-      styleSkill: parsedStyle.styleSkill
+      styleSkill: parsedStyle.styleSkill,
+      styleCase: parsedStyle.styleCase || ''
     })
     await loadStyleOptions(createdStyle.id)
     return { id: createdStyle.id, label: parsedStyle.label }
@@ -646,11 +648,11 @@ export function HomePage(): ReactElement {
                   <SelectContent>
                     {styleOptions.map((option) => (
                       <SelectItem key={option.id} value={option.id}>
-                        <span className="flex items-baseline gap-1.5">
+                        <span className="flex items-center gap-1.5">
                           {option.label}
-                          {option.description && (
-                            <span className="text-xs text-muted-foreground/60">
-                              {option.description}
+                          {(option.styleCase || option.description) && (
+                            <span className="rounded-md border border-[#d6c08d]/80 bg-[#fff7e8] px-1.5 py-px text-[10px] font-medium text-[#7c6a4c]">
+                              {option.styleCase || option.description}
                             </span>
                           )}
                         </span>

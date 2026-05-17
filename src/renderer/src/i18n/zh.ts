@@ -258,6 +258,8 @@ export const zh = {
     name: '名称',
     descriptionLabel: '描述（Description）',
     descriptionPlaceholder: '一句话描述这个风格',
+    styleCaseLabel: '适用场景',
+    styleCasePlaceholder: '例如：技术分享、产品发布、教育科普、年度总结',
     writingTips: 'Style Skill 编写建议',
     skillMarkdown: 'Skill Markdown',
     tipStructure: '用流畅的段落描述整体气质，先说“感觉”再说细节，不要写成冷冰冰的规范文档。',

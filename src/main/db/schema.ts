@@ -155,6 +155,8 @@ export const styles = sqliteTable('styles', {
   aliases: text('aliases').notNull().default('[]'),
   source: text('source').notNull().default('custom'),
   styleSkill: text('style_skill').notNull().default(''),
+  version: integer('version').notNull().default(1),
+  styleCase: text('style_case').notNull().default(''),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull()
 })

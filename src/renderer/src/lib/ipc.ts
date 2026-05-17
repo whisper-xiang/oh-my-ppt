@@ -34,6 +34,7 @@ export interface StyleCategory {
     description: string
     source?: 'builtin' | 'custom' | 'override'
     editable?: boolean
+    styleCase?: string
   }>
 }
 
@@ -47,6 +48,7 @@ export interface StyleDetail {
   source?: 'builtin' | 'custom' | 'override'
   editable?: boolean
   category?: string
+  styleCase?: string
 }
 
 export interface StyleListItem {
@@ -56,6 +58,7 @@ export interface StyleListItem {
   category: string
   source?: 'builtin' | 'custom' | 'override'
   editable?: boolean
+  styleCase?: string
   createdAt?: number
   updatedAt?: number
 }
@@ -66,6 +69,7 @@ export interface StyleParseResult {
   category: string
   aliases: string[]
   styleSkill: string
+  styleCase?: string
 }
 
 export interface GenerateRunStateSnapshot {
@@ -408,6 +412,7 @@ export const ipc = {
           description: string
           source?: 'builtin' | 'custom' | 'override'
           editable?: boolean
+          styleCase?: string
         }>
       >
       defaultStyle: string
@@ -427,6 +432,7 @@ export const ipc = {
     category?: string
     aliases?: string[]
     styleSkill: string
+    styleCase?: string
   }) =>
     getIpc().invoke('styles:create', payload) as Promise<{
       success: boolean
@@ -440,6 +446,7 @@ export const ipc = {
     category?: string
     aliases?: string[]
     styleSkill: string
+    styleCase?: string
   }) =>
     getIpc().invoke('styles:update', payload) as Promise<{
       success: boolean

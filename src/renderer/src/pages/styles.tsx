@@ -14,6 +14,7 @@ type StyleSummary = {
   source?: 'builtin' | 'custom' | 'override'
   editable?: boolean
   category: string
+  styleCase?: string
   createdAt?: number
   updatedAt?: number
 }
@@ -82,10 +83,15 @@ export function StylesPage(): React.JSX.Element {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="line-clamp-2 text-sm text-muted-foreground transition-colors duration-200 group-hover:text-foreground/85">
+              {style.styleCase && (
+                <span className="mb-2 inline-block rounded-md border border-[#d6c08d]/80 bg-[#fff7e8] px-1.5 py-0.5 text-xs font-medium text-[#7c6a4c]">
+                  {style.styleCase}
+                </span>
+              )}
+              <p className="line-clamp-2 text-[11px] text-muted-foreground/60 transition-colors duration-200 group-hover:text-foreground/50">
                 {style.description || style.id}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground transition-colors duration-200 group-hover:text-foreground/70">
+              <p className="mt-2 text-xs text-muted-foreground/60 transition-colors duration-200 group-hover:text-foreground/50">
                 {style.category} · {style.source || t('styles.sourceBuiltin')}
               </p>
             </CardContent>

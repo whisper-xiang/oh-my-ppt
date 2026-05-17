@@ -266,6 +266,8 @@ export const en = {
     name: 'Name',
     descriptionLabel: 'Description',
     descriptionPlaceholder: 'Describe this style in one sentence',
+    styleCaseLabel: 'Use cases',
+    styleCasePlaceholder: 'Example: tech talks, product launches, education, annual summaries',
     writingTips: 'Style Skill writing tips',
     skillMarkdown: 'Skill Markdown',
     tipStructure:
