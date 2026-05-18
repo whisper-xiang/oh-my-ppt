@@ -11,7 +11,7 @@ export const FREEZE_PAGE_FOR_EXPORT_SCRIPT = `
   style.textContent = [
     'html { scroll-behavior: auto !important; }',
     '*, *::before, *::after { animation: none !important; transition: none !important; animation-delay: 0s !important; animation-duration: 0s !important; animation-play-state: paused !important; transition-delay: 0s !important; transition-duration: 0s !important; }',
-    '.opacity-0, [data-anime], [data-animate] { opacity: 1 !important; transform: none !important; }'
+    '.opacity-0, [data-anime], [data-animate], [data-anim] { opacity: 1 !important; transform: none !important; }'
   ].join('\\n');
   document.head.appendChild(style);
 
@@ -186,9 +186,14 @@ export const FREEZE_PAGE_FOR_EXPORT_SCRIPT = `
   await stabilizeCharts();
 
   const shouldForceVisibleForMotion = (node) => {
-    if (!node?.matches?.('.opacity-0, [data-anime], [data-animate]')) return false;
+    if (!node?.matches?.('.opacity-0, [data-anime], [data-animate], [data-anim]')) return false;
     return Number(getComputedStyle(node).opacity || '1') <= 0.04;
   };
+
+  // Mark [data-anim] elements as animated for PPTX background capture
+  root.querySelectorAll('[data-anim]').forEach(function (el) {
+    el.setAttribute('data-pptx-animated', '1');
+  });
 
   const motionTargets = root.querySelectorAll(
     '.opacity-0, [data-anime], [data-animate], h1, h2, h3, p, li, .card, .panel, .text-section, .diagram-section, .timeline-node, section, section > *'

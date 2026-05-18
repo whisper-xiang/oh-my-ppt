@@ -93,7 +93,7 @@ function clampTransitionDuration(value: number | undefined): number {
 function patchIndexTransitionStyle(
   content: string,
   args: {
-    type: 'none' | 'fade'
+    type: 'none' | 'fade' | 'slide-left' | 'slide-up' | 'push' | 'wipe' | 'zoom'
     durationMs?: number
   }
 ): string {
@@ -101,12 +101,18 @@ function patchIndexTransitionStyle(
     /\n?\s*<style\b[^>]*id=["']ppt-index-transition-style["'][^>]*>[\s\S]*?<\/style>/gi,
     ''
   )
+  // Also remove old transition config
+  const withoutOldConfig = withoutOldStyle.replace(
+    /\n?\s*<script\b[^>]*id=["']ppt-index-transition-config["'][^>]*>[\s\S]*?<\/script>/gi,
+    ''
+  )
+
   if (args.type === 'none') {
-    return withoutOldStyle
+    return withoutOldConfig
   }
   const durationMs = clampTransitionDuration(args.durationMs)
   const style = `
-    <style id="ppt-index-transition-style" data-transition-type="fade">
+    <style id="ppt-index-transition-style" data-transition-type="${args.type}">
       .ppt-preview-frame {
         display: block !important;
         opacity: 0;
@@ -118,7 +124,12 @@ function patchIndexTransitionStyle(
         pointer-events: auto;
       }
     </style>`
-  return withoutOldStyle.replace(/<\/head>/i, `${style}\n  </head>`)
+  // Inject transition config for the enhanced View Transition API runtime
+  const configScript = `
+    <script id="ppt-index-transition-config" type="application/json">
+      ${JSON.stringify({ type: args.type, durationMs })}
+    </script>`
+  return withoutOldConfig.replace(/<\/head>/i, `${style}\n  ${configScript}\n  </head>`)
 }
 
 export function createSessionBoundDeckTools(context: SessionDeckGenerationContext): unknown[] {
@@ -377,7 +388,8 @@ export function createSessionBoundDeckTools(context: SessionDeckGenerationContex
         if (!fs.existsSync(context.indexPath)) {
           throw new Error(`index.html 缺失：${context.indexPath}`)
         }
-        const transitionType = type === 'none' ? 'none' : 'fade'
+        const validTypes = ['none', 'fade', 'slide-left', 'slide-up', 'push', 'wipe', 'zoom'];
+        const transitionType = validTypes.includes(type) ? type : 'fade';
         const current = await fs.promises.readFile(context.indexPath, 'utf-8')
         const next = patchIndexTransitionStyle(current, {
           type: transitionType,
@@ -402,8 +414,8 @@ export function createSessionBoundDeckTools(context: SessionDeckGenerationContex
               ? uiText(context.appLocale, '已恢复无过渡切换', 'Restored instant page switching')
               : uiText(
                   context.appLocale,
-                  `已设置淡入淡出 ${clampTransitionDuration(Number(durationMs))}ms`,
-                  `Set fade transition to ${clampTransitionDuration(Number(durationMs))}ms`
+                  `已设置 ${transitionType} ${clampTransitionDuration(Number(durationMs))}ms`,
+                  `Set ${transitionType} transition to ${clampTransitionDuration(Number(durationMs))}ms`
                 ),
           progress: 72
         })
@@ -427,8 +439,8 @@ export function createSessionBoundDeckTools(context: SessionDeckGenerationContex
                 'Controlled tool for the main session: configure index.html page transition animation without rewriting the index shell.',
               schema: z.object({
                 type: z
-                  .enum(['fade', 'none'])
-                  .describe('Transition type: fade for cross-fade, none to disable transitions'),
+                  .enum(['fade', 'slide-left', 'slide-up', 'push', 'wipe', 'zoom', 'none'])
+                  .describe('Transition type: fade (cross-fade), slide-left/up (slide), push (push), wipe (wipe), zoom (scale), none (disable)'),
                 durationMs: z
                   .number()
                   .optional()

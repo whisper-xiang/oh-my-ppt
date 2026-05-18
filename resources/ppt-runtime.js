@@ -1,10 +1,10 @@
 (function initPptRuntime(global) {
   if (!global || typeof global !== "object") return;
-  // @ohmyppt-ppt-runtime:arcsin1:v1.2.1
+  // @ohmyppt-ppt-runtime:arcsin1:v1.3.0
 
   var ppt = global.PPT && typeof global.PPT === "object" ? global.PPT : (global.PPT = {});
-  if (ppt.__runtimeVersion === "1.2.0") return;
-  ppt.__runtimeVersion = "1.2.0";
+  if (ppt.__runtimeVersion === "1.3.0") return;
+  ppt.__runtimeVersion = "1.3.0";
 
   function resolveSearchParams() {
     try {
@@ -423,6 +423,8 @@
     };
   }
 
+  var _activeAnimations = new Set();
+
   ppt.animate = function () {
     var args = Array.prototype.slice.call(arguments);
     if (isPrintMode) {
@@ -448,6 +450,13 @@
     if (animation && animation.finished && typeof animation.finished.then === "function") {
       trackPrintTask(animation.finished);
     }
+    if (animation && typeof animation.pause === "function") {
+      _activeAnimations.add(animation);
+      var origFinished = animation.finished;
+      if (origFinished && typeof origFinished.then === "function") {
+        origFinished.then(function () { _activeAnimations.delete(animation); });
+      }
+    }
     return animation;
   };
 
@@ -470,6 +479,165 @@
       return runtimeAnime.timeline.apply(runtimeAnime, args);
     }
     return buildTimeline(runtimeAnime).apply(null, args);
+  };
+
+  ppt.stopAnimations = function () {
+    _activeAnimations.forEach(function (anim) {
+      try { if (typeof anim.pause === "function") anim.pause(); } catch (_err) {}
+    });
+  };
+
+  ppt.resumeAnimations = function () {
+    _activeAnimations.forEach(function (anim) {
+      try { if (typeof anim.play === "function") anim.play(); } catch (_err) {}
+    });
+  };
+
+  ppt.clicks = {
+    current: 0,
+    total: 0,
+    _listeners: [],
+    _advanceListeners: [],
+    reset: function () {
+      this.current = 0;
+    },
+    setTotal: function (n) {
+      this.total = Math.max(0, Number(n) || 0);
+    },
+    advance: function () {
+      if (this.total > 0 && this.current >= this.total) return;
+      this.current += 1;
+      this._dispatch(this.current);
+    },
+    on: function (clickNum, fn) {
+      var self = this;
+      this._listeners.push({ clickNum: clickNum, fn: fn });
+      if (this.current >= clickNum) {
+        try { fn(); } catch (_err) {}
+      }
+    },
+    onAdvance: function (fn) {
+      this._advanceListeners.push(fn);
+    },
+    _dispatch: function (click) {
+      var self = this;
+      this._listeners.forEach(function (entry) {
+        if (entry.clickNum === click || entry.clickNum <= click) {
+          try { entry.fn(); } catch (_err) {}
+        }
+      });
+      this._advanceListeners.forEach(function (fn) {
+        try { fn(click, self.current, self.total); } catch (_err) {}
+      });
+    }
+  };
+
+  function scanDataAnimElements(root) {
+    var elements = Array.from((root || document).querySelectorAll("[data-anim]"));
+    if (elements.length === 0) return null;
+
+    var animConfigs = [];
+
+    elements.forEach(function (el, index) {
+      var type = (el.getAttribute("data-anim") || "fade-up").trim();
+      if (type === "none") return;
+
+      var trigger = (el.getAttribute("data-anim-trigger") || "load").trim();
+      var duration = Number(el.getAttribute("data-anim-duration")) || 500;
+      var easing = (el.getAttribute("data-anim-easing") || "easeOutCubic").trim();
+      var delayRaw = (el.getAttribute("data-anim-delay") || "0").trim();
+      var delay = 0;
+
+      if (delayRaw.indexOf("stagger") === 0) {
+        var match = delayRaw.match(/stagger\s*\(\s*(\d+)\s*\)/);
+        var gap = match ? Number(match[1]) : 50;
+        delay = ppt.stagger ? ppt.stagger(gap) : (function (start) {
+          return function (_el, i) { return start + i * gap; };
+        })(0);
+      } else {
+        delay = Number(delayRaw) || 0;
+      }
+
+      var animDef = {
+        targets: el,
+        type: type,
+        trigger: trigger,
+        duration: Math.max(100, Math.min(2000, duration)),
+        easing: easing,
+        delay: delay,
+        order: index
+      };
+
+      animConfigs.push(animDef);
+    });
+
+    var loadAnims = animConfigs.filter(function (a) { return a.trigger === "load"; });
+    var clickAnims = animConfigs.filter(function (a) { return a.trigger === "click"; });
+
+    if (clickAnims.length > 0) {
+      ppt.clicks.setTotal(clickAnims.length);
+    }
+
+    return { load: loadAnims, click: clickAnims, all: animConfigs };
+  }
+
+  function executeDataAnimConfig(config) {
+    if (!config || config.length === 0) return;
+
+    // Group by trigger type for load animations (fire all at once)
+    var timeline = ppt.createTimeline();
+    config.forEach(function (animDef) {
+      var params = {
+        duration: animDef.duration,
+        easing: animDef.easing,
+        delay: animDef.delay
+      };
+
+      switch (animDef.type) {
+        case "fade":
+          params.opacity = [0, 1];
+          break;
+        case "fade-up":
+          params.opacity = [0, 1];
+          params.translateY = [20, 0];
+          break;
+        case "fade-down":
+          params.opacity = [0, 1];
+          params.translateY = [-20, 0];
+          break;
+        case "fade-left":
+          params.opacity = [0, 1];
+          params.translateX = [20, 0];
+          break;
+        case "fade-right":
+          params.opacity = [0, 1];
+          params.translateX = [-20, 0];
+          break;
+        case "scale-in":
+          params.opacity = [0, 1];
+          params.scale = [0.85, 1];
+          break;
+        case "slide-up":
+          params.translateY = [40, 0];
+          break;
+        case "slide-left":
+          params.translateX = [40, 0];
+          break;
+        default:
+          params.opacity = [0, 1];
+          params.translateY = [20, 0];
+      }
+
+      timeline.add({ targets: animDef.targets }, params);
+    });
+  }
+
+  ppt.scanDataAnim = function (root) {
+    return scanDataAnimElements(root);
+  };
+
+  ppt.executeDataAnim = function (config) {
+    return executeDataAnimConfig(config);
   };
 
   ppt.createChart = function (target, config) {

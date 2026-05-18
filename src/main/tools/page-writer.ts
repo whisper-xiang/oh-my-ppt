@@ -267,17 +267,61 @@ const DEFAULT_MOTION_SCRIPT = `<script id="ppt-default-motion">
     });
   }
 
-  function runMotion() {
-    const root = document.querySelector(".ppt-page-root");
-    if (!root) return;
-    const targets = Array.from(
+  function resolveStagger(raw) {
+    if (!raw) return 0;
+    var trimmed = String(raw).trim();
+    var match = trimmed.match(/^stagger\\s*\\(\\s*(\\d+)\\s*\\)$/i);
+    if (match) return { kind: "stagger", gap: Number(match[1]) || 50 };
+    var num = Number(trimmed);
+    if (Number.isFinite(num)) return { kind: "fixed", value: num };
+    return 0;
+  }
+
+  function runDataAnimMotion(root) {
+    var pptApi = globalThis.PPT;
+    if (!pptApi || typeof pptApi.scanDataAnim !== "function") return false;
+    var config = pptApi.scanDataAnim(root);
+    if (!config || (!config.load.length && !config.click.length)) return false;
+
+    // Execute load-triggered animations
+    if (config.load.length > 0 && typeof pptApi.executeDataAnim === "function") {
+      pptApi.executeDataAnim(config.load);
+    }
+
+    // Wire click-triggered animations
+    if (config.click.length > 0) {
+      var clickDefs = config.click;
+      clickDefs.forEach(function (animDef, idx) {
+        var clickNum = idx + 1;
+        pptApi.clicks.on(clickNum, function () {
+          var single = [animDef];
+          if (typeof pptApi.executeDataAnim === "function") {
+            pptApi.executeDataAnim(single);
+          } else {
+            // Fallback: direct animate
+            pptApi.animate(animDef.targets, {
+              opacity: [0, 1],
+              translateY: [20, 0],
+              duration: animDef.duration,
+              easing: animDef.easing
+            });
+          }
+        });
+      });
+    }
+
+    return true;
+  }
+
+  function runLegacyMotion(root) {
+    var targets = Array.from(
       root.querySelectorAll(".opacity-0, [data-anime], [data-animate], h1, h2, h3, p, li, .card, .panel, .text-section, .diagram-section, .timeline-node, section, section > *")
     ).slice(0, 16);
     if (targets.length === 0) {
       revealFallback(root);
       return;
     }
-    const pptApi = globalThis.PPT;
+    var pptApi = globalThis.PPT;
     if (pptApi && typeof pptApi.animate === "function") {
       try {
         pptApi.animate(targets, {
@@ -285,27 +329,35 @@ const DEFAULT_MOTION_SCRIPT = `<script id="ppt-default-motion">
           translateY: [20, 0],
           easing: "easeOutCubic",
           duration: 560,
-          delay: (_el, i) => i * 45,
+          delay: function (_el, i) { return i * 45; },
         });
-        // If custom animation failed and left nodes hidden, force visibility once.
-        window.setTimeout(() => revealFallback(root), 720);
+        window.setTimeout(function () { revealFallback(root); }, 720);
         return;
       } catch (_err) {
         revealFallback(root);
         return;
       }
     }
-    targets.forEach((el, i) => {
-      const node = el;
+    targets.forEach(function (el, i) {
+      var node = el;
       node.style.opacity = "0";
       node.style.transform = "translateY(14px)";
       node.style.transition = "opacity 420ms ease, transform 420ms ease";
-      window.setTimeout(() => {
+      window.setTimeout(function () {
         node.style.opacity = "1";
         node.style.transform = "translateY(0)";
       }, i * 40);
     });
     revealFallback(root);
+  }
+
+  function runMotion() {
+    var root = document.querySelector(".ppt-page-root");
+    if (!root) return;
+    // Prefer declarative data-anim over legacy selectors
+    if (!runDataAnimMotion(root)) {
+      runLegacyMotion(root);
+    }
   }
 
   if (document.readyState === "loading") {

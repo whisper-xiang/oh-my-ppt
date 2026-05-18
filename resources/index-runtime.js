@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  // @ohmyppt-index-runtim:arcsin1:v2.0.9
+  // @ohmyppt-index-runtim:arcsin1:v2.1.0
 
   var pages = JSON.parse(document.getElementById('pages-data')?.textContent || '[]');
   var frameViewport = document.getElementById('frameViewport');
@@ -17,6 +17,8 @@
   var presentMode = search.get('present') === '1';
   var currentPageId = '';
   var fitRaf = 0;
+  var indexTransitionType = 'fade';   // default, overridden by container build
+  var indexTransitionDuration = 420;  // ms
 
   function getPageKey(page) {
     return String((page && (page.id || page.pageId)) || '');
@@ -45,7 +47,30 @@
     return url.toString();
   }
 
+  function tryForwardClickToFrame() {
+    var frame = getActiveFrame();
+    if (!frame) return false;
+    try {
+      var frameWindow = frame.contentWindow;
+      if (frameWindow && frameWindow.PPT && frameWindow.PPT.clicks && typeof frameWindow.PPT.clicks.advance === "function") {
+        frameWindow.PPT.clicks.advance();
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   function handlePresentationKey(event) {
+    // Forward click advance to iframe first (for click-triggered animations)
+    var clickForwardKeys = ['ArrowRight', 'ArrowDown', 'PageDown', ' '];
+    if (clickForwardKeys.indexOf(event.key) >= 0) {
+      // Try forwarding click to iframe for in-slide animation steps
+      if (tryForwardClickToFrame()) {
+        event.preventDefault();
+        return; // Consumed by in-slide click animation
+      }
+    }
+
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown' || event.key === 'PageDown' || event.key === ' ') {
       event.preventDefault();
       gotoOffset(1);
@@ -189,23 +214,36 @@
     var page = pages.find(function (item) { return getPageKey(item) === pageId; }) || pages[0];
     if (!page) return;
 
-    // Hide previous frame
     var previousPageId = currentPageId;
     var prevFrame = previousPageId ? framePool.get(previousPageId) : null;
-    if (prevFrame) prevFrame.classList.remove('active');
 
-    // Show target frame
-    currentPageId = getPageKey(page);
-    ensureFrameLoaded(currentPageId, loadedPages.has(currentPageId) && previousPageId !== currentPageId);
-    var nextFrame = framePool.get(currentPageId);
-    if (nextFrame) nextFrame.classList.add('active');
-
-    scheduleFitFrame();
-    if (syncHash && window.location.hash !== '#' + encodeURIComponent(currentPageId)) {
-      window.history.replaceState(null, '', '#' + encodeURIComponent(currentPageId));
+    function switchFrame() {
+      if (prevFrame) prevFrame.classList.remove('active');
+      currentPageId = getPageKey(page);
+      ensureFrameLoaded(currentPageId, loadedPages.has(currentPageId) && previousPageId !== currentPageId);
+      var nextFrame = framePool.get(currentPageId);
+      if (nextFrame) nextFrame.classList.add('active');
+      scheduleFitFrame();
+      if (syncHash && window.location.hash !== '#' + encodeURIComponent(currentPageId)) {
+        window.history.replaceState(null, '', '#' + encodeURIComponent(currentPageId));
+      }
+      renderThumbs(currentPageId);
+      updateIndicator();
     }
-    renderThumbs(currentPageId);
-    updateIndicator();
+
+    // Use View Transition API for smooth slide transitions when available
+    if (
+      indexTransitionType !== 'none' &&
+      document.startViewTransition &&
+      previousPageId &&
+      previousPageId !== pageId
+    ) {
+      document.startViewTransition(function () {
+        switchFrame();
+      });
+    } else {
+      switchFrame();
+    }
   }
 
   function gotoOffset(offset) {
@@ -242,6 +280,91 @@
 
   function toggleFullscreen() {
     togglePresentMode();
+  }
+
+  // Inject transition keyframes for View Transition API
+  function injectTransitionStyles() {
+    var existing = document.getElementById('ppt-index-vt-styles');
+    if (existing) existing.remove();
+
+    var style = document.createElement('style');
+    style.id = 'ppt-index-vt-styles';
+    var duration = indexTransitionDuration;
+    var keyframes = '';
+
+    if (indexTransitionType === 'slide-left') {
+      keyframes =
+        '@keyframes ppt-vt-slide-left-out { to { transform: translateX(-100%); opacity: 0.3; } }' +
+        '@keyframes ppt-vt-slide-left-in { from { transform: translateX(100%); } to { transform: translateX(0); } }';
+    } else if (indexTransitionType === 'slide-up') {
+      keyframes =
+        '@keyframes ppt-vt-slide-up-out { to { transform: translateY(-100%); opacity: 0.3; } }' +
+        '@keyframes ppt-vt-slide-up-in { from { transform: translateY(100%); } to { transform: translateY(0); } }';
+    } else if (indexTransitionType === 'push') {
+      keyframes =
+        '@keyframes ppt-vt-push-out { to { transform: translateX(-30%); opacity: 0.5; } }' +
+        '@keyframes ppt-vt-push-in { from { transform: translateX(100%); } to { transform: translateX(0); } }';
+    } else if (indexTransitionType === 'wipe') {
+      keyframes =
+        '@keyframes ppt-vt-wipe-out { to { clip-path: inset(0 100% 0 0); } }' +
+        '@keyframes ppt-vt-wipe-in { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }';
+    } else if (indexTransitionType === 'zoom') {
+      keyframes =
+        '@keyframes ppt-vt-zoom-out { to { transform: scale(0.8); opacity: 0; } }' +
+        '@keyframes ppt-vt-zoom-in { from { transform: scale(1.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }';
+    } else {
+      // fade (default)
+      keyframes =
+        '@keyframes ppt-vt-fade-out { to { opacity: 0; } }' +
+        '@keyframes ppt-vt-fade-in { from { opacity: 0; } to { opacity: 1; } }';
+    }
+
+    var animOut = indexTransitionType === 'fade' ? 'ppt-vt-fade-out' :
+      (indexTransitionType === 'slide-left' ? 'ppt-vt-slide-left-out' :
+       indexTransitionType === 'slide-up' ? 'ppt-vt-slide-up-out' :
+       indexTransitionType === 'push' ? 'ppt-vt-push-out' :
+       indexTransitionType === 'wipe' ? 'ppt-vt-wipe-out' :
+       indexTransitionType === 'zoom' ? 'ppt-vt-zoom-out' : 'ppt-vt-fade-out');
+    var animIn = indexTransitionType === 'fade' ? 'ppt-vt-fade-in' :
+      (indexTransitionType === 'slide-left' ? 'ppt-vt-slide-left-in' :
+       indexTransitionType === 'slide-up' ? 'ppt-vt-slide-up-in' :
+       indexTransitionType === 'push' ? 'ppt-vt-push-in' :
+       indexTransitionType === 'wipe' ? 'ppt-vt-wipe-in' :
+       indexTransitionType === 'zoom' ? 'ppt-vt-zoom-in' : 'ppt-vt-fade-in');
+
+    style.textContent =
+      keyframes +
+      '::view-transition-old(root) {' +
+      '  animation: ' + animOut + ' ' + (duration / 1000).toFixed(2) + 's ease both;' +
+      '}' +
+      '::view-transition-new(root) {' +
+      '  animation: ' + animIn + ' ' + (duration / 1000).toFixed(2) + 's ease both;' +
+      '}' +
+      '@media (prefers-reduced-motion: reduce) {' +
+      '  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }' +
+      '}';
+
+    document.head.appendChild(style);
+  }
+
+  // Read transition config from container data attribute
+  try {
+    var transitionConfig = document.getElementById('ppt-index-transition-config');
+    if (transitionConfig) {
+      var config = JSON.parse(transitionConfig.textContent || '{}');
+      if (config.type) indexTransitionType = config.type;
+      if (config.durationMs) indexTransitionDuration = Math.max(120, Math.min(1200, Number(config.durationMs) || 420));
+    }
+  } catch (_) {}
+
+  injectTransitionStyles();
+
+  // Mouse click on viewport: forward click to iframe for in-slide animations
+  if (frameViewport) {
+    frameViewport.addEventListener('click', function (event) {
+      if (event.target !== frameViewport) return; // Only direct viewport clicks
+      tryForwardClickToFrame();
+    });
   }
 
   bindThumbEvents();
