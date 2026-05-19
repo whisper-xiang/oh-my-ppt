@@ -559,5 +559,13 @@ export const ipc = {
       version: string
     }>,
   openPresentation: (payload: { sessionId: string; startIndex?: number }) =>
-    getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>
+    getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>,
+  generateSpeechScript: (
+    sessionId: string,
+    config: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' }
+  ) =>
+    getIpc().invoke('speech:generateScript', { sessionId, ...config }) as Promise<{
+      success: boolean
+      script: string
+    }>
 }

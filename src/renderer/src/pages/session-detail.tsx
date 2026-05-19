@@ -30,6 +30,7 @@ import { PreviewStage } from '../components/session-detail/PreviewStage'
 import { ElementInspectorPanel } from '../components/session-detail/ElementInspectorPanel'
 import { SessionToolbar } from '../components/session-detail/SessionToolbar'
 import { AssetPickerDialog } from '../components/session-detail/AssetPickerDialog'
+import { SpeechScriptDialog } from '../components/session-detail/SpeechScriptDialog'
 import type { ElementEditDraft } from '../components/session-detail/ElementInspectorPanel'
 import type { ChatType, SessionPreviewPage } from '../components/session-detail/types'
 import { useSessionStore, useGenerateStore } from '../store'
@@ -172,6 +173,12 @@ export function SessionDetailPage(): React.JSX.Element {
   const assetPickerOpen = useSessionDetailUiStore((state) => state.assetPickerOpen)
   const assetPickerType = useSessionDetailUiStore((state) => state.assetPickerType)
   const setAssetPickerOpen = useSessionDetailUiStore((state) => state.setAssetPickerOpen)
+  const speechScript = useSessionDetailUiStore((state) => state.speechScript)
+  const speechScriptDialogOpen = useSessionDetailUiStore((state) => state.speechScriptDialogOpen)
+  const setSpeechScriptDialogOpen = useSessionDetailUiStore((state) => state.setSpeechScriptDialogOpen)
+  const speechConfig = useSessionDetailUiStore((state) => state.speechConfig)
+  const setSpeechConfig = useSessionDetailUiStore((state) => state.setSpeechConfig)
+  const isGeneratingSpeechScript = useSessionDetailUiStore((state) => state.isGeneratingSpeechScript)
   const setAddPageDialogOpen = useSessionDetailUiStore((state) => state.setAddPageDialogOpen)
   const setIsAddingPage = useSessionDetailUiStore((state) => state.setIsAddingPage)
   const activeChatRef = useRef<{ chatType: ChatType; pageId?: string }>({ chatType: 'page' })
@@ -800,6 +807,27 @@ export function SessionDetailPage(): React.JSX.Element {
     const indexPath = basePath.replace(/[^/\\]+\.html$/i, 'index.html')
     const pageHash = selectedPage?.id || normalizedOrderedPages[0]?.id
     await ipc.openInBrowser(indexPath, pageHash ? `#${pageHash}` : undefined, id || undefined)
+  }
+
+  const handleOpenSpeechDialog = (): void => {
+    useSessionDetailUiStore.getState().setSpeechScriptDialogOpen(true)
+  }
+
+  const handleDoGenerateSpeechScript = async (config: {
+    length: 'short' | 'medium' | 'long'
+    style: 'formal' | 'conversational' | 'storytelling'
+  }): Promise<void> => {
+    const detailState = useSessionDetailUiStore.getState()
+    if (!id || detailState.isGeneratingSpeechScript) return
+    detailState.setIsGeneratingSpeechScript(true)
+    try {
+      const result = await ipc.generateSpeechScript(id, config)
+      detailState.setSpeechScript(result.script)
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : t('sessionDetail.speechScriptError'))
+    } finally {
+      useSessionDetailUiStore.getState().setIsGeneratingSpeechScript(false)
+    }
   }
 
   const handleExportPdf = async (): Promise<void> => {
@@ -1610,6 +1638,7 @@ export function SessionDetailPage(): React.JSX.Element {
                     startIndex: idx >= 0 ? idx : 0
                   })
                 }}
+                onGenerateSpeechScript={handleOpenSpeechDialog}
               />
             </div>
           </div>
@@ -1949,6 +1978,16 @@ export function SessionDetailPage(): React.JSX.Element {
           open={assetPickerOpen}
           onClose={() => setAssetPickerOpen(false)}
           onConfirm={handleAddElement}
+        />
+        <SpeechScriptDialog
+          open={speechScriptDialogOpen}
+          onOpenChange={setSpeechScriptDialogOpen}
+          script={speechScript}
+          isGenerating={isGeneratingSpeechScript}
+          speechConfig={speechConfig}
+          onConfigChange={setSpeechConfig}
+          onGenerate={(config) => void handleDoGenerateSpeechScript(config)}
+          sessionTitle={currentSession?.title || currentSession?.topic || undefined}
         />
         <AlertDialog
           open={deleteConfirmOpen}

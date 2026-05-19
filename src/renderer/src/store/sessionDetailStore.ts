@@ -31,6 +31,10 @@ interface SessionDetailUiStore {
   sidebarCollapsed: boolean
   assetPickerOpen: boolean
   assetPickerType: 'image' | 'video'
+  isGeneratingSpeechScript: boolean
+  speechScript: string | null
+  speechScriptDialogOpen: boolean
+  speechConfig: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' }
 
   setInput: (input: string) => void
   setChatType: (chatType: SessionDetailChatType) => void
@@ -62,6 +66,10 @@ interface SessionDetailUiStore {
   setIsManagingPages: (managing: boolean) => void
   toggleSidebarCollapsed: () => void
   setAssetPickerOpen: (open: boolean, type?: 'image' | 'video') => void
+  setIsGeneratingSpeechScript: (v: boolean) => void
+  setSpeechScript: (script: string | null) => void
+  setSpeechScriptDialogOpen: (v: boolean) => void
+  setSpeechConfig: (config: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' }) => void
   finishAddPage: (selectedPageId?: string | null) => void
   resetForPageChange: () => void
   resetForSessionChange: () => void
@@ -94,6 +102,10 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
   sidebarCollapsed: false,
   assetPickerOpen: false,
   assetPickerType: 'image' as const,
+  isGeneratingSpeechScript: false,
+  speechScript: null,
+  speechScriptDialogOpen: false,
+  speechConfig: { length: 'medium' as const, style: 'conversational' as const },
 
   setInput: (input) => set({ input }),
   setChatType: (chatType) => set({ chatType }),
@@ -155,6 +167,10 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
       assetPickerOpen: open,
       ...(type ? { assetPickerType: type } : { assetPickerType: state.assetPickerType })
     })),
+  setIsGeneratingSpeechScript: (isGeneratingSpeechScript) => set({ isGeneratingSpeechScript }),
+  setSpeechScript: (speechScript) => set({ speechScript }),
+  setSpeechScriptDialogOpen: (speechScriptDialogOpen) => set({ speechScriptDialogOpen }),
+  setSpeechConfig: (speechConfig) => set({ speechConfig }),
   finishAddPage: (selectedPageId) =>
     set((state) => ({
       isAddingPage: false,
