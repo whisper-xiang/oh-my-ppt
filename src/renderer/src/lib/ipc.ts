@@ -562,7 +562,11 @@ export const ipc = {
     getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>,
   generateSpeechScript: (
     sessionId: string,
-    config: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' }
+    config: {
+      length: 'short' | 'medium' | 'long'
+      style: 'formal' | 'conversational' | 'storytelling' | 'custom'
+      customStyle?: string
+    }
   ) =>
     getIpc().invoke('speech:generateScript', { sessionId, ...config }) as Promise<{ success: boolean }>,
   getSpeechScript: (sessionId: string) =>

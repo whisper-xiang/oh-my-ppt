@@ -827,7 +827,8 @@ export function SessionDetailPage(): React.JSX.Element {
 
   const handleDoGenerateSpeechScript = async (config: {
     length: 'short' | 'medium' | 'long'
-    style: 'formal' | 'conversational' | 'storytelling'
+    style: 'formal' | 'conversational' | 'storytelling' | 'custom'
+    customStyle?: string
   }): Promise<void> => {
     const detailState = useSessionDetailUiStore.getState()
     if (!id || detailState.isGeneratingSpeechScript) return

@@ -34,7 +34,7 @@ interface SessionDetailUiStore {
   isGeneratingSpeechScript: boolean
   speechProgress: { current: number; total: number } | null
   speechScriptDialogOpen: boolean
-  speechConfig: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' }
+  speechConfig: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }
 
   setInput: (input: string) => void
   setChatType: (chatType: SessionDetailChatType) => void
@@ -69,7 +69,7 @@ interface SessionDetailUiStore {
   setIsGeneratingSpeechScript: (v: boolean) => void
   setSpeechProgress: (progress: { current: number; total: number } | null) => void
   setSpeechScriptDialogOpen: (v: boolean) => void
-  setSpeechConfig: (config: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' }) => void
+  setSpeechConfig: (config: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }) => void
   finishAddPage: (selectedPageId?: string | null) => void
   resetForPageChange: () => void
   resetForSessionChange: () => void

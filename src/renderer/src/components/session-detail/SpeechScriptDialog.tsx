@@ -7,11 +7,12 @@ import { useT } from '@renderer/i18n'
 import { ipc } from '@renderer/lib/ipc'
 
 type SpeechLength = 'short' | 'medium' | 'long'
-type SpeechStyle = 'formal' | 'conversational' | 'storytelling'
+type SpeechStyle = 'formal' | 'conversational' | 'storytelling' | 'custom'
 
 export interface SpeechConfig {
   length: SpeechLength
   style: SpeechStyle
+  customStyle?: string
 }
 
 interface SpeechScriptDialogProps {
@@ -162,8 +163,8 @@ export function SpeechScriptDialog({
               <p className="mb-3 text-sm font-medium text-[#3e4a32]">
                 {t('sessionDetail.speechScriptStyle')}
               </p>
-              <div className="grid grid-cols-3 gap-2">
-                {(['formal', 'conversational', 'storytelling'] as SpeechStyle[]).map((s) => (
+              <div className="grid grid-cols-2 gap-2">
+                {(['formal', 'conversational', 'storytelling', 'custom'] as SpeechStyle[]).map((s) => (
                   <OptionButton
                     key={s}
                     selected={speechConfig.style === s}
@@ -172,6 +173,15 @@ export function SpeechScriptDialog({
                   />
                 ))}
               </div>
+              {speechConfig.style === 'custom' && (
+                <textarea
+                  className="mt-3 w-full resize-none rounded-xl border border-[#ded2bd]/70 bg-white/50 px-4 py-3 text-sm text-[#3e4a32] placeholder:text-[#9a8f80] focus:border-[#6f8159] focus:outline-none"
+                  rows={3}
+                  placeholder={t('sessionDetail.speechScriptStyleCustomPlaceholder')}
+                  value={speechConfig.customStyle ?? ''}
+                  onChange={(e) => onConfigChange({ ...speechConfig, customStyle: e.target.value })}
+                />
+              )}
             </div>
           </div>
         )}

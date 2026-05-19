@@ -385,6 +385,8 @@ Business presentations, product introductions, project summaries — formal but 
     speechScriptStyleFormal: 'Formal',
     speechScriptStyleConversational: 'Conversational',
     speechScriptStyleStorytelling: 'Storytelling',
+    speechScriptStyleCustom: 'Custom',
+    speechScriptStyleCustomPlaceholder: 'Describe the style you want, e.g. humorous and engaging, use lots of analogies and examples...',
     speechScriptGenerating: 'Generating slide {current} of {total}',
     speechScriptGeneratingInit: 'Preparing...',
     speechScriptDownloadSuffix: '-speech-script',

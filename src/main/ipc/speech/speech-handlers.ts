@@ -10,7 +10,7 @@ import { resolveModel } from '../../agent'
 import { readAppLocale, uiText } from '../config/locale-utils'
 
 export type SpeechLength = 'short' | 'medium' | 'long'
-export type SpeechStyle = 'formal' | 'conversational' | 'storytelling'
+export type SpeechStyle = 'formal' | 'conversational' | 'storytelling' | 'custom'
 
 const SPEECH_SCRIPT_FILE = 'speech-script.md'
 
@@ -42,7 +42,10 @@ function buildLengthInstruction(length: SpeechLength, isZh: boolean): string {
   }
 }
 
-function buildStyleInstruction(style: SpeechStyle, isZh: boolean): string {
+function buildStyleInstruction(style: SpeechStyle, isZh: boolean, customStyle?: string): string {
+  if (style === 'custom') {
+    return customStyle?.trim() || (isZh ? '语气轻松自然，口语化，像和听众对话一样，亲切易懂。' : 'Use a relaxed, conversational tone as if speaking directly to the audience.')
+  }
   if (isZh) {
     switch (style) {
       case 'formal':
@@ -72,7 +75,11 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
     const length: SpeechLength =
       payload?.length === 'short' || payload?.length === 'long' ? payload.length : 'medium'
     const style: SpeechStyle =
-      payload?.style === 'formal' || payload?.style === 'storytelling' ? payload.style : 'conversational'
+      payload?.style === 'formal' || payload?.style === 'storytelling' || payload?.style === 'custom'
+        ? payload.style
+        : 'conversational'
+    const customStyle: string =
+      style === 'custom' && typeof payload?.customStyle === 'string' ? payload.customStyle : ''
 
     const locale = await readAppLocale(ctx)
     const isZh = locale === 'zh'
@@ -122,7 +129,7 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
     )
 
     const lengthInstruction = buildLengthInstruction(length, isZh)
-    const styleInstruction = buildStyleInstruction(style, isZh)
+    const styleInstruction = buildStyleInstruction(style, isZh, customStyle)
     const total = slideContents.length
     const sessionTitle = session.title || session.topic || (isZh ? '未命名' : 'Untitled')
 

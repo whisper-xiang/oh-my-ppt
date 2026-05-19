@@ -371,6 +371,8 @@ export const zh = {
     speechScriptStyleFormal: '正式演讲',
     speechScriptStyleConversational: '轻松对话',
     speechScriptStyleStorytelling: '叙事风格',
+    speechScriptStyleCustom: '自定义',
+    speechScriptStyleCustomPlaceholder: '描述你想要的演讲风格，例如：幽默风趣、引人入胜，多用类比和例子...',
     speechScriptGenerating: '正在生成第 {current} / {total} 页',
     speechScriptGeneratingInit: '正在准备生成...',
     speechScriptDownloadSuffix: '-演讲稿',
