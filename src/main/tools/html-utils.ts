@@ -131,8 +131,12 @@ const isAllowedRuntimeAsset = (src: string): boolean => {
 
 export const validateHtmlContent = (html: string): { valid: boolean; errors: string[] } => {
   const errors: string[] = []
+  const animationCallScanHtml = html.replace(
+    /\bdata-anim-delay\s*=\s*(["'])stagger\s*\(\s*\d+\s*\)\1/gi,
+    'data-anim-delay=$1__DATA_ANIM_STAGGER__$1'
+  )
   const hasUnqualifiedCall = (fnName: string): boolean =>
-    new RegExp(`(^|[^\\w$.])${fnName}\\s*\\(`, 'm').test(html)
+    new RegExp(`(^|[^\\w$.])${fnName}\\s*\\(`, 'm').test(animationCallScanHtml)
   if (!html || html.trim().length === 0) {
     errors.push('HTML 内容为空')
     return { valid: false, errors }

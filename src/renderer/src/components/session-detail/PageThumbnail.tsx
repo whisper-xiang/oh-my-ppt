@@ -60,6 +60,7 @@ export const PageThumbnail = memo(function PageThumbnail({
               pageId={page.pageId}
               title={`filmstrip-page-${page.pageNumber}`}
               inspectable={false}
+              thumbnail
             />
           </div>
           <div className="relative mt-1.5 flex items-center justify-between gap-1 px-0.5">

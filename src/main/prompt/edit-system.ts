@@ -1,6 +1,7 @@
 import type { SessionDeckGenerationContext } from '../tools/types'
 import { progressText } from '@shared/progress'
 import {
+  ANIMATION_INTERACTION_RULES,
   CANVAS_CONSTRAINTS,
   CONTENT_LANGUAGE_RULES,
   CONTENT_WRITING_RULES,
@@ -256,8 +257,10 @@ function buildSinglePageEditPrompt(
     PAGE_SEMANTIC_STRUCTURE,
     '',
     FRONTEND_CAPABILITIES,
+    '',
+    ANIMATION_INTERACTION_RULES,
     '- 如果用户没有明确要求添加动画，不要主动新增动画。',
-    '- 添加动画时，在页面 HTML 内嵌入 <script> 标签，使用 PPT.animate(...) / PPT.createTimeline(...) 编写逻辑。',
+    '- 添加简单入场、逐条展示或演讲节奏动画时，优先使用 data-anim；只有 data-anim 无法表达的复杂时间线或回调才使用 <script> + PPT.animate(...) / PPT.createTimeline(...)。',
     '',
     '## Execution Flow',
     '1. get_session_context — read the session context',
@@ -332,6 +335,8 @@ function buildDeckEditPrompt(
     PAGE_SEMANTIC_STRUCTURE,
     '',
     FRONTEND_CAPABILITIES,
+    '',
+    ANIMATION_INTERACTION_RULES,
     '- 如果用户没有明确要求添加动画，不要主动新增动画。',
     '',
     '## Execution Flow',

@@ -15,6 +15,94 @@ import {
   type EditSelectionPayload
 } from './edit-mode-script'
 import { ipc } from '@renderer/lib/ipc'
+import type { InteractionMode } from '@renderer/store/sessionDetailStore'
+
+const buildPreviewClickAnimationInjectScript = (): string => `
+(() => {
+  const KEY = "__pptPreviewClickAnimationBridge";
+  if (window[KEY] && typeof window[KEY].cleanup === "function") return;
+
+  const isEditableTarget = (target) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest("input, textarea, select, button, [contenteditable='true'], [contenteditable='']"));
+  };
+
+  const advanceClickAnimation = () => {
+    try {
+      const clicks = window.PPT && window.PPT.clicks;
+      if (clicks && clicks.total > 0 && typeof clicks.advance === "function") {
+        return clicks.advance();
+      }
+    } catch (_err) {}
+    return false;
+  };
+
+  const onClick = (event) => {
+    if (isEditableTarget(event.target)) return;
+    advanceClickAnimation();
+  };
+
+  const onKeyDown = (event) => {
+    if (isEditableTarget(event.target)) return;
+    if (!["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) return;
+    if (advanceClickAnimation()) {
+      event.preventDefault();
+    }
+  };
+
+  document.addEventListener("click", onClick);
+  document.addEventListener("keydown", onKeyDown);
+  window[KEY] = {
+    cleanup() {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKeyDown);
+      delete window[KEY];
+    }
+  };
+})();
+`
+
+const buildPreviewClickAnimationCleanupScript = (): string => `
+(() => {
+  const state = window.__pptPreviewClickAnimationBridge;
+  if (state && typeof state.cleanup === "function") {
+    state.cleanup();
+  }
+})();
+`
+
+const buildThumbnailFreezeScript = (): string => `
+(() => {
+  if (window.__pptThumbnailFrozen) return;
+  window.__pptThumbnailFrozen = true;
+
+  const style = document.createElement("style");
+  style.id = "ppt-thumbnail-freeze";
+  style.textContent = "html, body, body * { animation: none !important; transition: none !important; }";
+  document.head.appendChild(style);
+
+  if (window.PPT && typeof window.PPT.stopAnimations === "function") {
+    try { window.PPT.stopAnimations(); } catch (_) {}
+  }
+
+  const root = document.querySelector(".ppt-page-root, [data-ppt-guard-root='1']");
+  if (!root) return;
+
+  root.querySelectorAll("[style]").forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    const s = el.style;
+    if (s.transition && (s.transition.includes("transform") || s.transition.includes("opacity"))) {
+      s.transition = "";
+    }
+  });
+
+  root.querySelectorAll("[data-ppt-anim-initialized='1'], [data-anim]").forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    el.style.opacity = "";
+    el.style.transform = "";
+  });
+})();
+`
 
 export interface PreviewIframeHandle {
   patchPageContent: (pageId: string, newHtml: string) => void
@@ -77,6 +165,8 @@ export const PreviewIframe = forwardRef<
     inspecting?: boolean
     inspectable?: boolean
     editMode?: boolean
+    thumbnail?: boolean
+    interactionMode?: InteractionMode
     onSelectorSelected?: (
       selector: string,
       label: string,
@@ -98,6 +188,8 @@ export const PreviewIframe = forwardRef<
     inspecting = false,
     inspectable = false,
     editMode = false,
+    thumbnail = false,
+    interactionMode,
     onSelectorSelected,
     onElementMoved,
     onElementSelected,
@@ -161,7 +253,9 @@ export const PreviewIframe = forwardRef<
     : src
       ? withPreviewParams(src)
       : undefined
-  const pointerEnabled = inspectable && (inspecting || editMode)
+  const currentInteractionMode: InteractionMode =
+    interactionMode || (editMode ? 'edit' : inspecting ? 'ai-inspect' : 'preview')
+  const pointerEnabled = inspectable
 
   const ensureAnchoredAnchor = async (args: {
     selector: string
@@ -514,6 +608,45 @@ export const PreviewIframe = forwardRef<
       safeExecuteJavaScript(webview, buildEditModeCleanupScript())
     }
   }, [inspectable, editMode, webviewSrc, webviewElement])
+
+  useEffect(() => {
+    const webview = webviewElement
+    if (!webview || !inspectable) return
+
+    const runPreviewClickAnimationLifecycle = (): void => {
+      if (currentInteractionMode === 'preview') {
+        safeExecuteJavaScript(webview, buildPreviewClickAnimationInjectScript())
+      } else {
+        safeExecuteJavaScript(webview, buildPreviewClickAnimationCleanupScript())
+      }
+    }
+
+    runPreviewClickAnimationLifecycle()
+    const handleDomReady = (): void => runPreviewClickAnimationLifecycle()
+    webview.addEventListener('dom-ready', handleDomReady as EventListener)
+
+    return () => {
+      webview.removeEventListener('dom-ready', handleDomReady as EventListener)
+      safeExecuteJavaScript(webview, buildPreviewClickAnimationCleanupScript())
+    }
+  }, [inspectable, currentInteractionMode, webviewSrc, webviewElement])
+
+  // Thumbnail: freeze all animations so the thumbnail renders the final visible state.
+  useEffect(() => {
+    const webview = webviewElement
+    if (!webview || !thumbnail) return
+
+    const handleDomReady = (): void => {
+      safeExecuteJavaScript(webview, buildThumbnailFreezeScript())
+    }
+
+    handleDomReady()
+    webview.addEventListener('dom-ready', handleDomReady as EventListener)
+
+    return () => {
+      webview.removeEventListener('dom-ready', handleDomReady as EventListener)
+    }
+  }, [thumbnail, webviewSrc, webviewElement])
 
   useEffect(() => {
     const webview = webviewElement

@@ -393,6 +393,10 @@ export function buildInspectorInjectScript(options?: { mode?: 'inspect' | 'text-
     style.id = STYLE_ID;
     const highlightColor = MODE === "text-edit" ? "#16a34a" : "#3b82f6";
     style.textContent = \`
+      html, body, body * {
+        animation: none !important;
+        transition: none !important;
+      }
       .\${HIGHLIGHT_CLASS} {
         cursor: \${MODE === "text-edit" ? "text" : "crosshair"} !important;
       }
@@ -410,12 +414,49 @@ export function buildInspectorInjectScript(options?: { mode?: 'inspect' | 'text-
 
   let activeElement = null;
   let highlightOverlayElement = null;
+  const restoredAnimationStyles = [];
   const cursorHost = document.body || document.documentElement;
   const previousCursor = cursorHost && cursorHost.style ? cursorHost.style.cursor : "";
   if (cursorHost && cursorHost.style) {
     cursorHost.style.cursor = MODE === "text-edit" ? "text" : "crosshair";
   }
   ensureStyle();
+
+  const freezeAnimationsForInspect = () => {
+    if (window.PPT && typeof window.PPT.stopAnimations === "function") {
+      try { window.PPT.stopAnimations(); } catch (_error) {}
+    }
+    const root = document.querySelector(".ppt-page-root, [data-ppt-guard-root='1']");
+    if (!root) return;
+    root.querySelectorAll("[style]").forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const s = el.style;
+      if (s.transition && (s.transition.includes("transform") || s.transition.includes("opacity"))) {
+        s.transition = "";
+      }
+    });
+    root.querySelectorAll("[data-ppt-anim-initialized='1']").forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      restoredAnimationStyles.push({
+        el,
+        opacity: el.style.opacity,
+        transform: el.style.transform,
+      });
+      el.style.opacity = "";
+      el.style.transform = "";
+    });
+  };
+
+  const restoreFrozenAnimationStyles = () => {
+    restoredAnimationStyles.forEach((entry) => {
+      if (!entry.el || !entry.el.isConnected) return;
+      entry.el.style.opacity = entry.opacity;
+      entry.el.style.transform = entry.transform;
+    });
+    restoredAnimationStyles.length = 0;
+  };
+
+  freezeAnimationsForInspect();
 
   const getVisualBounds = (element) => {
     const base = element.getBoundingClientRect();
@@ -570,6 +611,7 @@ export function buildInspectorInjectScript(options?: { mode?: 'inspect' | 'text-
     }
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
+    restoreFrozenAnimationStyles();
     if (cursorHost && cursorHost.style) {
       cursorHost.style.cursor = previousCursor || "";
     }

@@ -89,6 +89,7 @@ export const PreviewStage = forwardRef<
               pageId={selectedPage.pageId}
               title={`preview-page-${selectedPage.pageNumber}`}
               inspectable
+              interactionMode={interactionMode}
               inspecting={isInspecting}
               editMode={isEditing}
               onSelectorSelected={setSelectedElement}

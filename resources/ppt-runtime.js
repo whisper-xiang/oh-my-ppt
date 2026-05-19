@@ -1,10 +1,10 @@
 (function initPptRuntime(global) {
   if (!global || typeof global !== "object") return;
-  // @ohmyppt-ppt-runtime:arcsin1:v1.3.0
+  // @ohmyppt-ppt-runtime:arcsin1:v2.0.11
 
   var ppt = global.PPT && typeof global.PPT === "object" ? global.PPT : (global.PPT = {});
-  if (ppt.__runtimeVersion === "1.3.0") return;
-  ppt.__runtimeVersion = "1.3.0";
+  if (ppt.__runtimeVersion === "2.0.11") return;
+  ppt.__runtimeVersion = "2.0.11";
 
   function resolveSearchParams() {
     try {
@@ -504,8 +504,13 @@
     reset: function () {
       this.current = 0;
     },
+    _clearListeners: function () {
+      this._listeners = [];
+      this._advanceListeners = [];
+    },
     setTotal: function (n) {
       this.total = Math.max(0, Number(n) || 0);
+      if (this.current > this.total) this.current = this.total;
     },
     advance: function () {
       if (this.total > 0 && this.current >= this.total) return false;
@@ -535,6 +540,97 @@
     }
   };
 
+  function isPlaybackBridgeEnabled() {
+    try {
+      var search = new URLSearchParams(global.location && global.location.search || "");
+      return search.get("pptPlayback") === "1";
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function isEditablePlaybackTarget(target) {
+    if (!target || target.nodeType !== 1) return false;
+    return Boolean(target.closest("input, textarea, select, button, [contenteditable='true'], [contenteditable='']"));
+  }
+
+  function postPlaybackHandled(requestId) {
+    if (!requestId) return;
+    try {
+      if (!global.parent || global.parent === global) return;
+      global.parent.postMessage({
+        type: "ohmyppt:playback:handled",
+        requestId: requestId
+      }, "*");
+    } catch (_err) {}
+  }
+
+  function postPlaybackNavigation(offset, requestId) {
+    try {
+      if (!global.parent || global.parent === global) return;
+      global.parent.postMessage({
+        type: "ohmyppt:playback:goto",
+        offset: offset || 1,
+        requestId: requestId || null
+      }, "*");
+    } catch (_err) {}
+  }
+
+  function consumePlaybackStepOrNavigate(offset, requestId) {
+    if (ppt.clicks && ppt.clicks.total > 0 && typeof ppt.clicks.advance === "function") {
+      if (ppt.clicks.advance()) {
+        postPlaybackHandled(requestId);
+        return true;
+      }
+    }
+    postPlaybackNavigation(offset || 1, requestId);
+    return true;
+  }
+
+  function stopPlaybackEvent(event) {
+    if (!event) return;
+    if (typeof event.preventDefault === "function") event.preventDefault();
+  }
+
+  function installPlaybackBridge() {
+    if (!isPlaybackBridgeEnabled() || global.__ohmypptPlaybackBridgeInstalled) return;
+    var doc = global.document;
+    if (!doc || typeof doc.addEventListener !== "function") return;
+    global.__ohmypptPlaybackBridgeInstalled = true;
+
+    doc.addEventListener("click", function (event) {
+      if (isEditablePlaybackTarget(event.target)) return;
+      stopPlaybackEvent(event);
+      consumePlaybackStepOrNavigate(1);
+    }, true);
+
+    doc.addEventListener("keydown", function (event) {
+      if (isEditablePlaybackTarget(event.target)) return;
+      var forwardKeys = ["ArrowRight", "ArrowDown", "PageDown", " "];
+      var backKeys = ["ArrowLeft", "ArrowUp", "PageUp"];
+      if (forwardKeys.indexOf(event.key) >= 0) {
+        stopPlaybackEvent(event);
+        consumePlaybackStepOrNavigate(1);
+      } else if (backKeys.indexOf(event.key) >= 0) {
+        stopPlaybackEvent(event);
+        postPlaybackNavigation(-1);
+      }
+    }, true);
+
+    global.addEventListener("message", function (event) {
+      if (event.source && event.source !== global.parent) return;
+      var data = event && event.data;
+      if (!data || data.type !== "ohmyppt:playback:advance") return;
+      var offset = Number(data.offset);
+      consumePlaybackStepOrNavigate(
+        Number.isFinite(offset) && offset !== 0 ? offset : 1,
+        data.requestId || null
+      );
+    });
+  }
+
+  installPlaybackBridge();
+
   var DATA_ANIM_INITIAL_STYLES = {
     "fade":       { opacity: "0" },
     "fade-up":    { opacity: "0", transform: "translateY(20px)" },
@@ -558,8 +654,14 @@
   }
 
   function scanDataAnimElements(root) {
+    ppt.clicks.reset();
+    ppt.clicks._clearListeners();
+
     var elements = Array.from((root || document).querySelectorAll("[data-anim]"));
-    if (elements.length === 0) return null;
+    if (elements.length === 0) {
+      ppt.clicks.setTotal(0);
+      return null;
+    }
 
     var animConfigs = [];
     // Per-trigger-group counters for stagger(N) → numeric delay
@@ -614,9 +716,7 @@
     var loadAnims = animConfigs.filter(function (a) { return a.trigger === "load"; });
     var clickAnims = animConfigs.filter(function (a) { return a.trigger === "click"; });
 
-    if (clickAnims.length > 0) {
-      ppt.clicks.setTotal(clickAnims.length);
-    }
+    ppt.clicks.setTotal(clickAnims.length);
 
     return { load: loadAnims, click: clickAnims, all: animConfigs };
   }

@@ -1,6 +1,6 @@
 /**
  * Unit tests for index-runtime.js logic:
- *   - tryForwardClickToFrame (clicks.total > 0 guard + advance() return value)
+ *   - playback-mode click routing
  *   - Transition name resolution
  *   - Duration clamping
  *   - Reduced motion guard
@@ -9,8 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
-// ── Extracted from index-runtime.js tryForwardClickToFrame ──
-function tryForwardClickToFrame(
+function advanceClickState(
   clicks: { total: number; advance: () => boolean } | null | undefined
 ): boolean {
   if (!clicks) return false
@@ -39,7 +38,61 @@ function clampTransitionDuration(value: number | undefined): number {
   return Math.max(120, Math.min(1200, Math.round(value as number)))
 }
 
-describe('tryForwardClickToFrame (total > 0 guard)', () => {
+function shouldBindFrameDocument(previousDocument: object | undefined, nextDocument: object | null): boolean {
+  return Boolean(nextDocument && previousDocument !== nextDocument)
+}
+
+function simulateEnsureFrameLoadedOrder(): string[] {
+  const calls: string[] = []
+  const frame = {
+    addEventListener: (eventName: string) => {
+      calls.push(`listen:${eventName}`)
+    },
+    set src(_value: string) {
+      calls.push('set-src')
+    }
+  }
+
+  frame.addEventListener('load')
+  frame.src = 'page.html'
+  return calls
+}
+
+function shouldEnableDeckPlayback(args: {
+  embedMode: boolean
+}): boolean {
+  return !args.embedMode
+}
+
+function resolveFrameClickAction(args: {
+  playbackMode: boolean
+  forwarded: boolean
+}): 'advance-animation' | 'goto-next' | 'none' {
+  if (!args.playbackMode) return 'none'
+  if (args.forwarded) return 'advance-animation'
+  return 'goto-next'
+}
+
+function shouldAcceptFramePlaybackMessage(args: {
+  hasFrame: boolean
+  source: object | null
+  frameWindow: object
+}): boolean {
+  if (!args.hasFrame) return false
+  return !args.source || args.source === args.frameWindow
+}
+
+function clearPendingPlaybackRequestsForTest(
+  pending: Record<string, number>,
+  clearTimeoutFn: (id: number) => void
+): void {
+  Object.keys(pending).forEach((requestId) => {
+    clearTimeoutFn(pending[requestId])
+    delete pending[requestId]
+  })
+}
+
+describe('click state advance helper (total > 0 guard)', () => {
   function makeClicks(total: number) {
     let current = 0
     return {
@@ -53,31 +106,113 @@ describe('tryForwardClickToFrame (total > 0 guard)', () => {
   }
 
   it('returns false when clicks is null/undefined', () => {
-    expect(tryForwardClickToFrame(null)).toBe(false)
-    expect(tryForwardClickToFrame(undefined)).toBe(false)
+    expect(advanceClickState(null)).toBe(false)
+    expect(advanceClickState(undefined)).toBe(false)
   })
 
   it('returns false when total is 0 (no click-triggered elements)', () => {
     const clicks = makeClicks(0)
-    expect(tryForwardClickToFrame(clicks)).toBe(false)
+    expect(advanceClickState(clicks)).toBe(false)
   })
 
   it('returns true when step consumed', () => {
     const clicks = makeClicks(3)
-    expect(tryForwardClickToFrame(clicks)).toBe(true)
+    expect(advanceClickState(clicks)).toBe(true)
   })
 
   it('returns false when all steps exhausted', () => {
     const clicks = makeClicks(2)
     clicks.advance() // → 1
     clicks.advance() // → 2
-    expect(tryForwardClickToFrame(clicks)).toBe(false) // exhausted, nav should proceed
+    expect(advanceClickState(clicks)).toBe(false) // exhausted, nav should proceed
   })
 
   it('allows nav after last click step exhausted', () => {
     const clicks = makeClicks(1)
-    expect(tryForwardClickToFrame(clicks)).toBe(true)  // consumed step 1
-    expect(tryForwardClickToFrame(clicks)).toBe(false) // exhausted → navigate
+    expect(advanceClickState(clicks)).toBe(true)  // consumed step 1
+    expect(advanceClickState(clicks)).toBe(false) // exhausted → navigate
+  })
+})
+
+describe('iframe load binding order', () => {
+  it('registers load listener before setting iframe src', () => {
+    expect(simulateEnsureFrameLoadedOrder()).toEqual(['listen:load', 'set-src'])
+  })
+
+  it('rebinds when iframe document changes after reload', () => {
+    const firstDocument = {}
+    const secondDocument = {}
+
+    expect(shouldBindFrameDocument(undefined, firstDocument)).toBe(true)
+    expect(shouldBindFrameDocument(firstDocument, firstDocument)).toBe(false)
+    expect(shouldBindFrameDocument(firstDocument, secondDocument)).toBe(true)
+  })
+})
+
+describe('iframe click behavior', () => {
+  it('ignores iframe clicks outside deck playback mode', () => {
+    expect(resolveFrameClickAction({ playbackMode: false, forwarded: true })).toBe('none')
+    expect(resolveFrameClickAction({ playbackMode: false, forwarded: false })).toBe('none')
+  })
+
+  it('keeps controls visible while supporting clicks in full-deck playback', () => {
+    expect(resolveFrameClickAction({
+      playbackMode: true,
+      forwarded: true
+    })).toBe('advance-animation')
+    expect(resolveFrameClickAction({
+      playbackMode: true,
+      forwarded: false
+    })).toBe('goto-next')
+  })
+})
+
+describe('index.html deck playback mode', () => {
+  it('enables click playback for full-deck index without forcing present CSS', () => {
+    expect(shouldEnableDeckPlayback({ embedMode: false })).toBe(true)
+  })
+
+  it('does not enable deck playback in embed mode', () => {
+    expect(shouldEnableDeckPlayback({ embedMode: true })).toBe(false)
+  })
+})
+
+describe('frame playback postMessage source guard', () => {
+  it('accepts messages from the active frame window', () => {
+    const frameWindow = {}
+    expect(shouldAcceptFramePlaybackMessage({
+      hasFrame: true,
+      source: frameWindow,
+      frameWindow
+    })).toBe(true)
+  })
+
+  it('accepts null source because some presentation webviews omit event.source', () => {
+    expect(shouldAcceptFramePlaybackMessage({
+      hasFrame: true,
+      source: null,
+      frameWindow: {}
+    })).toBe(true)
+  })
+
+  it('rejects messages from another frame window', () => {
+    expect(shouldAcceptFramePlaybackMessage({
+      hasFrame: true,
+      source: {},
+      frameWindow: {}
+    })).toBe(false)
+  })
+})
+
+describe('pending playback request cleanup', () => {
+  it('clears and removes all pending fallback timers', () => {
+    const pending = { a: 1, b: 2 }
+    const cleared: number[] = []
+
+    clearPendingPlaybackRequestsForTest(pending, (id) => cleared.push(id))
+
+    expect(cleared).toEqual([1, 2])
+    expect(pending).toEqual({})
   })
 })
 

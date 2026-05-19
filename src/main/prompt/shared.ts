@@ -99,6 +99,12 @@ export const FRONTEND_CAPABILITIES = [
   '<!-- 点击逐条展示（演讲节奏控制） -->',
   '<div data-anim="fade-up" data-anim-trigger="click">第一条要点</div>',
   '<div data-anim="fade-up" data-anim-trigger="click">第二条要点</div>',
+  '',
+  '<!-- 流程/步骤页：每个完整步骤节点点击出现，箭头保持静态或放入步骤内部 -->',
+  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">1. 剧本与分镜生成</div>',
+  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">2. 角色与场景设计</div>',
+  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">3. 动画生成与补帧</div>',
+  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">4. 后期合成与发布</div>',
   '```',
   '',
   'data-anim 支持的类型：fade | fade-up | fade-down | fade-left | fade-right | scale-in | slide-up | slide-left',
@@ -106,9 +112,14 @@ export const FRONTEND_CAPABILITIES = [
   'data-anim-duration：数字(ms)，默认 500',
   'data-anim-easing：easeOutCubic（默认）| easeOutBack | easeInOut | linear',
   'data-anim-trigger：load（默认，页面加载即播）| click（点击/按键逐条展示）',
+  '内容类型自动动画策略：当页面包含流程图、时间线、步骤说明、阶段拆解、路径/链路/过程类内容时，如果用户没有明确禁止动画，标题和背景装饰可用 load 动画，步骤/阶段/节点必须使用 data-anim-trigger="click" 按讲解顺序逐条展示。',
+  '当用户要求“点击逐条出现/点一下出一个/演讲节奏/逐步讲解/逐项展开/按键展示”时，正文、卡片、列表项、流程节点必须使用 data-anim-trigger="click"，不得仅用 data-anim-delay 自动错峰模拟。',
+  '流程图/时间线中的箭头、连接线不要单独作为 click 步骤；应保持静态，或放进相邻步骤节点内部，避免一次点击只出现一个箭头。',
+  'data-anim-delay="stagger(N)" 只用于非交互的 load 入场错峰；流程、步骤、时间线、讲解要点不得仅用 stagger/delay 代替点击揭示。',
+  '使用 data-anim 的元素自身不要再写 inline opacity/transform 初始态；需要静态旋转、缩放或透明视觉时，放到内部子元素或外层非动画容器。',
   '',
   '### 动画 — PPT.animate() 命令式 API（复杂场景）',
-  '当需要自定义缓动、时间线编排、或动画完成后执行回调时，使用 PPT.animate()：',
+  '只有当 data-anim 无法表达复杂时间线、自定义回调或复杂同步编排时，才使用 PPT.animate()：',
   'PPT.animate 的第一个参数是 targets（CSS 选择器字符串或 DOM 元素），第二个参数是动画参数对象：',
   '```js',
   '// ✅ 正确：PPT.animate(selector, params)',
@@ -127,6 +138,18 @@ export const FRONTEND_CAPABILITIES = [
   '- 动画初始态写在 PPT.animate 参数里（如 opacity: [0, 1]），不要写在 CSS 或 class 中',
   '- 数学公式用 \\( \\) 或 $$ $$，不用单 $',
   '- 动画仅做轻量入场增强（opacity/translate/scale，300-700ms），禁止无限循环'
+].join('\n')
+
+export const ANIMATION_INTERACTION_RULES = [
+  '## 动画交互决策规则',
+  '这是默认生成策略，不需要用户显式写“动画要求”。AI 必须根据页面内容类型自行判断。',
+  '- 流程图、时间线、步骤说明、阶段拆解、路径/链路/过程类页面：每个完整步骤/阶段/节点必须使用 data-anim-trigger="click" 按讲解顺序逐条展示。',
+  '- 普通列表要点、对比卡片、分步讲解：如果天然适合演讲逐项说明，也优先使用 data-anim-trigger="click"。',
+  '- 封面、章节页、总结页、纯视觉页、密集数据页：默认使用 load 入场动画或不加动画，不强制 click。',
+  '- 标题、背景装饰、连接线、箭头可以保持静态或使用 load；不要把箭头/连接线单独做成一次 click。',
+  '- 需要点击逐条展示时，不得仅用 data-anim-delay 或 stagger(N) 模拟自动错峰；必须在对应内容单元上写 data-anim-trigger="click"。',
+  '- 只有用户明确要求“无动画/静态/不要点击/全部一次显示”时，才跳过上述 click 策略。',
+  '- 普通动画使用 data-anim 属性；不要为这些场景编写 <script> 或 JS 动画逻辑。'
 ].join('\n')
 
 export const CONTENT_WRITING_RULES = [

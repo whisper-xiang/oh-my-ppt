@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  // @ohmyppt-index-runtim:arcsin1:v2.1.0
+  // @ohmyppt-index-runtim:arcsin1:v2.0.11
 
   var pages = JSON.parse(document.getElementById('pages-data')?.textContent || '[]');
   var frameViewport = document.getElementById('frameViewport');
@@ -15,10 +15,20 @@
   var search = new URLSearchParams(window.location.search);
   var embedMode = search.get('embed') === '1';
   var presentMode = search.get('present') === '1';
+  var playbackMode = !embedMode;
   var currentPageId = '';
   var fitRaf = 0;
   var indexTransitionType = 'fade';   // default, overridden by container build
   var indexTransitionDuration = 420;  // ms
+  var playbackRequestSeq = 0;
+  var pendingPlaybackRequests = {};
+
+  function clearPendingPlaybackRequests() {
+    Object.keys(pendingPlaybackRequests).forEach(function (requestId) {
+      window.clearTimeout(pendingPlaybackRequests[requestId]);
+      delete pendingPlaybackRequests[requestId];
+    });
+  }
 
   function getPageKey(page) {
     return String((page && (page.id || page.pageId)) || '');
@@ -44,20 +54,27 @@
     var url = new URL(page.htmlPath, window.location.href);
     url.searchParams.set('fit', 'off');
     if (embedMode) url.searchParams.set('embed', '1');
+    if (playbackMode) url.searchParams.set('pptPlayback', '1');
     return url.toString();
   }
 
-  function tryForwardClickToFrame() {
+  function postPlaybackAdvanceToFrame(offset) {
     var frame = getActiveFrame();
     if (!frame) return false;
     try {
       var frameWindow = frame.contentWindow;
-      var clicks = frameWindow && frameWindow.PPT && frameWindow.PPT.clicks;
-      // total>0 means scanDataAnim found click-triggered elements.
-      // Without this guard, every page (all have ppt-runtime) traps nav.
-      if (clicks && clicks.total > 0 && typeof clicks.advance === "function") {
-        return clicks.advance(); // true if a step was consumed, false if exhausted
-      }
+      if (!frameWindow || typeof frameWindow.postMessage !== 'function') return false;
+      var requestId = 'playback-' + (++playbackRequestSeq);
+      pendingPlaybackRequests[requestId] = window.setTimeout(function () {
+        delete pendingPlaybackRequests[requestId];
+        gotoOffset(offset || 1);
+      }, 160);
+      frameWindow.postMessage({
+        type: 'ohmyppt:playback:advance',
+        offset: offset || 1,
+        requestId: requestId
+      }, '*');
+      return true;
     } catch (_) {}
     return false;
   }
@@ -66,10 +83,9 @@
     // Forward click advance to iframe first (for click-triggered animations)
     var clickForwardKeys = ['ArrowRight', 'ArrowDown', 'PageDown', ' '];
     if (clickForwardKeys.indexOf(event.key) >= 0) {
-      // Try forwarding click to iframe for in-slide animation steps
-      if (tryForwardClickToFrame()) {
+      if (playbackMode && postPlaybackAdvanceToFrame(1)) {
         event.preventDefault();
-        return; // Consumed by in-slide click animation
+        return;
       }
     }
 
@@ -95,24 +111,27 @@
   function bindFrameKeyboard(frame) {
     try {
       var frameWindow = frame.contentWindow;
-      if (!frameWindow || frame.__ohmypptKeyboardWindow === frameWindow) return;
+      var frameDocument = frameWindow && frameWindow.document;
+      if (!frameWindow || !frameDocument || frame.__ohmypptKeyboardDocument === frameDocument) return;
       frameWindow.addEventListener('keydown', handlePresentationKey);
-      frame.__ohmypptKeyboardWindow = frameWindow;
+      frame.__ohmypptKeyboardDocument = frameDocument;
     } catch (_) {}
   }
 
-  function bindFrameClick(frame) {
-    try {
-      var frameWindow = frame.contentWindow;
-      if (!frameWindow || frame.__ohmypptClickWindow === frameWindow) return;
-      frameWindow.addEventListener('click', function () {
-        if (!presentMode) return;
-        if (!tryForwardClickToFrame()) {
-          gotoOffset(1);
-        }
-      });
-      frame.__ohmypptClickWindow = frameWindow;
-    } catch (_) {}
+  function handleFramePlaybackMessage(event) {
+    var frame = getActiveFrame();
+    if (!frame) return;
+    if (event.source && event.source !== frame.contentWindow) return;
+    var data = event.data;
+    if (!data) return;
+    if (data.requestId && pendingPlaybackRequests[data.requestId]) {
+      window.clearTimeout(pendingPlaybackRequests[data.requestId]);
+      delete pendingPlaybackRequests[data.requestId];
+    }
+    if (data.type === 'ohmyppt:playback:handled') return;
+    if (data.type !== 'ohmyppt:playback:goto') return;
+    var offset = Number(data.offset);
+    gotoOffset(Number.isFinite(offset) && offset !== 0 ? offset : 1);
   }
 
   // Load or reload a page iframe so slide-level animations replay on revisit.
@@ -120,16 +139,18 @@
     var page = pages.find(function (p) { return getPageKey(p) === pageId; });
     var frame = framePool.get(pageId);
     if (!page || !frame) return;
-    if (loadedPages.has(pageId) && !forceReload) return;
+    if (loadedPages.has(pageId) && !forceReload) {
+      bindFrameKeyboard(frame);
+      return;
+    }
     loadedPages.add(pageId);
     var pageUrl = new URL(buildPageUrl(page));
     if (forceReload) pageUrl.searchParams.set('_pptReplay', String(Date.now()));
-    frame.src = pageUrl.toString();
     frame.addEventListener('load', function () {
       bindFrameKeyboard(frame);
-      bindFrameClick(frame);
       if (pageId === currentPageId) scheduleFitFrame();
     }, { once: true });
+    frame.src = pageUrl.toString();
   }
 
   if (embedMode) document.body.classList.add('embed');
@@ -233,6 +254,7 @@
 
     var previousPageId = currentPageId;
     var prevFrame = previousPageId ? framePool.get(previousPageId) : null;
+    if (previousPageId && previousPageId !== getPageKey(page)) clearPendingPlaybackRequests();
 
     function switchFrame() {
       if (prevFrame) prevFrame.classList.remove('active');
@@ -385,6 +407,9 @@
   window.addEventListener('resize', function () { scheduleFitFrame(); });
   window.addEventListener('hashchange', onHashChange);
   window.addEventListener('keydown', handlePresentationKey);
+  window.addEventListener('message', handleFramePlaybackMessage);
+  window.addEventListener('pagehide', clearPendingPlaybackRequests);
+  window.addEventListener('beforeunload', clearPendingPlaybackRequests);
   document.addEventListener('fullscreenchange', function () {
     if (!document.fullscreenElement && presentMode) {
       exitPresentMode();

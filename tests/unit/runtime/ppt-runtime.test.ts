@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  *
- * Unit tests for ppt-runtime.js v1.3.0:
+ * Unit tests for ppt-runtime.js v2.0.11:
  *   - PPT.stopAnimations() / PPT.resumeAnimations()
  *   - PPT.clicks state machine (advance returns boolean, _dispatch exact match)
  *   - PPT.scanDataAnim() / PPT.executeDataAnim() (routed through PPT.animate)
@@ -47,7 +47,7 @@ function createMockAnime() {
   return { anime, animations }
 }
 
-function setupRuntime() {
+function setupRuntime(options?: { search?: string; parent?: { postMessage: ReturnType<typeof vi.fn> } }) {
   const { anime, animations } = createMockAnime()
 
   document.body.innerHTML = `
@@ -65,6 +65,15 @@ function setupRuntime() {
   const existingPPT = (globalThis as Record<string, unknown>).PPT as Record<string, unknown> | undefined
   if (existingPPT) existingPPT.__runtimeVersion = null
   ;(globalThis as Record<string, unknown>).anime = anime
+  window.history.replaceState(null, '', `/page.html${options?.search || ''}`)
+  try {
+    Object.defineProperty(window, 'parent', {
+      value: options?.parent || window,
+      configurable: true
+    })
+  } catch {
+    // happy-dom allows this; real browsers keep window.parent read-only.
+  }
 
   new Function(runtimeSrc)()
 
@@ -75,6 +84,8 @@ function setupRuntime() {
 // ── Helper: typed clicks access ──
 type ClicksAPI = {
   current: number; total: number
+  _listeners: unknown[]
+  _advanceListeners: unknown[]
   setTotal: (n: number) => void
   advance: () => boolean
   reset: () => void
@@ -132,6 +143,16 @@ describe('PPT.clicks state machine', () => {
     expect(c.total).toBe(5)
   })
 
+  it('setTotal clamps current when the click count shrinks', () => {
+    const c = getClicks(PPT)
+    c.setTotal(2)
+    c.advance()
+    c.advance()
+    c.setTotal(0)
+    expect(c.current).toBe(0)
+    expect(c.total).toBe(0)
+  })
+
   it('advance increments current and returns true when step consumed', () => {
     const c = getClicks(PPT)
     expect(c.advance()).toBe(true)
@@ -162,6 +183,16 @@ describe('PPT.clicks state machine', () => {
     c.advance()
     c.reset()
     expect(c.current).toBe(0)
+  })
+
+  it('reset preserves click listeners for manual replay', () => {
+    const c = getClicks(PPT)
+    c.on(1, vi.fn())
+    c.onAdvance(vi.fn())
+    c.reset()
+
+    expect(c._listeners).toHaveLength(1)
+    expect(c._advanceListeners).toHaveLength(1)
   })
 
   it('on() fires callback at matching click, does NOT replay on later clicks', () => {
@@ -207,6 +238,91 @@ describe('PPT.clicks state machine', () => {
   })
 })
 
+describe('PPT playback bridge', () => {
+  it('does not install for normal page preview URLs', () => {
+    const parent = { postMessage: vi.fn() }
+    const { PPT } = setupRuntime({ parent })
+    const c = getClicks(PPT)
+    c.setTotal(1)
+
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    expect(c.current).toBe(0)
+    expect(parent.postMessage).not.toHaveBeenCalled()
+  })
+
+  it('consumes click-triggered animation before asking the parent deck to navigate', () => {
+    const parent = { postMessage: vi.fn() }
+    const { PPT } = setupRuntime({ search: '?pptPlayback=1', parent })
+    const c = getClicks(PPT)
+    c.setTotal(1)
+
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    expect(c.current).toBe(1)
+    expect(parent.postMessage).toHaveBeenCalledWith({
+      type: 'ohmyppt:playback:goto',
+      offset: 1,
+      requestId: null
+    }, '*')
+  })
+
+  it('accepts parent advance messages for focused top-level deck shortcuts', () => {
+    const parent = { postMessage: vi.fn() }
+    const { PPT } = setupRuntime({ search: '?pptPlayback=1', parent })
+    const c = getClicks(PPT)
+    c.setTotal(1)
+
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'ohmyppt:playback:advance', offset: 1 }
+    }))
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'ohmyppt:playback:advance', offset: 1 }
+    }))
+
+    expect(c.current).toBe(1)
+    expect(parent.postMessage).toHaveBeenCalledWith({
+      type: 'ohmyppt:playback:goto',
+      offset: 1,
+      requestId: null
+    }, '*')
+  })
+
+  it('acknowledges parent advance messages when an animation step is consumed', () => {
+    const parent = { postMessage: vi.fn() }
+    const { PPT } = setupRuntime({ search: '?pptPlayback=1', parent })
+    const c = getClicks(PPT)
+    c.setTotal(1)
+
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'ohmyppt:playback:advance', offset: 1, requestId: 'req-1' }
+    }))
+
+    expect(c.current).toBe(1)
+    expect(parent.postMessage).toHaveBeenCalledWith({
+      type: 'ohmyppt:playback:handled',
+      requestId: 'req-1'
+    }, '*')
+  })
+
+  it('ignores playback advance messages from non-parent windows', () => {
+    const parent = { postMessage: vi.fn() }
+    const otherWindow = {} as Window
+    const { PPT } = setupRuntime({ search: '?pptPlayback=1', parent })
+    const c = getClicks(PPT)
+    c.setTotal(1)
+
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'ohmyppt:playback:advance', offset: 1, requestId: 'req-2' },
+      source: otherWindow
+    }))
+
+    expect(c.current).toBe(0)
+    expect(parent.postMessage).not.toHaveBeenCalled()
+  })
+})
+
 describe('PPT.scanDataAnim', () => {
   let PPT: Record<string, unknown>
 
@@ -231,6 +347,37 @@ describe('PPT.scanDataAnim', () => {
     ;(PPT.scanDataAnim as Function)(root)
     const c = getClicks(PPT)
     expect(c.total).toBe(2)
+  })
+
+  it('resets PPT.clicks.total when a later scan has no click-triggered elements', () => {
+    const root = document.querySelector('.ppt-page-root')!
+    ;(PPT.scanDataAnim as Function)(root)
+    const c = getClicks(PPT)
+    c.advance()
+    c.advance()
+
+    document.body.innerHTML = `
+      <div class="ppt-page-root">
+        <div data-anim="fade-up">Only load animation</div>
+      </div>
+    `
+    ;(PPT.scanDataAnim as Function)(document.querySelector('.ppt-page-root'))
+
+    expect(c.total).toBe(0)
+    expect(c.current).toBe(0)
+  })
+
+  it('clears previous click listeners before rescanning data-anim elements', () => {
+    const root = document.querySelector('.ppt-page-root')!
+    ;(PPT.scanDataAnim as Function)(root)
+    const c = getClicks(PPT)
+    c.on(1, vi.fn())
+    c.onAdvance(vi.fn())
+
+    ;(PPT.scanDataAnim as Function)(root)
+
+    expect(c._listeners).toHaveLength(0)
+    expect(c._advanceListeners).toHaveLength(0)
   })
 
   it('applies initial hidden state to click-triggered elements', () => {
@@ -357,8 +504,8 @@ describe('PPT.animate tracks animations for stop/resume', () => {
 })
 
 describe('Version guard', () => {
-  it('runtime version is 1.3.0', () => {
+  it('runtime version is 2.0.11', () => {
     const PPT = setupRuntime().PPT
-    expect(PPT.__runtimeVersion).toBe('1.3.0')
+    expect(PPT.__runtimeVersion).toBe('2.0.11')
   })
 })

@@ -1,5 +1,6 @@
 import type { SessionDeckGenerationContext } from '../tools/types'
 import {
+  ANIMATION_INTERACTION_RULES,
   CANVAS_CONSTRAINTS,
   CONTENT_LANGUAGE_RULES,
   CONTENT_WRITING_RULES,
@@ -90,6 +91,8 @@ export function buildDeckAgentSystemPrompt(
     '',
     FRONTEND_CAPABILITIES,
     '',
+    ANIMATION_INTERACTION_RULES,
+    '',
     CONTENT_WRITING_RULES,
     '',
     STABLE_HTML_FRAGMENT_PROTOCOL,
@@ -97,7 +100,7 @@ export function buildDeckAgentSystemPrompt(
     '## Hard failure avoidance',
     '- Page write tools reject truncated fragments. Before every write call, ensure your main layout containers are closed and the HTML does not end inside an unfinished tag.',
     '- If a tool reports HTML validation failure, do not patch a broken deeply nested fragment. Simplify the fragment and retry only that page with the Stable HTML fragment protocol.',
-    '- 动画逻辑如需添加，直接写在页面内容中（<script> 标签），写入工具会自动去重和注入运行时。',
+    '- 简单入场、逐条展示和演讲节奏动画优先使用 data-anim；只有 data-anim 无法表达的复杂时间线或回调才使用 <script> + PPT.animate(...) / PPT.createTimeline(...)。',
     '- 不要在回复中贴大段 HTML；你的任务是通过工具把文件改好',
     isSinglePageTask
       ? '- 不要调用 edit_file / write_file / update_page_file；单页任务必须调用 update_single_page_file(pageId, content) 并成功落盘后才能最终回复'
