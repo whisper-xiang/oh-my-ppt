@@ -27,6 +27,7 @@ import {
 import { MessagePanel } from '../components/session-detail/MessagePanel'
 import { PageSidebar } from '../components/session-detail/PageSidebar'
 import { PreviewStage } from '../components/session-detail/PreviewStage'
+import { PreviewToolbar } from '../components/session-detail/PreviewToolbar'
 import { ElementInspectorPanel } from '../components/session-detail/ElementInspectorPanel'
 import { SessionToolbar } from '../components/session-detail/SessionToolbar'
 import { AssetPickerDialog } from '../components/session-detail/AssetPickerDialog'
@@ -1102,7 +1103,8 @@ export function SessionDetailPage(): React.JSX.Element {
       snapshot.dragEdits.length > 0 ||
       snapshot.textEdits.length > 0 ||
       snapshot.propertyEdits.length > 0 ||
-      snapshot.deletes.length > 0
+      snapshot.deletes.length > 0 ||
+      snapshot.addElements.length > 0
     editHistory.clearPage(selectedPage.pageId)
     previewIframeRef.current?.clearEditModeSelection()
     setTextSelection(null)
@@ -1628,71 +1630,79 @@ export function SessionDetailPage(): React.JSX.Element {
             onToggleCollapsed={toggleSidebarCollapsed}
           />
 
-          <PreviewStage
-            ref={previewIframeRef}
-            selectedPage={selectedPage}
-            sessionTitle={currentSession?.title}
-            isGenerating={isGenerating}
-            progressLabel={progress?.label}
-            previewRefreshKey={previewRefreshKey}
-            isSavingEdits={isSavingEdits}
-            canUndo={editHistory.canUndo()}
-            canRedo={editHistory.canRedo()}
-            hasPendingEdits={
-              selectedPage
-                ? (() => {
-                    const s = editHistory.getSnapshotForPage(selectedPage.pageId)
-                    return (
-                      s.dragEdits.length > 0 ||
-                      s.textEdits.length > 0 ||
-                      s.propertyEdits.length > 0 ||
-                      s.deletes.length > 0 ||
-                      s.addElements.length > 0
-                    )
-                  })()
-                : false
-            }
-            onElementMoved={handleElementMoved}
-            onElementSelected={handleElementSelected}
-            onCancelTextEdit={handleCancelTextEdit}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            onReplayPendingEdits={replayPendingEdits}
-            onSaveAllEdits={() => void handleSaveAllEdits()}
-            onDiscardAllEdits={handleDiscardAllEdits}
-            onAddFromLibrary={(type) => setAssetPickerOpen(true, type)}
-            onAddFromLocal={(type) => void handleUploadAndAdd(type)}
-            onDeleteRequest={(selector) => {
-              setPendingDeleteSelector(selector)
-              setDeleteConfirmOpen(true)
-            }}
-          />
-
-          {interactionMode === 'edit' && textSelection && (
-            <ElementInspectorPanel
-              selection={textSelection}
-              draft={textDraft}
-              onDraftChange={handleTextDraftChange}
-              onClose={handleCancelTextEdit}
-              onCopy={handleCopyElement}
-              onDelete={handleDeleteElement}
-            />
-          )}
-
-          {interactionMode === 'ai-inspect' && (
-            <MessagePanel
-              selectedPageExists={Boolean(selectedPage?.pageId)}
-              selectedPageNumber={selectedPage?.pageNumber}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <PreviewToolbar
+              selectedPage={selectedPage}
               isGenerating={isGenerating}
-              progress={progress}
-              error={error}
-              onDropFiles={(files) => void uploadFiles(files)}
-              onChooseAssets={(assetType) => void handleChooseAssets(assetType)}
-              onSend={() => void handleSend()}
-              onCancel={() => void handleCancel()}
-              cleanMessageContent={cleanMessageContent}
+              isSavingEdits={isSavingEdits}
+              canUndo={editHistory.canUndo()}
+              canRedo={editHistory.canRedo()}
+              hasPendingEdits={
+                selectedPage
+                  ? (() => {
+                      const s = editHistory.getSnapshotForPage(selectedPage.pageId)
+                      return (
+                        s.dragEdits.length > 0 ||
+                        s.textEdits.length > 0 ||
+                        s.propertyEdits.length > 0 ||
+                        s.deletes.length > 0 ||
+                        s.addElements.length > 0
+                      )
+                    })()
+                  : false
+              }
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onSaveAllEdits={() => void handleSaveAllEdits()}
+              onDiscardAllEdits={handleDiscardAllEdits}
+              onAddFromLibrary={(type) => setAssetPickerOpen(true, type)}
+              onAddFromLocal={(type) => void handleUploadAndAdd(type)}
             />
-          )}
+            <div className="flex min-h-0 flex-1">
+              <PreviewStage
+                ref={previewIframeRef}
+                selectedPage={selectedPage}
+                sessionTitle={currentSession?.title}
+                isGenerating={isGenerating}
+                progressLabel={progress?.label}
+                previewRefreshKey={previewRefreshKey}
+                onElementMoved={handleElementMoved}
+                onElementSelected={handleElementSelected}
+                onCancelTextEdit={handleCancelTextEdit}
+                onDiscardAllEdits={handleDiscardAllEdits}
+                onReplayPendingEdits={replayPendingEdits}
+                onDeleteRequest={(selector) => {
+                  setPendingDeleteSelector(selector)
+                  setDeleteConfirmOpen(true)
+                }}
+              />
+              {interactionMode === 'edit' && textSelection && (
+                <ElementInspectorPanel
+                  selection={textSelection}
+                  draft={textDraft}
+                  onDraftChange={handleTextDraftChange}
+                  onClose={handleCancelTextEdit}
+                  onCopy={handleCopyElement}
+                  onDelete={handleDeleteElement}
+                />
+              )}
+              {interactionMode === 'ai-inspect' && (
+                <MessagePanel
+                  selectedPageExists={Boolean(selectedPage?.pageId)}
+                  selectedPageNumber={selectedPage?.pageNumber}
+                  isGenerating={isGenerating}
+                  progress={progress}
+                  error={error}
+                  onDropFiles={(files) => void uploadFiles(files)}
+                  onChooseAssets={(assetType) => void handleChooseAssets(assetType)}
+                  onSend={() => void handleSend()}
+                  onCancel={() => void handleCancel()}
+                  cleanMessageContent={cleanMessageContent}
+                />
+              )}
+            </div>
+          </div>
+
         </div>
 
         {historyOpen && (
