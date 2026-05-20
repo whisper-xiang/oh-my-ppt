@@ -39,6 +39,7 @@ export const PreviewStage = forwardRef<
     onAddFromLibrary?: (type: 'image' | 'video') => void
     onAddFromLocal?: (type: 'image' | 'video') => void
     onDeleteRequest?: (selector: string) => void
+    pageSpeechScript?: string | null
   }
 >(function PreviewStage(
   {
@@ -61,7 +62,8 @@ export const PreviewStage = forwardRef<
     onDiscardAllEdits,
     onAddFromLibrary,
     onAddFromLocal,
-    onDeleteRequest
+    onDeleteRequest,
+    pageSpeechScript
   },
   ref
 ) {
@@ -327,6 +329,19 @@ export const PreviewStage = forwardRef<
           </div>
         )}
       </div>
+
+      {pageSpeechScript && (
+        <div className="mx-0 mt-2 flex h-36 shrink-0 flex-col overflow-hidden rounded-[1.4rem] border border-[#e1d6c4]/72 bg-[#fffaf1]/78 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
+          <p className="shrink-0 border-b border-[#ede5d6]/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a875f]">
+            {t('sessionDetail.speechScript')}
+          </p>
+          <div className="overflow-y-auto px-3 py-2.5">
+            <p className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-[#4a5a3a]">
+              {pageSpeechScript}
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   )
 })

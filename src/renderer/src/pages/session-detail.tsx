@@ -193,6 +193,7 @@ export function SessionDetailPage(): React.JSX.Element {
   const [historyRollbackId, setHistoryRollbackId] = useState<string | null>(null)
   const [rollbackConfirmVersion, setRollbackConfirmVersion] = useState<HistoryVersion | null>(null)
   const [deleteConfirmPage, setDeleteConfirmPage] = useState<SessionPreviewPage | null>(null)
+  const [fullSpeechScript, setFullSpeechScript] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [pendingDeleteSelector, setPendingDeleteSelector] = useState<string | null>(null)
   const previewIframeRef = useRef<PreviewIframeHandle | null>(null)
@@ -512,6 +513,11 @@ export function SessionDetailPage(): React.JSX.Element {
       unsubscribe?.()
     }
   }, [addMessage, id, updateProgress])
+
+  useEffect(() => {
+    if (!id) return
+    void ipc.getSpeechScript(id).then((result) => setFullSpeechScript(result.script))
+  }, [id, isGeneratingSpeechScript])
 
   useEffect(() => {
     if (!id) return
@@ -1688,6 +1694,11 @@ export function SessionDetailPage(): React.JSX.Element {
             progressLabel={progress?.label}
             previewRefreshKey={previewRefreshKey}
             isSavingEdits={isSavingEdits}
+            pageSpeechScript={(() => {
+              if (!fullSpeechScript || !selectedPage) return null
+              const sections = fullSpeechScript.split('\n\n---\n\n')
+              return sections[Math.min((selectedPage.pageNumber ?? 1) - 1, sections.length - 1)] ?? null
+            })()}
             canUndo={editHistory.canUndo()}
             canRedo={editHistory.canRedo()}
             hasPendingEdits={
