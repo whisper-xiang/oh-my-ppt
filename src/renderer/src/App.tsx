@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, matchPath } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
 import { HomePage } from './pages/home'
+import { SessionCreatePage } from './pages/session-create'
+import { ThinkingDetailPage } from './pages/thinking-detail'
 import { SessionsPage } from './pages/sessions'
 import { SessionDetailPage } from './pages/session-detail'
 import { SessionGeneratingPage } from './pages/session-generating'
@@ -18,6 +20,7 @@ import { useToastStore } from './store'
 function App(): React.JSX.Element {
   const location = useLocation()
   const isSessionDetailRoute = Boolean(matchPath('/sessions/:id/*', location.pathname))
+  const isThinkingRoute = Boolean(matchPath('/thinking/:thinkingId', location.pathname))
   const { info } = useToastStore()
   const t = useT()
 
@@ -64,18 +67,28 @@ function App(): React.JSX.Element {
             <aside className="hidden min-h-0 w-[240px] shrink-0 flex-col border-r border-border/70 bg-[#f7f0e2]/40 md:flex">
               <Sidebar />
             </aside>
-            <ScrollArea className="min-h-0 flex-1">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/sessions" element={<SessionsPage />} />
-                <Route path="/styles" element={<StylesPage />} />
-                <Route path="/fonts" element={<FontsPage />} />
-                <Route path="/styles/new" element={<StyleEditorPage />} />
-                <Route path="/styles/:styleId" element={<StyleEditorPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </ScrollArea>
+            {isThinkingRoute ? (
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <Routes>
+                  <Route path="/thinking/:thinkingId" element={<ThinkingDetailPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+            ) : (
+              <ScrollArea className="min-h-0 flex-1">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/create/session" element={<SessionCreatePage />} />
+                  <Route path="/sessions" element={<SessionsPage />} />
+                  <Route path="/styles" element={<StylesPage />} />
+                  <Route path="/fonts" element={<FontsPage />} />
+                  <Route path="/styles/new" element={<StyleEditorPage />} />
+                  <Route path="/styles/:styleId" element={<StyleEditorPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </ScrollArea>
+            )}
           </div>
         </div>
       </div>

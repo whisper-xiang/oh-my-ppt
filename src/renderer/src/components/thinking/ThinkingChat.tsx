@@ -1,0 +1,373 @@
+import { useState, useRef, useEffect, type ReactElement } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { useT } from '@renderer/i18n'
+import { useToastStore } from '@renderer/store'
+import { ipc } from '@renderer/lib/ipc'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/Tooltip'
+import { Bot, BookOpen, Check, ChevronDown, ChevronRight, FileSearch, FileText, FolderOpen, Image as ImageIcon, Loader2, Paperclip, Pencil, Send, User } from 'lucide-react'
+import { ScrollArea } from '../ui/ScrollArea'
+import type { ThinkingChatMessage, ThinkingSource } from '@shared/thinking'
+
+interface ThinkingStep {
+  type: 'tool_call' | 'tool_result'
+  toolName: string
+  summary: string
+}
+
+function StepIcon({ step }: { step: ThinkingStep }): ReactElement {
+  if (step.type === 'tool_result') {
+    return <Check className="h-3 w-3 shrink-0 text-[#6b9e5a]" />
+  }
+  const name = step.toolName
+  if (name === 'read_file') return <FolderOpen className="h-3 w-3 shrink-0 text-[#7a8fa6]" />
+  if (name === 'grep') return <FileSearch className="h-3 w-3 shrink-0 text-[#7a8fa6]" />
+  if (name === 'update_thinking_document') return <Pencil className="h-3 w-3 shrink-0 text-[#8b7a5a]" />
+  if (name === 'update_context_document') return <BookOpen className="h-3 w-3 shrink-0 text-[#6b8a6a]" />
+  return <Check className="h-3 w-3 shrink-0 text-[#8b967e]" />
+}
+
+interface ThinkingChatProps {
+  thinkingId: string
+  messages: ThinkingChatMessage[]
+  sources: ThinkingSource[]
+  pendingSources: ThinkingSource[]
+  loading: boolean
+  thinkingSteps: ThinkingStep[]
+  animatingText: string
+  onSend: (content: string) => void
+  onSourcesUploaded: (sources: ThinkingSource[]) => void
+}
+
+function MessageMarkdown({
+  content,
+  role
+}: {
+  content: string
+  role: ThinkingChatMessage['role']
+}): ReactElement {
+  const isUser = role === 'user'
+  const mutedText = isUser ? 'text-white/85' : 'text-[#5f6658]'
+  const strongText = isUser ? 'text-white' : 'text-[#2f3329]'
+  const borderColor = isUser ? 'border-white/30' : 'border-[#d7ddcf]'
+  const listClass = isUser
+    ? 'mb-2 list-disc space-y-1 pl-5 text-[13px] leading-relaxed marker:text-white/70'
+    : 'mb-2 list-disc space-y-1 pl-5 text-[13px] leading-relaxed marker:text-[#8b967e]'
+  const orderedListClass = isUser
+    ? 'mb-2 list-decimal space-y-1 pl-5 text-[13px] leading-relaxed marker:text-white/70'
+    : 'mb-2 list-decimal space-y-1 pl-5 text-[13px] leading-relaxed marker:text-[#8b967e]'
+  const codeClass = isUser
+    ? 'rounded bg-white/15 px-1 py-0.5 font-mono text-[12px] text-white'
+    : 'rounded bg-[#edf0e7] px-1 py-0.5 font-mono text-[12px] text-[#2f3329]'
+
+  return (
+    <div className="markdown-message [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => (
+            <p className={`mb-2 whitespace-pre-wrap text-[13px] leading-relaxed ${isUser ? 'text-white' : 'text-[#2f3329]'}`}>
+              {children}
+            </p>
+          ),
+          strong: ({ children }) => <strong className={`font-semibold ${strongText}`}>{children}</strong>,
+          em: ({ children }) => <em className={mutedText}>{children}</em>,
+          ul: ({ children }) => (
+            <ul className={listClass}>
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className={orderedListClass}>
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => <li className={isUser ? 'text-white' : 'text-[#2f3329]'}>{children}</li>,
+          code: ({ children }) => <code className={codeClass}>{children}</code>,
+          pre: ({ children }) => (
+            <pre className={`mb-2 overflow-x-auto rounded-md p-3 text-[12px] leading-relaxed ${isUser ? 'bg-black/15 text-white' : 'bg-[#edf0e7] text-[#2f3329]'}`}>
+              {children}
+            </pre>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className={`mb-2 border-l-2 pl-3 text-[13px] leading-relaxed ${borderColor} ${mutedText}`}>
+              {children}
+            </blockquote>
+          ),
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className={isUser ? 'underline decoration-white/50 underline-offset-2' : 'text-[#466938] underline underline-offset-2'}
+            >
+              {children}
+            </a>
+          )
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+export function ThinkingChat({
+  thinkingId,
+  messages,
+  sources,
+  pendingSources,
+  loading,
+  thinkingSteps,
+  animatingText,
+  onSend,
+  onSourcesUploaded
+}: ThinkingChatProps): ReactElement {
+  const t = useT()
+  const { error: toastError } = useToastStore()
+  const [input, setInput] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [thinkingExpanded, setThinkingExpanded] = useState(true)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-scroll on new content
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages, loading, thinkingSteps, animatingText])
+
+  const handleSend = (): void => {
+    const text = input.trim()
+    if (!text || loading) return
+    onSend(text)
+    setInput('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handleAttachClick = (): void => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFilesSelected = async (files: FileList | null): Promise<void> => {
+    const selectedFiles = Array.from(files || [])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    if (selectedFiles.length === 0) return
+
+    const payloadFiles = selectedFiles
+      .map((file) => ({
+        path: window.electron?.getPathForFile?.(file) || '',
+        name: file.name
+      }))
+      .filter((file) => file.path)
+
+    if (payloadFiles.length === 0) return
+
+    setUploading(true)
+    try {
+      const result = await ipc.thinkingUploadSources({
+        thinkingId,
+        files: payloadFiles
+      })
+      onSourcesUploaded(
+        result.sources.map((s) => ({
+          id: s.id,
+          name: s.name,
+          kind: s.kind as ThinkingSource['kind']
+        }))
+      )
+    } catch (err) {
+      toastError(t('thinking.uploadFailed'), {
+        description: err instanceof Error ? err.message : t('common.retryLater')
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const sourceIcon = (kind: ThinkingSource['kind']): ReactElement =>
+    kind === 'image' ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <ScrollArea
+        className="flex-1 px-5 py-5"
+        viewportRef={scrollRef}
+      >
+        {sources.length > 0 && (
+          <div className="mb-4 flex justify-end">
+            <div className="rounded-full bg-[#d4e4c1] px-3 py-1 text-[11px] font-semibold text-[#5d6b4d]">
+              {t('thinking.sourceCount', { count: sources.length })}
+            </div>
+          </div>
+        )}
+        <div className="space-y-4">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+          >
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] ${
+              msg.role === 'user'
+                ? 'bg-[#5d6b4d] text-white'
+                : 'bg-[#8fbc8f] text-white'
+            }`}>
+              {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+            </div>
+            <div
+              className={`max-w-[78%] rounded-[1.5rem] px-4 py-3 text-[13px] leading-relaxed shadow-sm ${
+                msg.role === 'user'
+                  ? 'bg-[#5d6b4d] text-white'
+                  : 'border border-[#e0d8c8] bg-[#f5f1e8] text-[#2f3329]'
+              }`}
+            >
+              <MessageMarkdown content={msg.content} role={msg.role} />
+              {msg.attachments && msg.attachments.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {msg.attachments.map((att) => (
+                    <span
+                      key={att.id}
+                      className={`inline-flex max-w-[200px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
+                        msg.role === 'user'
+                          ? 'border border-white/20 bg-white/15 text-white/90'
+                          : 'border border-[#c8d6ba] bg-[#d4e4c1] text-[#4f6340]'
+                      }`}
+                    >
+                      {sourceIcon(att.kind)}
+                      <span className="truncate">{att.name}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#8fbc8f] text-white">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div className="max-w-[78%] space-y-2">
+              {/* Thinking process - collapsible */}
+              {thinkingSteps.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setThinkingExpanded(!thinkingExpanded)}
+                  className="flex w-full items-center gap-1.5 rounded-full border border-[#e0d8c8] bg-[#e8e0d0] px-3 py-2 text-left text-[11px] text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1]"
+                >
+                  {thinkingExpanded ? (
+                    <ChevronDown className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 shrink-0" />
+                  )}
+                  <span className="font-medium">{t('thinking.thinking')}</span>
+                  <Loader2 className="ml-1 h-3 w-3 animate-spin" />
+                </button>
+              )}
+              {thinkingExpanded && thinkingSteps.length > 0 && (
+                <div className="max-h-28 rounded-[1.25rem] border border-[#e0d8c8] bg-[#f5f1e8]">
+                  <ScrollArea className="h-28">
+                    <div className="space-y-1.5 px-3 py-2">
+                      {thinkingSteps.map((step, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 text-[11px] leading-relaxed text-[#7a7060]">
+                          <StepIcon step={step} />
+                          <span>{step.summary || step.toolName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+              {/* Animated response text */}
+              {animatingText ? (
+                <div className="rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-4 py-3 text-[13px] leading-relaxed shadow-sm">
+                  <MessageMarkdown content={animatingText} role="assistant" />
+                </div>
+              ) : thinkingSteps.length === 0 ? (
+                <div className="rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-4 py-3 text-[13px] text-[#5d6b4d] shadow-sm">
+                  <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin align-[-2px]" />
+                  {t('thinking.thinking')}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+        </div>
+      </ScrollArea>
+
+      {pendingSources.length > 0 && (
+        <div className="border-t border-[#e0d8c8] bg-[#f5f1e8] px-4 py-2.5">
+          <div className="flex max-h-20 flex-wrap gap-1.5 overflow-y-auto">
+            {pendingSources.map((source) => (
+              <span
+                key={source.id}
+                className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-[#c8d6ba] bg-[#d4e4c1] px-2.5 py-1 text-[10px] font-medium text-[#4f6340]"
+              >
+                {sourceIcon(source.kind)}
+                <span className="truncate">{source.name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-[#e0d8c8] bg-[#fffdf8] px-4 py-3">
+        <div className="flex items-end gap-2 rounded-full border border-[#e0d8c8] bg-[#f5f1e8] px-2 py-2 shadow-sm focus-within:border-[#8fbc8f] focus-within:ring-2 focus-within:ring-[#d4e4c1]">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleAttachClick}
+                  disabled={loading || uploading}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1] hover:text-[#3e4a32] disabled:opacity-40"
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Paperclip className="h-4 w-4" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[240px] text-[12px]">
+                {t('thinking.uploadTooltip')}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <textarea
+            className="max-h-28 min-h-8 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-[13px] leading-relaxed text-[#2f3329] placeholder:text-[#9a9b8c] focus:outline-none"
+            placeholder={t('thinking.inputPlaceholder')}
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3e4a32] text-white transition-colors hover:bg-[#5d6b4d] disabled:opacity-40 disabled:hover:bg-[#3e4a32]"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,.txt,.text,.csv,.docx,.png,.jpg,.jpeg,.webp"
+          multiple
+          className="hidden"
+          onChange={(event) => void handleFilesSelected(event.target.files)}
+        />
+      </div>
+    </div>
+  )
+}

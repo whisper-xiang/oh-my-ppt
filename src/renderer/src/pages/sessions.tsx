@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/Dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/Tooltip'
-import { FileArchive, FileText, FileUp, FolderOpen, MessageSquare, Pencil, Sparkles, Trash2, X, type LucideIcon } from 'lucide-react'
+import { FileArchive, FileText, FileUp, FolderOpen, MessageSquare, MessagesSquare, Pencil, Sparkles, Trash2, X, type LucideIcon } from 'lucide-react'
 import { type Session, useSessionStore } from '../store'
 import { useToastStore } from '../store'
 import { getEditorGate, parseSessionMetadata } from '../lib/sessionMetadata'
@@ -17,7 +17,7 @@ dayjs.extend(duration)
 
 const getSourceTag = (
   session: Session,
-  labels: { pptx: string; sessionFile: string; document: string; ai: string }
+  labels: { pptx: string; sessionFile: string; document: string; ai: string; thinking: string }
 ): { label: string; Icon: LucideIcon; className: string } => {
   const metadata = parseSessionMetadata(session.metadata)
   const source = typeof metadata.source === 'string' ? metadata.source : ''
@@ -33,6 +33,13 @@ const getSourceTag = (
       label: labels.pptx,
       Icon: FileUp,
       className: 'border-[#bdd2e6]/80 bg-[#eef6ff] text-[#3e6685]'
+    }
+  }
+  if (source === 'thinking') {
+    return {
+      label: labels.thinking,
+      Icon: MessagesSquare,
+      className: 'border-[#c7d9b7]/80 bg-[#f0f9e4] text-[#4a6b2e]'
     }
   }
   if (session.referenceDocumentPath || session.reference_document_path) {
@@ -217,7 +224,8 @@ export function SessionsPage(): React.JSX.Element {
               pptx: t('sessions.sourcePptx'),
               sessionFile: t('sessions.sourceSessionFile'),
               document: t('sessions.sourceDocument'),
-              ai: t('sessions.sourceAi')
+              ai: t('sessions.sourceAi'),
+              thinking: t('sessions.sourceThinking')
             })
             const SourceIcon = sourceTag.Icon
             const statusClassName = isFullyComplete

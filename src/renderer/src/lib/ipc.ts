@@ -14,6 +14,13 @@ import type {
 } from '@shared/generation.js'
 import type { UpdateAvailablePayload } from '@shared/app-update.js'
 import type { HistoryVersion, RollbackHistoryResult } from '@shared/history.js'
+import type {
+  ThinkingStage,
+  ThinkingChatMessage,
+  ThinkingWorkspace,
+  ThinkingChatResult,
+  ThinkingPrepareGenerationResult
+} from '@shared/thinking.js'
 
 type IpcRendererLike = Window['electron']['ipcRenderer']
 
@@ -559,5 +566,63 @@ export const ipc = {
       version: string
     }>,
   openPresentation: (payload: { sessionId: string; startIndex?: number }) =>
-    getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>
+    getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>,
+
+  thinkingCreateWorkspace: () =>
+    getIpc().invoke('thinking:createWorkspace') as Promise<ThinkingWorkspace>,
+  thinkingGetWorkspace: (thinkingId: string) =>
+    getIpc().invoke('thinking:getWorkspace', thinkingId) as Promise<ThinkingWorkspace>,
+  thinkingGetLatestWorkspace: () =>
+    getIpc().invoke('thinking:getLatestWorkspace') as Promise<ThinkingWorkspace | null>,
+  thinkingRevealWorkspace: (thinkingId: string) =>
+    getIpc().invoke('thinking:revealWorkspace', thinkingId) as Promise<{ success: boolean }>,
+  thinkingUploadSources: (payload: {
+    thinkingId: string
+    files: Array<{ path: string; name?: string }>
+  }) =>
+    getIpc().invoke('thinking:uploadSources', payload) as Promise<{
+      sources: Array<{ id: string; name: string; kind: string }>
+    }>,
+  thinkingChat: (payload: {
+    thinkingId: string
+    userMessage: string
+    recentMessages?: ThinkingChatMessage[]
+  }) =>
+    getIpc().invoke('thinking:chat', payload) as Promise<ThinkingChatResult>,
+  thinkingPrepareGeneration: (payload: { thinkingId: string }) =>
+    getIpc().invoke('thinking:prepareGeneration', payload) as Promise<ThinkingPrepareGenerationResult>,
+  onThinkingStreamThinking: (
+    callback: (payload: { thinkingId: string; type: string; toolName: string; summary: string }) => void
+  ): (() => void) => {
+    const channel = 'thinking:stream:thinking'
+    const handler = (_event: unknown, payload: unknown): void =>
+      callback(payload as { thinkingId: string; type: string; toolName: string; summary: string })
+    getIpc().on(channel, handler)
+    return () => getIpc().removeListener(channel, handler)
+  },
+  onThinkingStreamEnd: (
+    callback: (
+      payload: {
+        thinkingId: string
+        reply: string
+        thinkingMd: string
+        contextMd: string
+        stage: ThinkingStage
+      }
+    ) => void
+  ): (() => void) => {
+    const channel = 'thinking:stream:end'
+    const handler = (_event: unknown, payload: unknown): void =>
+      callback(
+        payload as {
+          thinkingId: string
+          reply: string
+          thinkingMd: string
+          contextMd: string
+          stage: ThinkingStage
+        }
+      )
+    getIpc().on(channel, handler)
+    return () => getIpc().removeListener(channel, handler)
+  }
 }

@@ -50,6 +50,7 @@ export function logAgentToolEvents(
         const rawArgs = callRecord.args ?? callRecord.arguments ?? fnRecord?.arguments ?? ''
         const name = String(callRecord.name ?? fnRecord?.name ?? '').trim()
         const id = String(callRecord.id ?? callRecord.tool_call_id ?? '').trim()
+        if (!name && !id) continue
         const argsText = previewStr(rawArgs)
         const key = `call:${id}:${name}:${argsText}`
         if (seen.has(key)) continue
