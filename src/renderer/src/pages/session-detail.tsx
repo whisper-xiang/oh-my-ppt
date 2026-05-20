@@ -1720,6 +1720,20 @@ export function SessionDetailPage(): React.JSX.Element {
             }}
           />
 
+          {speechScriptDialogOpen && (
+            <SpeechScriptDrawer
+              sessionId={id || ''}
+              isGenerating={isGeneratingSpeechScript}
+              speechProgress={speechProgress}
+              speechConfig={speechConfig}
+              onConfigChange={setSpeechConfig}
+              onGenerate={(config) => void handleDoGenerateSpeechScript(config)}
+              onClose={() => setSpeechScriptDialogOpen(false)}
+              sessionTitle={currentSession?.title || currentSession?.topic || undefined}
+              currentPageTitle={selectedPage?.title || undefined}
+            />
+          )}
+
           {interactionMode === 'edit' && textSelection && (
             <ElementInspectorPanel
               selection={textSelection}
@@ -2001,18 +2015,6 @@ export function SessionDetailPage(): React.JSX.Element {
           open={assetPickerOpen}
           onClose={() => setAssetPickerOpen(false)}
           onConfirm={handleAddElement}
-        />
-        <SpeechScriptDrawer
-          open={speechScriptDialogOpen}
-          onOpenChange={setSpeechScriptDialogOpen}
-          sessionId={id || ''}
-          isGenerating={isGeneratingSpeechScript}
-          speechProgress={speechProgress}
-          speechConfig={speechConfig}
-          onConfigChange={setSpeechConfig}
-          onGenerate={(config) => void handleDoGenerateSpeechScript(config)}
-          sessionTitle={currentSession?.title || currentSession?.topic || undefined}
-          currentPageTitle={selectedPage?.title || undefined}
         />
         <AlertDialog
           open={deleteConfirmOpen}
