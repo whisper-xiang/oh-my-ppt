@@ -563,6 +563,8 @@ export const ipc = {
   generateSpeechScript: (
     sessionId: string,
     config: {
+      scope: 'all' | 'single'
+      currentPageId?: string
       length: 'short' | 'medium' | 'long'
       style: 'formal' | 'conversational' | 'storytelling' | 'custom'
       customStyle?: string

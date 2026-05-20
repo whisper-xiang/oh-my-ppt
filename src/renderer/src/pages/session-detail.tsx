@@ -30,7 +30,7 @@ import { PreviewStage } from '../components/session-detail/PreviewStage'
 import { ElementInspectorPanel } from '../components/session-detail/ElementInspectorPanel'
 import { SessionToolbar } from '../components/session-detail/SessionToolbar'
 import { AssetPickerDialog } from '../components/session-detail/AssetPickerDialog'
-import { SpeechScriptDialog } from '../components/session-detail/SpeechScriptDialog'
+import { SpeechScriptDrawer } from '../components/session-detail/SpeechScriptDrawer'
 import type { ElementEditDraft } from '../components/session-detail/ElementInspectorPanel'
 import type { ChatType, SessionPreviewPage } from '../components/session-detail/types'
 import { useSessionStore, useGenerateStore } from '../store'
@@ -826,6 +826,7 @@ export function SessionDetailPage(): React.JSX.Element {
   }
 
   const handleDoGenerateSpeechScript = async (config: {
+    scope: 'all' | 'single'
     length: 'short' | 'medium' | 'long'
     style: 'formal' | 'conversational' | 'storytelling' | 'custom'
     customStyle?: string
@@ -834,8 +835,12 @@ export function SessionDetailPage(): React.JSX.Element {
     if (!id || detailState.isGeneratingSpeechScript) return
     detailState.setIsGeneratingSpeechScript(true)
     detailState.setSpeechProgress(null)
+    const currentPageId = selectedPage?.id
     try {
-      const result = await ipc.generateSpeechScript(id, config)
+      const result = await ipc.generateSpeechScript(id, {
+        ...config,
+        currentPageId: config.scope === 'single' ? currentPageId : undefined
+      })
       if (!result.success) {
         toastError(t('sessionDetail.speechScriptError'))
       }
@@ -1997,7 +2002,7 @@ export function SessionDetailPage(): React.JSX.Element {
           onClose={() => setAssetPickerOpen(false)}
           onConfirm={handleAddElement}
         />
-        <SpeechScriptDialog
+        <SpeechScriptDrawer
           open={speechScriptDialogOpen}
           onOpenChange={setSpeechScriptDialogOpen}
           sessionId={id || ''}
@@ -2007,6 +2012,7 @@ export function SessionDetailPage(): React.JSX.Element {
           onConfigChange={setSpeechConfig}
           onGenerate={(config) => void handleDoGenerateSpeechScript(config)}
           sessionTitle={currentSession?.title || currentSession?.topic || undefined}
+          currentPageTitle={selectedPage?.title || undefined}
         />
         <AlertDialog
           open={deleteConfirmOpen}

@@ -72,6 +72,9 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
     const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId.trim() : ''
     if (!sessionId) throw new Error('Session ID is required')
 
+    const scope: 'all' | 'single' = payload?.scope === 'single' ? 'single' : 'all'
+    const currentPageId: string =
+      scope === 'single' && typeof payload?.currentPageId === 'string' ? payload.currentPageId : ''
     const length: SpeechLength =
       payload?.length === 'short' || payload?.length === 'long' ? payload.length : 'medium'
     const style: SpeechStyle =
@@ -96,8 +99,15 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
 
     const projectDir = await ctx.resolveSessionProjectDir(sessionId)
 
+    const filteredPages =
+      scope === 'single' && currentPageId ? pages.filter((p) => p.id === currentPageId) : pages
+
+    if (filteredPages.length === 0) {
+      throw new Error(uiText(locale, '找不到指定页面', 'Specified page not found'))
+    }
+
     const slideContents: Array<{ pageNumber: number; title: string; text: string }> = []
-    for (const p of pages) {
+    for (const p of filteredPages) {
       if (!p.html_path) continue
       if (!ctx.isPathInside(p.html_path, projectDir)) {
         log.warn('[speech] skipping page with unsafe htmlPath', { htmlPath: p.html_path, projectDir })

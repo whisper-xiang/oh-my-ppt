@@ -34,7 +34,7 @@ interface SessionDetailUiStore {
   isGeneratingSpeechScript: boolean
   speechProgress: { current: number; total: number } | null
   speechScriptDialogOpen: boolean
-  speechConfig: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }
+  speechConfig: { scope: 'all' | 'single'; length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }
 
   setInput: (input: string) => void
   setChatType: (chatType: SessionDetailChatType) => void
@@ -69,7 +69,7 @@ interface SessionDetailUiStore {
   setIsGeneratingSpeechScript: (v: boolean) => void
   setSpeechProgress: (progress: { current: number; total: number } | null) => void
   setSpeechScriptDialogOpen: (v: boolean) => void
-  setSpeechConfig: (config: { length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }) => void
+  setSpeechConfig: (config: { scope: 'all' | 'single'; length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }) => void
   finishAddPage: (selectedPageId?: string | null) => void
   resetForPageChange: () => void
   resetForSessionChange: () => void
@@ -105,7 +105,7 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
   isGeneratingSpeechScript: false,
   speechProgress: null,
   speechScriptDialogOpen: false,
-  speechConfig: { length: 'medium' as const, style: 'conversational' as const },
+  speechConfig: { scope: 'all' as const, length: 'medium' as const, style: 'conversational' as const },
 
   setInput: (input) => set({ input }),
   setChatType: (chatType) => set({ chatType }),
