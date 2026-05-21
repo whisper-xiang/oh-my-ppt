@@ -16,21 +16,38 @@ export function resolveThinkingDir(storagePath: string, thinkingId: string): str
   return path.join(storagePath, 'thinking', thinkingId)
 }
 
-function buildInitialThinkingMd(): string {
-  return `# Thinking Document
+export function buildInitialThinkingMd(): string {
+  return `# Thinking Brief
 
-<!-- This document will be progressively built through AI conversation -->
+## Topic
 
+## Audience
+
+## Setting
+
+## Tone
+
+## Style
+
+## Font
+auto
+
+## Page Count
+0
 `
 }
 
-function buildInitialContextMd(): string {
+export function buildInitialContextMd(stage: ThinkingStage = 'collect'): string {
   return `## Stage: collect
 
-## Topic:
+## User Intent
+
+## Confirmed Decisions
+
+## Open Questions
 
 ## Created: ${new Date().toISOString()}
-`
+`.replace(/^## Stage:\s*collect/m, `## Stage: ${stage}`)
 }
 
 export async function createWorkspace(storagePath: string): Promise<ThinkingWorkspace> {
@@ -43,7 +60,7 @@ export async function createWorkspace(storagePath: string): Promise<ThinkingWork
   await fs.promises.mkdir(assetsDir, { recursive: true })
 
   const thinkingMd = buildInitialThinkingMd()
-  const contextMd = buildInitialContextMd()
+  const contextMd = buildInitialContextMd('collect')
 
   const thinkingMdPath = path.join(dir, 'thinking.md')
   const contextMdPath = path.join(dir, 'context.md')

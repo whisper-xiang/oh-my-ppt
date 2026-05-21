@@ -139,7 +139,28 @@ export const useThinkingStore = create<ThinkingStore>((set, get) => ({
     set((state) => ({ messages: [...state.messages, message] })),
 
   addThinkingStep: (step) =>
-    set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })),
+    set((state) => {
+      const summary = step.summary.trim()
+      if (!summary || step.type === 'tool_result') return state
+
+      const lastStep = state.thinkingSteps[state.thinkingSteps.length - 1]
+      if (lastStep && lastStep.summary === summary) return state
+
+      const alreadyRecent = state.thinkingSteps
+        .slice(-3)
+        .some((item) => item.summary === summary && item.toolName === step.toolName)
+      if (alreadyRecent) return state
+
+      return {
+        thinkingSteps: [
+          ...state.thinkingSteps,
+          {
+            ...step,
+            summary
+          }
+        ].slice(-6)
+      }
+    }),
 
   setAnimatingText: (text) =>
     set({ animatingText: text }),

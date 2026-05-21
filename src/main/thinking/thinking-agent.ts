@@ -1,13 +1,19 @@
 import { LRUCache } from 'lru-cache'
 import log from 'electron-log/main.js'
+import { createMiddleware } from 'langchain'
 import { resolveModel } from '../agent'
 import { FilesystemBackend, createDeepAgent } from 'deepagents'
 import { extractModelText } from '../ipc/utils'
 import { resolveModelTimeoutMs } from '@shared/model-timeout'
 import { logAgentToolEvents } from '../utils/agent-tool-logger'
 import { buildThinkingContext, type ThinkingContextArgs } from './context-builder'
-import { checkStageTransition, detectStageFallback } from './stage-manager'
-import { writeContextMd, writeThinkingMd } from './workspace'
+import {
+  checkStageTransition,
+  detectStageFallback,
+  isRestartRequest,
+  resolveRequestedStage
+} from './stage-manager'
+import { buildInitialContextMd, buildInitialThinkingMd, writeContextMd, writeThinkingMd } from './workspace'
 import {
   createThinkingWorkflowTools,
   type ThinkingWorkflowState
@@ -17,6 +23,27 @@ import type { ThinkingChatMessage, ThinkingStage, ThinkingChatResult } from '@sh
 interface ThinkingRuntime {
   agent: ReturnType<typeof createDeepAgent>
   workflowState: ThinkingWorkflowState
+}
+
+const THINKING_WORKFLOW_TOOL_NAMES = new Set([
+  'update_context_document',
+  'update_thinking_document'
+])
+
+const SOURCE_READ_TOOL_NAMES = new Set(['read_file', 'grep'])
+
+function createThinkingToolFilterMiddleware(hasSources: boolean) {
+  return createMiddleware({
+    name: 'thinkingToolFilter',
+    wrapModelCall: async (request, handler) => {
+      const tools = request.tools?.filter((tool) => {
+        const name = String(tool.name || '')
+        if (THINKING_WORKFLOW_TOOL_NAMES.has(name)) return true
+        return hasSources && SOURCE_READ_TOOL_NAMES.has(name)
+      })
+      return handler({ ...request, tools })
+    }
+  })
 }
 
 function getObject(value: unknown): Record<string, unknown> | null {
@@ -94,21 +121,6 @@ const SECTION_ORDER = [
   'Page Count'
 ]
 
-function readSection(markdown: string, heading: string): string {
-  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = markdown.match(new RegExp(`^##\\s*${escaped}\\s*\\n([\\s\\S]*?)(?=^##\\s+|(?![\\s\\S]))`, 'm'))
-  return match?.[1]?.trim() || ''
-}
-
-function hasMeaningfulThinkingContent(markdown: string): boolean {
-  return Boolean(
-    readSection(markdown, 'Topic') ||
-      readSection(markdown, 'Audience') ||
-      readSection(markdown, 'Setting') ||
-      /^##\s*Page\s+\d+\s*:/m.test(markdown)
-  )
-}
-
 function upsertSection(markdown: string, heading: string, content: string): string {
   const normalizedContent = content.trim()
   if (!normalizedContent) return markdown
@@ -134,97 +146,11 @@ function upsertSection(markdown: string, heading: string, content: string): stri
     const insertAt = (titleMatch.index || 0) + titleMatch[0].length
     return `${markdown.slice(0, insertAt).trimEnd()}\n\n${nextSection}${markdown.slice(insertAt).trimStart()}`
   }
-  return `# Thinking Document\n\n${nextSection}${markdown.trim()}`
-}
-
-function firstMeaningfulUserMessage(messages: ThinkingChatMessage[], currentMessage: string): string {
-  const candidates = [...messages.filter((message) => message.role === 'user').map((message) => message.content), currentMessage]
-  return (
-    candidates
-      .map((item) => item.trim())
-      .find((item) => item.length >= 4 && !/^\d+[.、]/.test(item) && !/^技术\s*(?:\d+[.、]|$)/.test(item)) || ''
-  )
-}
-
-function extractNumberedAnswer(text: string, number: number): string {
-  const nextNumber = number + 1
-  const match = text.match(new RegExp(`(?:^|\\s)${number}[.、]\\s*([\\s\\S]*?)(?=(?:\\s${nextNumber}[.、])|$)`))
-  return match?.[1]?.trim().replace(/\s+/g, ' ') || ''
-}
-
-function extractImplicitFirstAnswer(text: string): string {
-  const match = text.match(/^\s*([^\n]+?)\s+2[.、]\s*/)
-  const value = match?.[1]?.trim().replace(/\s+/g, ' ') || ''
-  if (!value || /^\d+[.、]/.test(value)) return ''
-  return value
-}
-
-function inferThinkingFacts(messages: ThinkingChatMessage[], currentMessage: string): Record<string, string> {
-  const userMessages = [...messages.filter((message) => message.role === 'user').map((message) => message.content), currentMessage]
-  const joined = userMessages.join('\n')
-  const facts: Record<string, string> = {}
-  const topic = firstMeaningfulUserMessage(messages, currentMessage)
-  if (topic) facts.Topic = topic
-
-  for (const message of userMessages) {
-    const first = extractNumberedAnswer(message, 1) || extractImplicitFirstAnswer(message)
-    const second = extractNumberedAnswer(message, 2)
-    const third = extractNumberedAnswer(message, 3)
-    const fourth = extractNumberedAnswer(message, 4)
-    if (first && /(爱好者|从业者|投资者|学生|观众|用户|客户|团队|委员会)/.test(first)) {
-      facts.Audience = first
-    }
-    if (second && /(分享会|会议|课堂|课程|峰会|发布会|内部|路演|汇报)/.test(second)) {
-      facts.Setting = second
-    }
-    if (third && /(轻松|活泼|正式|专业|严谨|科技|现代|商务|数据)/.test(third)) {
-      facts.Tone = third
-    }
-    if (!facts.Tone && fourth && /(轻松|活泼|正式|专业|严谨|科技|现代|商务|数据|故事|行业分析)/.test(fourth)) {
-      facts.Tone = fourth
-    }
-    if (fourth && /(没有|无|帮我|参考|资料|数据)/.test(fourth)) {
-      facts['Key Decisions'] = '- 用户没有自带参考数据，希望 AI 协助整理公开资料和趋势判断。'
-    }
-  }
-
-  if (/进阶爱好者/.test(joined)) facts.Audience = '进阶爱好者'
-  else if (!facts.Audience && /爱好者/.test(joined)) facts.Audience = '爱好者'
-  else if (!facts.Audience && /动漫行业从业者|行业从业者|从业者/.test(joined)) facts.Audience = '动漫行业从业者'
-  if (!facts.Setting && /分享会/.test(joined)) facts.Setting = '分享会'
-  else if (!facts.Setting && /行业会议/.test(joined)) facts.Setting = '行业会议'
-  if (!facts.Tone && /轻松活泼/.test(joined)) facts.Tone = '轻松活泼'
-  else if (!facts.Tone && /侧重数据|数据驱动|数据/.test(joined)) facts.Tone = '侧重数据'
-
-  const decisions: string[] = []
-  if (/技术/.test(joined)) decisions.push('用户希望从技术角度展开。')
-  if (/你帮我决策多少页|多少页|帮我决策/.test(joined)) {
-    decisions.push('页数由 AI 根据分享会节奏决策，优先规划为清晰、适合进阶爱好者的中等篇幅。')
-  }
-  if (/没有参考数据|没有参考资料|帮我找/.test(joined)) {
-    decisions.push('用户没有参考资料，需要 AI 协助整理可用的行业背景、趋势和案例。')
-  }
-  if (decisions.length > 0) {
-    const existing = facts['Key Decisions'] ? `${facts['Key Decisions']}\n` : ''
-    facts['Key Decisions'] = `${existing}${decisions.map((item) => `- ${item}`).join('\n')}`.trim()
-  }
-
-  const openQuestions: string[] = []
-  if (!facts.Topic) openQuestions.push('确认演示主题。')
-  if (!facts.Audience) openQuestions.push('确认目标受众。')
-  if (!facts.Setting) openQuestions.push('确认演示场合。')
-  if (!facts.Tone) openQuestions.push('确认风格调性。')
-  if (!/核心内容|重点|技术/.test(joined)) openQuestions.push('确认希望重点讲技术演进、产业趋势、案例还是创作流程。')
-  if (openQuestions.length > 0) {
-    facts['Open Questions'] = openQuestions.map((item) => `- ${item}`).join('\n')
-  }
-
-  return facts
+  return `# Thinking Brief\n\n${nextSection}${markdown.trim()}`
 }
 
 function shouldPromoteCollectToOutline(args: {
   currentStage: ThinkingStage
-  recentMessages?: ThinkingChatMessage[]
   userMessage: string
   thinkingMd: string
   sourceContent: string
@@ -232,25 +158,16 @@ function shouldPromoteCollectToOutline(args: {
   if (args.currentStage !== 'collect') return false
   if (countThinkingPages(args.thinkingMd) >= 2) return false
 
-  const facts = inferThinkingFacts(args.recentMessages || [], args.userMessage)
-  const hasTopic = Boolean(facts.Topic || readSection(args.thinkingMd, 'Topic'))
-  const hasAudience = Boolean(facts.Audience || readSection(args.thinkingMd, 'Audience'))
-  const hasSetting = Boolean(facts.Setting || readSection(args.thinkingMd, 'Setting'))
-  const hasToneOrDirection = Boolean(
-    facts.Tone ||
-      readSection(args.thinkingMd, 'Tone') ||
-      /数据|故事|行业分析|技术|轻松|活泼|正式|专业|20\s*分钟|分钟|页/.test(args.userMessage)
-  )
+  const explicitOutlineRequest =
+    /生成|大纲|拆页|规划|outline|pages?|slides?/i.test(args.userMessage)
   const hasUsefulSource = args.sourceContent.trim().length > 0
-  const asksToGenerateFromSource =
+  const explicitSourceRequest =
     hasUsefulSource &&
-    /根据.*(?:文档|资料|文件|素材|图片).*生成|按.*(?:文档|资料|文件|素材|图片).*生成|generate.*(?:document|file|source|material)|based on.*(?:document|file|source|material)/i.test(
+    /根据.*(?:文档|资料|文件|素材|图片).*生成|按.*(?:文档|资料|文件|素材|图片).*生成|based on.*(?:document|file|source|material)/i.test(
       args.userMessage
     )
 
-  if (asksToGenerateFromSource && hasTopic) return true
-
-  return hasTopic && hasAudience && hasSetting && (hasToneOrDirection || hasUsefulSource)
+  return explicitOutlineRequest || explicitSourceRequest
 }
 
 function countThinkingPages(thinkingMd: string): number {
@@ -258,116 +175,27 @@ function countThinkingPages(thinkingMd: string): number {
   return matches ? matches.length : 0
 }
 
-function inferPageCountForOutline(messages: ThinkingChatMessage[] | undefined, userMessage: string): number {
-  const joined = [...(messages || []).map((message) => message.content), userMessage].join('\n')
-  const explicitPages = joined.match(/(\d+)\s*(?:页|p|pages?)/i)
-  if (explicitPages) {
-    const count = Number(explicitPages[1])
-    if (Number.isFinite(count)) return Math.max(4, Math.min(16, count))
-  }
-  const minutes = joined.match(/(\d+)\s*分钟/)
-  if (minutes) {
-    const duration = Number(minutes[1])
-    if (duration <= 10) return 5
-    if (duration <= 20) return 8
-    if (duration <= 40) return 12
-    return 14
-  }
-  return 8
-}
-
-function buildFallbackOutlineThinkingMd(args: {
-  thinkingMd: string
-  recentMessages?: ThinkingChatMessage[]
+function requiresThinkingUpdate(args: {
+  currentStage: ThinkingStage
+  effectiveStage: ThinkingStage
   userMessage: string
-  sourceContent: string
-}): string {
-  const facts = inferThinkingFacts(args.recentMessages || [], args.userMessage)
-  const topic = facts.Topic || readSection(args.thinkingMd, 'Topic') || '待定主题'
-  const audience = facts.Audience || readSection(args.thinkingMd, 'Audience') || '待定受众'
-  const setting = facts.Setting || readSection(args.thinkingMd, 'Setting') || '待定场合'
-  const tone = facts.Tone || readSection(args.thinkingMd, 'Tone') || '专业清晰'
-  const pageCount = inferPageCountForOutline(args.recentMessages, args.userMessage)
-
-  // Minimal skeleton — the AI will refine titles and content in subsequent turns
-  const pages: string[] = []
-  for (let i = 0; i < pageCount; i += 1) {
-    pages.push(`## Page ${i + 1}: 待定`)
-    pages.push('- 待完善')
-    pages.push('')
+}): boolean {
+  if (args.effectiveStage !== args.currentStage && args.effectiveStage !== 'collect') {
+    return true
   }
-
-  return [
-    '# Thinking Document',
-    '',
-    '## Topic',
-    topic,
-    '',
-    '## Audience',
-    audience,
-    '',
-    '## Setting',
-    setting,
-    '',
-    '## Tone',
-    tone,
-    '',
-    '## Page Count',
-    String(pageCount),
-    '',
-    '## Font',
-    'auto',
-    '',
-    ...pages
-  ].join('\n').trimEnd() + '\n'
+  return /生成|大纲|拆页|规划|展开|细化|详细|继续写|修改|调整|删掉|删除|增加|outline|expand|detail|refine/i.test(
+    args.userMessage
+  )
 }
 
-function mergeConversationFactsIntoThinkingMd(args: {
-  thinkingMd: string
-  recentMessages?: ThinkingChatMessage[]
-  userMessage: string
-}): string {
-  const facts = inferThinkingFacts(args.recentMessages || [], args.userMessage)
-  let next = args.thinkingMd.trim() || '# Thinking Document'
-  const shouldFillExisting = !hasMeaningfulThinkingContent(next)
-
-  for (const [heading, content] of Object.entries(facts)) {
-    if (!shouldFillExisting && readSection(next, heading)) continue
-    next = upsertSection(next, heading, content)
-  }
-
-  return next.trimEnd() + '\n'
-}
-
-function mergeConversationFactsIntoContextMd(args: {
+function mergeLatestDirectionIntoContextMd(args: {
   contextMd: string
   currentStage: ThinkingStage
-  recentMessages?: ThinkingChatMessage[]
   userMessage: string
 }): string {
-  const facts = inferThinkingFacts(args.recentMessages || [], args.userMessage)
   let next = args.contextMd.trim() || `# Rolling Context\n\n## Stage: ${args.currentStage}\n`
   if (!/^##\s*Stage:/m.test(next)) {
     next = upsertSection(next, 'Stage', args.currentStage)
-  }
-
-  const userIntent = [
-    facts.Topic ? `- Topic: ${facts.Topic}` : '',
-    facts.Audience ? `- Audience: ${facts.Audience}` : '',
-    facts.Setting ? `- Setting: ${facts.Setting}` : '',
-    facts.Tone ? `- Tone: ${facts.Tone}` : ''
-  ].filter(Boolean)
-
-  if (userIntent.length > 0) {
-    next = upsertSection(next, 'User Intent', userIntent.join('\n'))
-  }
-
-  if (facts['Key Decisions']) {
-    next = upsertSection(next, 'Confirmed Decisions', facts['Key Decisions'])
-  }
-
-  if (facts['Open Questions']) {
-    next = upsertSection(next, 'Open Questions', facts['Open Questions'])
   }
 
   const latestDirection = args.userMessage.trim()
@@ -449,18 +277,9 @@ function extractAndEmitToolEvents(
         if (name && id && !seen.has(key)) {
           seen.add(key)
           const summary = summarizeToolCall(name, rawArgs)
+          if (!summary) continue
           onThinkingEvent({ type: 'tool_call', toolName: name, summary })
         }
-      }
-    }
-    // Check for tool results
-    const toolCallId = String(record.tool_call_id ?? '').trim()
-    const toolName = String(record.name ?? '').trim()
-    if (toolCallId && (record.role === 'tool' || record.type === 'tool')) {
-      const key = `tr:${toolCallId}:${toolName}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        onThinkingEvent({ type: 'tool_result', toolName, summary: '' })
       }
     }
     for (const nested of Object.values(record)) {
@@ -474,14 +293,14 @@ function summarizeToolCall(toolName: string, rawArgs: unknown): string {
   if (toolName === 'read_file') {
     const args = typeof rawArgs === 'string' ? safeParseJson(rawArgs) : rawArgs
     const path = getNestedField(args, 'path') as string | undefined
-    if (path) return `Reading ${path.replace(/^\/sources\//, '')}`
-    return 'Reading file...'
+    if (path) return `正在阅读资料：${path.replace(/^\/sources\//, '')}`
+    return '正在阅读资料'
   }
   if (toolName === 'grep') {
     const args = typeof rawArgs === 'string' ? safeParseJson(rawArgs) : rawArgs
     const pattern = getNestedField(args, 'pattern') as string | undefined
-    if (pattern) return `Searching "${String(pattern).slice(0, 40)}"`
-    return 'Searching content...'
+    if (pattern) return `正在定位相关内容：${String(pattern).slice(0, 24)}`
+    return '正在定位相关内容'
   }
   if (toolName === 'update_thinking_document') {
     const args = typeof rawArgs === 'string' ? safeParseJson(rawArgs) : rawArgs
@@ -489,13 +308,14 @@ function summarizeToolCall(toolName: string, rawArgs: unknown): string {
     const topic = getNestedField(args, 'topic') as string | undefined
     if (pages && Array.isArray(pages) && pages.length > 0) {
       const titles = pages.map((p) => getNestedField(p, 'title') as string || '').filter(Boolean)
-      if (titles.length > 0) return `Updating ${pages.length} pages: ${titles.slice(0, 3).join(', ')}${titles.length > 3 ? '...' : ''}`
+      if (titles.length > 0) return `正在整理 ${pages.length} 页方案：${titles.slice(0, 2).join('、')}${titles.length > 2 ? '…' : ''}`
+      return `正在整理 ${pages.length} 页方案`
     }
-    if (topic) return `Setting topic: ${String(topic).slice(0, 40)}`
-    return 'Updating outline...'
+    if (topic) return `正在确认主题：${String(topic).slice(0, 24)}`
+    return '正在更新方案'
   }
   if (toolName === 'update_context_document') {
-    return 'Recording decisions...'
+    return '正在整理需求和关键信息'
   }
   return ''
 }
@@ -541,6 +361,7 @@ function getOrCreateRuntime(
     maxTokens?: number
     systemPrompt: string
     currentStage: ThinkingStage
+    hasSources: boolean
   }
 ): ThinkingRuntime {
   const cached = runtimeCache.get(thinkingId)
@@ -570,7 +391,8 @@ function getOrCreateRuntime(
       { operations: ['write'], paths: ['/**'], mode: 'deny' }
     ],
     systemPrompt: args.systemPrompt,
-    tools: workflowTools.tools as any
+    tools: workflowTools.tools as any,
+    middleware: [createThinkingToolFilterMiddleware(args.hasSources)]
   })
 
   const runtime: ThinkingRuntime = { agent, workflowState: workflowTools.state }
@@ -609,35 +431,45 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     onThinkingEvent
   } = args
 
+  const restartRequested = isRestartRequest(userMessage)
+  const inputStage: ThinkingStage = restartRequested ? 'collect' : currentStage
+  const inputThinkingMd = restartRequested ? buildInitialThinkingMd() : thinkingMd
+  const inputContextMd = restartRequested ? buildInitialContextMd('collect') : contextMd
+
+  if (restartRequested) {
+    await writeThinkingMd(thinkingDir, inputThinkingMd)
+    await writeContextMd(thinkingDir, inputContextMd)
+    runtimeCache.delete(thinkingId)
+  }
+
   const initialContext = await buildThinkingContext({
-    stage: currentStage,
-    thinkingMd,
-    contextMd,
+    stage: inputStage,
+    thinkingMd: inputThinkingMd,
+    contextMd: inputContextMd,
     sourcesDir,
     userMessage,
     recentMessages
   })
   const effectiveStage: ThinkingStage = shouldPromoteCollectToOutline({
-    currentStage,
-    recentMessages,
+    currentStage: inputStage,
     userMessage,
-    thinkingMd,
+    thinkingMd: inputThinkingMd,
     sourceContent: initialContext.sourceContent
   })
     ? 'outline'
-    : currentStage
+    : inputStage
   const { systemPrompt, userMessage: fullUserMessage } =
-    effectiveStage === currentStage
+    effectiveStage === inputStage
       ? initialContext
       : await buildThinkingContext({
           stage: effectiveStage,
-          thinkingMd,
-          contextMd,
+          thinkingMd: inputThinkingMd,
+          contextMd: inputContextMd,
           sourcesDir,
           userMessage: [
             userMessage,
             '',
-            'The collected information is sufficient. In this turn, create and persist an initial page-by-page outline with update_thinking_document instead of only saying you will build it.'
+            'The user explicitly requested a page plan or outline. In this turn, create and persist a complete page-by-page thinking brief with update_thinking_document. Every page must include title, role, objective, summary, and substantive keyPoints. Do not write placeholders.'
           ].join('\n'),
           recentMessages
         })
@@ -652,7 +484,8 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     baseUrl,
     maxTokens,
     systemPrompt,
-    currentStage: effectiveStage
+    currentStage: effectiveStage,
+    hasSources: initialContext.sourceContent.trim().length > 0
   })
 
   log.info('[thinking:agent] running chat', {
@@ -702,8 +535,8 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
   const path = await import('path')
   const thinkingMdPath = path.join(thinkingDir, 'thinking.md')
   const contextMdPath = path.join(thinkingDir, 'context.md')
-  let updatedThinkingMd = thinkingMd
-  let updatedContextMd = contextMd
+  let updatedThinkingMd = inputThinkingMd
+  let updatedContextMd = inputContextMd
   try {
     if (fs.existsSync(thinkingMdPath)) {
       updatedThinkingMd = await fs.promises.readFile(thinkingMdPath, 'utf-8')
@@ -715,7 +548,7 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     // If read fails, keep the original
   }
 
-  if (!runtime.workflowState.contextUpdated && updatedContextMd === contextMd) {
+  if (!runtime.workflowState.contextUpdated && updatedContextMd === inputContextMd) {
     log.warn('[thinking:agent] context.md was not updated by workflow tool; retrying forced context update', {
       thinkingId,
       stage: effectiveStage
@@ -738,7 +571,7 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
         updatedContextMd = await fs.promises.readFile(contextMdPath, 'utf-8')
       }
     } catch (err) {
-      log.warn('[thinking:agent] forced context write retry failed; fallback merge will run', {
+      log.warn('[thinking:agent] forced context write retry failed; latest-direction fallback will run', {
         thinkingId,
         error: err instanceof Error ? err.message : String(err)
       })
@@ -746,17 +579,20 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
   }
 
   if (
+    requiresThinkingUpdate({ currentStage: inputStage, effectiveStage, userMessage }) &&
     effectiveStage !== 'collect' &&
     !runtime.workflowState.thinkingUpdated &&
-    updatedThinkingMd === thinkingMd
+    updatedThinkingMd === inputThinkingMd
   ) {
-    log.warn('[thinking:agent] thinking.md was not updated by workflow tool outside collect; retrying forced thinking update', {
+    log.warn('[thinking:agent] thinking.md was not updated for a planning turn; retrying forced thinking update', {
       thinkingId,
       stage: effectiveStage
     })
     const forcedMessage = [
-      'Internal repair task. The current stage requires /thinking.md to be updated.',
-      'You must now call update_thinking_document to persist the outline or page content into /thinking.md.',
+      'Internal repair task. This turn requires /thinking.md to be updated.',
+      'You must now call update_thinking_document to persist a complete thinking brief into /thinking.md.',
+      'If you pass pages, include the full page list. Every page must include title, role, objective, summary, and substantive keyPoints.',
+      'Do not write placeholders.',
       'Do not use write_file or edit_file.',
       'Do not ask the user a new question in this repair task.',
       '',
@@ -772,7 +608,7 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
         updatedThinkingMd = await fs.promises.readFile(thinkingMdPath, 'utf-8')
       }
     } catch (err) {
-      log.warn('[thinking:agent] forced thinking write retry failed; fallback merge will run', {
+      log.warn('[thinking:agent] forced thinking write retry failed; leaving thinking.md unchanged', {
         thinkingId,
         error: err instanceof Error ? err.message : String(err)
       })
@@ -780,10 +616,9 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
   }
 
   if (!runtime.workflowState.contextUpdated) {
-    const mergedContextMd = mergeConversationFactsIntoContextMd({
+    const mergedContextMd = mergeLatestDirectionIntoContextMd({
       contextMd: updatedContextMd,
       currentStage: effectiveStage,
-      recentMessages,
       userMessage
     })
     if (mergedContextMd !== updatedContextMd) {
@@ -792,41 +627,26 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     }
   }
 
+  const autoStage = checkStageTransition(effectiveStage, updatedThinkingMd)
+  const rawRequestedStage = detectStageFallback(userMessage)
+  const resolvedRequestedStage = resolveRequestedStage({
+    currentStage: effectiveStage,
+    requestedStage: rawRequestedStage,
+    thinkingMd: updatedThinkingMd
+  })
+  let newStage = resolvedRequestedStage || autoStage
+
   if (
-    !runtime.workflowState.thinkingUpdated &&
-    (effectiveStage !== 'collect' || hasMeaningfulThinkingContent(updatedThinkingMd))
+    rawRequestedStage === 'collect' &&
+    resolvedRequestedStage === 'collect' &&
+    restartRequested &&
+    effectiveStage === inputStage
   ) {
-    const mergedThinkingMd = mergeConversationFactsIntoThinkingMd({
-      thinkingMd: updatedThinkingMd,
-      recentMessages,
-      userMessage
-    })
-    if (mergedThinkingMd !== updatedThinkingMd) {
-      await writeThinkingMd(thinkingDir, mergedThinkingMd)
-      updatedThinkingMd = mergedThinkingMd
-    }
-  }
-
-  if (effectiveStage === 'outline' && countThinkingPages(updatedThinkingMd) < 2) {
-    log.warn('[thinking:agent] outline still missing after workflow run; writing fallback outline', {
-      thinkingId,
-      stage: effectiveStage
-    })
-    updatedThinkingMd = buildFallbackOutlineThinkingMd({
-      thinkingMd: updatedThinkingMd,
-      recentMessages,
-      userMessage,
-      sourceContent: initialContext.sourceContent
-    })
+    updatedThinkingMd = buildInitialThinkingMd()
+    updatedContextMd = buildInitialContextMd('collect')
     await writeThinkingMd(thinkingDir, updatedThinkingMd)
-  }
-
-  // Check for stage transitions based on the updated thinking document.
-  // When collect has enough information, effectiveStage is the minimum stage for this turn.
-  let newStage = checkStageTransition(effectiveStage, updatedThinkingMd)
-  const fallbackStage = detectStageFallback(userMessage)
-  if (fallbackStage) {
-    newStage = fallbackStage
+    await writeContextMd(thinkingDir, updatedContextMd)
+    newStage = 'collect'
   }
 
   // Update context.md with new stage
@@ -836,7 +656,7 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
   log.info('[thinking:agent] chat complete', {
     thinkingId,
     replyLength: replyText.length,
-    thinkingMdChanged: updatedThinkingMd !== thinkingMd,
+    thinkingMdChanged: updatedThinkingMd !== inputThinkingMd,
     contextToolCalls: runtime.workflowState.contextUpdateCount,
     thinkingToolCalls: runtime.workflowState.thinkingUpdateCount,
     stageTransition: currentStage !== newStage ? `${currentStage} → ${newStage}` : 'none'

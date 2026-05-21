@@ -12,10 +12,9 @@ export interface ThinkingWorkflowState {
   thinkingUpdateCount: number
 }
 
-const stageSchema = z.enum(['collect', 'outline', 'draft', 'refine', 'ready'])
+const pageRoleSchema = z.enum(['cover', 'section', 'content', 'case', 'comparison', 'data', 'summary'])
 
 const contextDocumentSchema = z.object({
-  stage: stageSchema.optional().describe('Current workflow stage. Defaults to the current stage.'),
   topic: z.string().optional().describe('Presentation topic when known.'),
   userIntent: z
     .string()
@@ -55,13 +54,15 @@ const thinkingDocumentSchema = z.object({
   pages: z
     .array(
       z.object({
-        title: z.string(),
-        summary: z.string(),
-        keyPoints: z.array(z.string()).optional()
+        title: z.string().min(1),
+        role: pageRoleSchema.describe('Page role in the narrative structure.'),
+        objective: z.string().min(1).describe('What this page must accomplish for the audience.'),
+        summary: z.string().min(1),
+        keyPoints: z.array(z.string().min(1)).min(1)
       })
     )
     .optional()
-    .describe('Ordered slide/page plan. Use only when the outline or draft is ready.')
+    .describe('Ordered full slide/page plan. Passing pages replaces all existing pages. To modify specific pages, include the complete page list with your changes.')
 })
 
 type ContextDocumentInput = z.infer<typeof contextDocumentSchema>
@@ -120,7 +121,7 @@ function upsertSection(markdown: string, heading: string, content: string): stri
     const insertAt = (titleMatch.index || 0) + titleMatch[0].length
     return `${markdown.slice(0, insertAt).trimEnd()}\n\n${nextSection}${markdown.slice(insertAt).trimStart()}`
   }
-  return `# Thinking Document\n\n${nextSection}${markdown.trim()}`
+  return `# Thinking Brief\n\n${nextSection}${markdown.trim()}`
 }
 
 function stripPageSections(markdown: string): string {
@@ -128,15 +129,50 @@ function stripPageSections(markdown: string): string {
 }
 
 function buildPageSections(
-  pages: Array<{ title: string; summary: string; keyPoints?: string[] }>
+  pages: Array<{
+    title: string
+    role: z.infer<typeof pageRoleSchema>
+    objective: string
+    summary: string
+    keyPoints: string[]
+  }>
 ): string {
   const parts: string[] = []
   for (let index = 0; index < pages.length; index += 1) {
     const page = pages[index]
-    const title = page.title.trim() || `Page ${index + 1}`
+    const pageNumber = index + 1
+    const title = page.title.trim()
+    const role = page.role.trim()
+    const objective = page.objective.trim()
+    const summary = page.summary.trim()
     const keyPoints = bulletList(page.keyPoints)
-    const body = [page.summary.trim(), keyPoints].filter(Boolean).join('\n\n')
-    parts.push(`## Page ${index + 1}: ${title}`, body || '待完善', '')
+
+    if (!title) {
+      throw new Error(`Page ${pageNumber} must have a real title.`)
+    }
+    if (!role) {
+      throw new Error(`Page ${pageNumber} must have a role.`)
+    }
+    if (!objective) {
+      throw new Error(`Page ${pageNumber} must have an objective.`)
+    }
+    if (!summary) {
+      throw new Error(`Page ${pageNumber} must have a non-empty summary. Do not write placeholder pages.`)
+    }
+    if (!keyPoints) {
+      throw new Error(`Page ${pageNumber} must include substantive keyPoints. Do not write placeholder pages.`)
+    }
+
+    parts.push(
+      `## Page ${pageNumber}: ${title}`,
+      `- Role: ${role}`,
+      `- Objective: ${objective}`,
+      '',
+      summary,
+      '',
+      keyPoints,
+      ''
+    )
   }
   return parts.join('\n').trimEnd()
 }
@@ -150,7 +186,7 @@ async function readExistingThinkingMd(thinkingDir: string): Promise<string> {
   } catch {
     // Fall through to a fresh document.
   }
-  return '# Thinking Document\n'
+  return '# Thinking Brief\n'
 }
 
 function formatFontSection(font: ThinkingDocumentInput['font']): string | undefined {
@@ -189,7 +225,7 @@ function buildContextMd(args: {
 }
 
 async function mergeThinkingMd(thinkingDir: string, input: ThinkingDocumentInput): Promise<string> {
-  let next = (await readExistingThinkingMd(thinkingDir)).trim() || '# Thinking Document'
+  let next = (await readExistingThinkingMd(thinkingDir)).trim() || '# Thinking Brief'
   const pages = input.pages
 
   const simpleSections: Array<[string, string | undefined]> = [
@@ -233,9 +269,8 @@ export function createThinkingWorkflowTools(args: {
 
   const updateContextDocument = tool(
     async (input: ContextDocumentInput) => {
-      const stage = (input.stage || args.currentStage) as ThinkingStage
       const content = buildContextMd({
-        stage,
+        stage: args.currentStage,
         topic: input.topic,
         userIntent: input.userIntent,
         confirmedDecisions: input.confirmedDecisions,
@@ -246,12 +281,12 @@ export function createThinkingWorkflowTools(args: {
       await writeContextMd(args.thinkingDir, content)
       state.contextUpdated = true
       state.contextUpdateCount += 1
-      return `context.md updated for stage ${stage}`
+      return `context.md updated for stage ${args.currentStage}`
     },
     {
       name: 'update_context_document',
       description:
-        'Required thinking workflow tool. Persist the rolling conversation memory to /context.md every turn: stage, user intent, confirmed decisions, open questions, source notes, and latest direction. Use this instead of write_file/edit_file for context.md.',
+        'Required thinking workflow tool. Persist rolling conversation memory to /context.md every turn: user intent, confirmed decisions, open questions, source notes, and latest direction. Stage is managed by the system; do not set it. Use this instead of write_file/edit_file for context.md.',
       schema: contextDocumentSchema
     }
   )
@@ -267,7 +302,7 @@ export function createThinkingWorkflowTools(args: {
     {
       name: 'update_thinking_document',
       description:
-        'Thinking document workflow tool. Merge updates into /thinking.md when the conversation has enough information for an outline, page plan, draft, style/font preference, or refined plan. Omit unchanged fields; existing sections and pages are preserved unless you pass pages. During collect this is optional unless an outline/page plan is already being formed. Use this instead of write_file/edit_file for thinking.md.',
+        'Thinking document workflow tool. Merge updates into /thinking.md when the user asks for an outline, page plan, draft, style/font preference, or refined plan. Omit unchanged fields. Existing sections are preserved unless replaced. Passing pages replaces all existing pages; to modify specific pages, include the complete page list with changes. Every page must have a real title, role, objective, summary, and substantive keyPoints. Never write placeholder pages. Use this instead of write_file/edit_file for thinking.md.',
       schema: thinkingDocumentSchema
     }
   )

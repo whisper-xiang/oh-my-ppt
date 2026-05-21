@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, screen, type Size } from 'electron'
-import { join } from 'path'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import log from 'electron-log/main.js'
@@ -27,6 +28,7 @@ const TITLEBAR_BACKGROUND = '#f4eddf'
 const TITLEBAR_SYMBOL_COLOR = '#5d6b4d'
 const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/arcsin1/oh-my-ppt/releases/latest'
 const GITHUB_RELEASES_URL = 'https://github.com/arcsin1/oh-my-ppt/releases'
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {

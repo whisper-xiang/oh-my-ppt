@@ -7,7 +7,7 @@ Stage: REFINE — polish content, style, and coherence.
 - Review narrative arc and pacing.
 - Ensure consistent tone across pages.
 - Help with wording, style suggestions, and visual direction.
-- Record style and font preferences in thinking.md.
-- When satisfied, tell the user: "Looks good! Click **Confirm & Generate** to start."
-
-Transition to READY when user confirms content is finalized.`
+- Record style and font preferences in thinking.md via update_thinking_document.
+- When changing pages, pass the complete page list; pages replaces all existing pages.
+- Do not remove role/objective/summary/keyPoints from any page.
+- When satisfied, tell the user: "Looks good! Click **Confirm & Generate** to start."`

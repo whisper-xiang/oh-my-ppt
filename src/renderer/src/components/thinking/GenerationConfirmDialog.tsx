@@ -142,7 +142,7 @@ export function GenerationConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl overflow-hidden">
         <DialogHeader>
           <DialogTitle>{t('thinking.generationDialogTitle')}</DialogTitle>
           <DialogDescription>
@@ -150,29 +150,30 @@ export function GenerationConfirmDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2 [&_input]:h-9 [&_label]:mb-1.5 [&_label]:text-xs">
-          <div>
+        <div className="min-w-0 space-y-3 py-2 [&_input]:h-9 [&_label]:mb-1.5 [&_label]:text-xs">
+          <div className="min-w-0">
             <label className="block font-medium">{t('home.topic')}</label>
             <Input
+              className="min-w-0"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
             />
           </div>
 
-          <div className="grid gap-3 grid-cols-[1fr_100px]">
-            <div>
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_6.25rem]">
+            <div className="min-w-0">
               <label className="block font-medium">{t('home.style')}</label>
               <Select value={styleId} onValueChange={setStyleId}>
-                <SelectTrigger>
+                <SelectTrigger className="min-w-0">
                   <SelectValue placeholder={t('home.stylePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {styleOptions.map((option) => (
                     <SelectItem key={option.id} value={option.id}>
-                      <span className="flex items-center gap-1.5">
-                        {option.label}
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="min-w-0 truncate">{option.label}</span>
                         {option.styleCase && (
-                          <span className="rounded-md border border-[#d6c08d]/80 bg-[#fff7e8] px-1.5 py-px text-[10px] font-medium text-[#7c6a4c]">
+                          <span className="max-w-[220px] shrink-0 truncate rounded-md border border-[#d6c08d]/80 bg-[#fff7e8] px-1.5 py-px text-[10px] font-medium text-[#7c6a4c]">
                             {option.styleCase}
                           </span>
                         )}
@@ -183,9 +184,10 @@ export function GenerationConfirmDialog({
               </Select>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block font-medium">{t('home.pageCount')}</label>
               <Input
+                className="min-w-0 text-center"
                 type="text"
                 inputMode="numeric"
                 value={pageCount}
@@ -197,11 +199,11 @@ export function GenerationConfirmDialog({
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label className="block font-medium">{t('home.fontScheme')}</label>
-            <div className="mt-1 grid gap-2 grid-cols-2">
+            <div className="mt-1 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <Select value={titleFontId} onValueChange={setTitleFontId}>
-                <SelectTrigger>
+                <SelectTrigger className="min-w-0">
                   <SelectValue placeholder={t('home.fontSchemeAuto')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -224,7 +226,7 @@ export function GenerationConfirmDialog({
                 </SelectContent>
               </Select>
               <Select value={bodyFontId} onValueChange={setBodyFontId}>
-                <SelectTrigger>
+                <SelectTrigger className="min-w-0">
                   <SelectValue placeholder={t('home.fontSchemeAuto')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -250,7 +252,7 @@ export function GenerationConfirmDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>

@@ -1,35 +1,22 @@
 import type { ThinkingStage } from '@shared/thinking'
 
+const VALID_TRANSITIONS: Record<ThinkingStage, ThinkingStage[]> = {
+  collect: ['collect', 'outline'],
+  outline: ['collect', 'draft', 'ready'],
+  draft: ['collect', 'outline', 'refine', 'ready'],
+  refine: ['collect', 'outline', 'draft', 'ready'],
+  ready: ['collect', 'outline']
+}
+
 export function checkStageTransition(
   currentStage: ThinkingStage,
   thinkingMd: string
 ): ThinkingStage {
   const pageCount = countPageHeadings(thinkingMd)
-  // Match both "## Topic\nxxx" and "## Topic: xxx" formats
-  const hasTopic = /^##\s*Topic\b/m.test(thinkingMd) && !/^##\s*Topic\s*:\s*$/m.test(thinkingMd)
-  const hasStyleInfo = /^##\s*Style\b/m.test(thinkingMd) && !/^##\s*Style\s*:\s*$/m.test(thinkingMd)
+  const hasTopic = hasNonEmptySection(thinkingMd, 'Topic')
 
-  const outlineReadiness = measureOutlineReadiness(thinkingMd)
-  const draftReadiness = measureDraftReadiness(thinkingMd)
-
-  // collect → outline: when topic is set and at least 2 pages outlined
   if (currentStage === 'collect' && hasTopic && pageCount >= 2) {
     return 'outline'
-  }
-
-  // outline → draft: when pages have at least basic bullet points (>50 chars per page)
-  if (currentStage === 'outline' && pageCount >= 2 && outlineReadiness) {
-    return 'draft'
-  }
-
-  // draft → refine: when pages are fleshed out with detailed content (>150 chars, half+ pages)
-  if (currentStage === 'draft' && pageCount >= 2 && draftReadiness) {
-    return 'refine'
-  }
-
-  // refine → ready: when style is set and content is complete
-  if (currentStage === 'refine' && hasStyleInfo && draftReadiness && pageCount >= 2) {
-    return 'ready'
   }
 
   return currentStage
@@ -38,23 +25,54 @@ export function checkStageTransition(
 export function detectStageFallback(userMessage: string): ThinkingStage | null {
   const lower = userMessage.toLowerCase()
 
-  if (/let's start over|从头开始|重新开始/i.test(lower)) {
+  if (/let's start over|start over|从头开始|重新开始/.test(lower)) {
     return 'collect'
   }
 
-  if (/adjust.*outline|change.*structure|调整.*大纲|修改.*结构/i.test(lower)) {
+  if (/adjust.*outline|change.*structure|大纲|拆页|规划|调整.*大纲|修改.*结构/.test(lower)) {
     return 'outline'
   }
 
-  if (/refine|polish|tweak|优化|调整.*细节|润色/i.test(lower)) {
+  if (/展开|细化|详细|继续写|expand|detail/.test(lower)) {
+    return 'draft'
+  }
+
+  if (/refine|polish|tweak|优化|调整.*细节|润色/.test(lower)) {
     return 'refine'
   }
 
-  if (/looks good|ready|看起来不错|可以了|没问题/i.test(lower)) {
-    return null
+  if (/可以了|生成吧|确认生成|就按这个|ready|confirm|looks good/.test(lower)) {
+    return 'ready'
   }
 
   return null
+}
+
+export function resolveRequestedStage(args: {
+  currentStage: ThinkingStage
+  requestedStage: ThinkingStage | null
+  thinkingMd: string
+}): ThinkingStage | null {
+  if (!args.requestedStage) return null
+  if (args.requestedStage === args.currentStage) return args.requestedStage
+  if (!VALID_TRANSITIONS[args.currentStage].includes(args.requestedStage)) return null
+
+  const pageCount = countPageHeadings(args.thinkingMd)
+  if (args.requestedStage !== 'collect' && pageCount === 0) return null
+  if (
+    (args.requestedStage === 'draft' ||
+      args.requestedStage === 'refine' ||
+      args.requestedStage === 'ready') &&
+    pageCount < 2
+  ) {
+    return null
+  }
+
+  return args.requestedStage
+}
+
+export function isRestartRequest(userMessage: string): boolean {
+  return /let's start over|start over|从头开始|重新开始/i.test(userMessage)
 }
 
 function countPageHeadings(thinkingMd: string): number {
@@ -62,25 +80,10 @@ function countPageHeadings(thinkingMd: string): number {
   return matches ? matches.length : 0
 }
 
-function splitPageContents(thinkingMd: string): string[] {
-  return thinkingMd
-    .split(/^##\s*Page\s+\d+\s*:/m)
-    .filter((_page, idx) => idx > 0)
-    .map((page) => page.trim())
-}
-
-/** outline → draft: at least half the pages have basic content (>50 chars) */
-function measureOutlineReadiness(thinkingMd: string): boolean {
-  const pages = splitPageContents(thinkingMd)
-  if (pages.length < 2) return false
-  const ready = pages.filter((p) => p.length > 50).length
-  return ready >= Math.ceil(pages.length / 2)
-}
-
-/** draft → refine: at least half the pages have detailed content (>150 chars) */
-function measureDraftReadiness(thinkingMd: string): boolean {
-  const pages = splitPageContents(thinkingMd)
-  if (pages.length < 2) return false
-  const ready = pages.filter((p) => p.length > 150).length
-  return ready >= Math.ceil(pages.length / 2)
+function hasNonEmptySection(markdown: string, heading: string): boolean {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const inline = markdown.match(new RegExp(`^##\\s*${escaped}\\s*:\\s*(.+)`, 'm'))
+  if (inline?.[1]?.trim()) return true
+  const block = markdown.match(new RegExp(`^##\\s*${escaped}\\s*\\n([\\s\\S]*?)(?=^##\\s+|(?![\\s\\S]))`, 'm'))
+  return Boolean(block?.[1]?.trim())
 }

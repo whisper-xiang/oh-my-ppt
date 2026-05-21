@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactElement } from 'react'
+import { useState, useRef, useEffect, useMemo, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useT } from '@renderer/i18n'
 import { useToastStore } from '@renderer/store'
@@ -15,9 +15,6 @@ interface ThinkingStep {
 }
 
 function StepIcon({ step }: { step: ThinkingStep }): ReactElement {
-  if (step.type === 'tool_result') {
-    return <Check className="h-3 w-3 shrink-0 text-[#6b9e5a]" />
-  }
   const name = step.toolName
   if (name === 'read_file') return <FolderOpen className="h-3 w-3 shrink-0 text-[#7a8fa6]" />
   if (name === 'grep') return <FileSearch className="h-3 w-3 shrink-0 text-[#7a8fa6]" />
@@ -128,6 +125,10 @@ export function ThinkingChat({
   const [thinkingExpanded, setThinkingExpanded] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const visibleThinkingSteps = useMemo(
+    () => thinkingSteps.filter((step) => step.type === 'tool_call' && step.summary.trim()),
+    [thinkingSteps]
+  )
 
   useEffect(() => {
     const el = scrollRef.current
@@ -139,7 +140,7 @@ export function ThinkingChat({
         behavior: 'smooth'
       })
     })
-  }, [messages, loading, thinkingSteps, animatingText])
+  }, [messages, loading, visibleThinkingSteps, animatingText])
 
   const handleSend = (): void => {
     const text = input.trim()
@@ -261,7 +262,7 @@ export function ThinkingChat({
             </div>
             <div className="max-w-[78%] space-y-2">
               {/* Thinking process - collapsible */}
-              {thinkingSteps.length > 0 && (
+              {visibleThinkingSteps.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setThinkingExpanded(!thinkingExpanded)}
@@ -276,18 +277,16 @@ export function ThinkingChat({
                   <Loader2 className="ml-1 h-3 w-3 animate-spin" />
                 </button>
               )}
-              {thinkingExpanded && thinkingSteps.length > 0 && (
-                <div className="max-h-28 rounded-[1.25rem] border border-[#e0d8c8] bg-[#f5f1e8]">
-                  <ScrollArea className="h-28">
-                    <div className="space-y-1.5 px-3 py-2">
-                      {thinkingSteps.map((step, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 text-[11px] leading-relaxed text-[#7a7060]">
-                          <StepIcon step={step} />
-                          <span>{step.summary || step.toolName}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
+              {thinkingExpanded && visibleThinkingSteps.length > 0 && (
+                <div className="rounded-[1.25rem] border border-[#e0d8c8] bg-[#f5f1e8]">
+                  <div className="space-y-1.5 px-3 py-2">
+                    {visibleThinkingSteps.map((step, idx) => (
+                      <div key={`${step.toolName}-${step.summary}-${idx}`} className="flex items-center gap-1.5 text-[11px] leading-relaxed text-[#7a7060]">
+                        <StepIcon step={step} />
+                        <span>{step.summary}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {/* Animated response text */}
@@ -295,7 +294,7 @@ export function ThinkingChat({
                 <div className="rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-4 py-3 text-[13px] leading-relaxed shadow-sm">
                   <MessageMarkdown content={animatingText} role="assistant" />
                 </div>
-              ) : thinkingSteps.length === 0 ? (
+              ) : visibleThinkingSteps.length === 0 ? (
                 <div className="rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-4 py-3 text-[13px] text-[#5d6b4d] shadow-sm">
                   <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin align-[-2px]" />
                   {t('thinking.thinking')}

@@ -57,6 +57,16 @@ export const CANVAS_CONSTRAINTS = [
   '- 全局最小字号 16px，禁止 text-xs / text-sm / text-[12px] / text-[14px] 等小于 16px 的字号，正文最小 text-base。'
 ].join('\n')
 
+export const LAYOUT_COLLISION_RULES = [
+  '## 布局防重叠规则',
+  '- 正文内容、信息卡片、标题、图表、列表必须由 grid/flex 的正常文档流分区承载；不要用 absolute/fixed + top/left/right/bottom/translate 手工摆放正文模块。',
+  '- absolute/fixed 仅用于背景装饰、连接线、非文字 SVG、少量不承载正文的视觉点缀；带有 h1/h2/h3/p/li 或主要文本的元素不得使用 absolute/fixed。',
+  '- 禁止用 -top-*、-left-*、-right-*、-bottom-*、translate-x-*、-translate-x-*、translate-y-*、-translate-y-* 把正文卡片推到容器外或叠在主视觉周围。',
+  '- 需要环绕/五点/放射状/中心图+周边说明时，使用明确的 grid 模板（例如三列三行：左上/中上/右上/左下/右下/中心），中心图和说明卡片各占独立 grid cell；连接线可用 SVG 作为装饰层。',
+  '- 每个主要内容区必须有稳定尺寸和间距：给 grid/flex 容器设置 gap，给长文本容器设置 min-w-0，避免文字或卡片把相邻区域挤压重叠。',
+  '- 写入前做一次版面自检：标题、主视觉、每张卡片、底部元素都必须有独立空间，不能互相覆盖，不能依赖 hover/animation 后才可读。'
+].join('\n')
+
 export const FRONTEND_CAPABILITIES = [
   '## 前端能力（已内置）',
   '每个 /<pageId>.html 已预注入 ./assets/anime.v4.js、./assets/tailwindcss.v3.js、./assets/chart.v4.js、./assets/ppt-runtime.js 和 KaTeX。',
@@ -86,7 +96,7 @@ export const FRONTEND_CAPABILITIES = [
   '- 把 canvas 直接放进卡片/文本块 → 必须有专属 chart frame 父容器',
   '',
   '### 动画 — 优先使用 data-anim 声明式属性（推荐）',
-  '简单入场动画（淡入、滑入、缩放）请优先使用 HTML data 属性声明，无需编写 JavaScript：',
+  '简单入场动画（淡入、滑入、缩放）请优先使用 HTML data 属性声明，无需编写 JavaScript。默认使用 load 触发或不加动画：',
   '```html',
   '<!-- 单个元素：页面加载时淡入上滑 -->',
   '<div data-anim="fade-up" data-anim-duration="500">标题卡片</div>',
@@ -96,22 +106,17 @@ export const FRONTEND_CAPABILITIES = [
   '<div data-anim="fade-up" data-anim-delay="stagger(100)">第2项</div>',
   '<div data-anim="fade-up" data-anim-delay="stagger(100)">第3项</div>',
   '',
-  '<!-- 点击逐条展示（演讲节奏控制） -->',
+  '<!-- click 触发示例：低优先级方案。仅当用户提示词表达点击/按键/逐步讲述控制时使用；默认生成不要照抄 -->',
   '<div data-anim="fade-up" data-anim-trigger="click">第一条要点</div>',
   '<div data-anim="fade-up" data-anim-trigger="click">第二条要点</div>',
-  '',
-  '<!-- 流程/步骤页：每个完整步骤节点点击出现，箭头保持静态或放入步骤内部 -->',
-  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">1. 剧本与分镜生成</div>',
-  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">2. 角色与场景设计</div>',
-  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">3. 动画生成与补帧</div>',
-  '<div class="flow-step" data-anim="fade-up" data-anim-trigger="click">4. 后期合成与发布</div>',
+  '<div data-anim="fade-up" data-anim-trigger="click">第三条要点</div>',
   '```',
   '',
   'data-anim 支持的类型：fade | fade-up | fade-down | fade-left | fade-right | scale-in | slide-up | slide-left',
   'data-anim-delay：数字(ms) 或 stagger(N)（自动错峰，N 为间隔毫秒）',
   'data-anim-duration：数字(ms)，默认 500',
   'data-anim-easing：easeOutCubic（默认）| easeOutBack | easeInOut | linear',
-  'data-anim-trigger：load（默认，页面加载即播）| click（点击/按键逐条展示）',
+  'data-anim-trigger：load（默认，页面加载即播）| click（低优先级，仅在用户提示词表达点击/按键逐条展示时使用）',
   '风格预设里的动画词（如 typewriter/glitch-in/path-draw 等）只作动效气质参考；data-anim 属性值必须使用上方支持列表，不要把风格词直接写成 data-anim，也不要为普通动效改写成脚本。',
   '动画决策规则见下方「动画交互决策规则」章节。',
   '使用 data-anim 的元素自身不要再写 inline opacity/transform 初始态；需要静态旋转、缩放或透明视觉时，放到内部子元素或外层非动画容器。',
@@ -140,13 +145,14 @@ export const FRONTEND_CAPABILITIES = [
 
 export const ANIMATION_INTERACTION_RULES = [
   '## 动画交互决策规则',
-  '生成页面时默认按以下策略判断，不需要用户显式写“动画要求”；编辑模式仅在用户要求添加/修改动画，或必须重写动画相关内容时参考。',
-  '- 流程图、时间线、步骤说明、阶段拆解、路径/链路/过程类页面：每个完整步骤/阶段/节点必须使用 data-anim-trigger="click" 按讲解顺序逐条展示。',
-  '- 普通列表要点、对比卡片、分步讲解：如果天然适合演讲逐项说明，也优先使用 data-anim-trigger="click"。',
-  '- 封面、章节页、总结页、纯视觉页、密集数据页：默认使用 load 入场动画或不加动画，不强制 click。',
+  '生成页面时默认按以下策略判断；编辑模式仅在用户要求添加/修改动画，或必须重写动画相关内容时参考。',
+  '- 先分析用户提示词、页面叙事和内容密度，再选择动画：无动画/静态 > load 入场 > stagger 自动错峰 > click 触发。click 是低优先级方案，不是流程页、列表页或时间线页的默认选择。',
+  '- 如果用户没有表达点击、按键、逐步讲述、演讲节奏控制或 step-by-step reveal，不要主动写 data-anim-trigger="click"。',
+  '- “流程图、时间线、步骤说明、阶段拆解、路径/链路/过程类页面”并不等于需要点击动画；只有用户提示词体现讲述控制需求时，才考虑 click。',
+  '- 普通列表要点、对比卡片、分步讲解：默认一次显示、静态呈现、load 入场或 stagger 自动错峰，不要因为“适合演讲”就主动使用 click。',
+  '- 封面、章节页、总结页、纯视觉页、密集数据页：通常使用 load 入场动画或不加动画。',
   '- 标题、背景装饰、连接线、箭头可以保持静态或使用 load；不要把箭头/连接线单独做成一次 click。',
-  '- 需要点击逐条展示时（用户说"点击逐条出现/点一下出一个/演讲节奏/逐步讲解/逐项展开/按键展示"等），不得仅用 data-anim-delay 或 stagger(N) 模拟自动错峰；必须在对应内容单元上写 data-anim-trigger="click"。',
-  '- 只有用户明确要求“无动画/静态/不要点击/全部一次显示”时，才跳过上述 click 策略。',
+  '- 当用户说"点击逐条出现/点一下出一个/演讲节奏/逐步讲解/逐项展开/按键展示"等明确交互需求时，才在对应内容单元上写 data-anim-trigger="click"。',
   '- 普通动画使用 data-anim 属性；不要为这些场景编写 <script> 或 JS 动画逻辑。'
 ].join('\n')
 

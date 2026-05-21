@@ -7,7 +7,10 @@ import { CheckCircle2, FileText, LayoutList, Loader2, Sparkles } from 'lucide-re
 interface PageCard {
   pageNumber: number
   title: string
+  role: string
+  objective: string
   summary: string
+  keyPoints: string[]
 }
 
 interface ThinkingPageCardsProps {
@@ -33,15 +36,32 @@ function parsePageCards(thinkingMd: string): PageCard[] {
     const next = matches[index + 1]
     const contentStart = item.index + item.length
     const contentEnd = next?.index ?? thinkingMd.length
-    const summary = thinkingMd
+    const rawLines = thinkingMd
       .slice(contentStart, contentEnd)
-      .replace(/^#+\s+/gm, '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+    const roleLine = rawLines.find((line) => /^-\s*Role\s*:/i.test(line))
+    const objectiveLine = rawLines.find((line) => /^-\s*Objective\s*:/i.test(line))
+    const role = roleLine?.replace(/^-\s*Role\s*:\s*/i, '').trim() || ''
+    const objective = objectiveLine?.replace(/^-\s*Objective\s*:\s*/i, '').trim() || ''
+    const bodyLines = rawLines.filter((line) => line !== roleLine && line !== objectiveLine)
+    const keyPoints = bodyLines
+      .filter((line) => /^-\s+/.test(line))
+      .map((line) => line.replace(/^-\s+/, '').trim())
+      .filter(Boolean)
+    const summary = bodyLines
+      .filter((line) => !/^-\s+/.test(line))
+      .join(' ')
       .replace(/\s+/g, ' ')
       .trim()
     return {
       pageNumber: item.pageNumber,
       title: item.title,
-      summary: summary.slice(0, 120)
+      role,
+      objective,
+      summary,
+      keyPoints
     }
   })
 }
@@ -209,14 +229,32 @@ export function ThinkingPageCards({
                     {card.pageNumber}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-[#2f3329]">
-                      {card.title}
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="line-clamp-2 min-w-0 text-[13px] font-semibold leading-snug text-[#2f3329]">
+                        {card.title}
+                      </div>
+                      <span className="shrink-0 rounded-full border border-[#c8d6ba] bg-[#fffdf8] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.04em] text-[#5d6b4d]">
+                        {card.role}
+                      </span>
                     </div>
+                    <p className="mt-1.5 text-[11px] font-medium leading-relaxed text-[#4f6340]">
+                      {card.objective}
+                    </p>
                     {card.summary ? (
                       <p className="mt-1.5 line-clamp-3 text-[11px] leading-relaxed text-[#747968]">
                         {card.summary}
                       </p>
                     ) : null}
+                    {card.keyPoints.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-[#747968]">
+                        {card.keyPoints.slice(0, 3).map((point, pointIndex) => (
+                          <li key={pointIndex} className="flex gap-1.5">
+                            <span className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-[#8fbc8f]" />
+                            <span className="line-clamp-2">{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </div>

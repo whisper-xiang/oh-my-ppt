@@ -31,7 +31,8 @@ const buildThinkingGenerationPrompt = (args: {
 }): string =>
   [
     `Create a ${args.pageCount}-slide presentation about "${args.topic}" from the finalized thinking document below.`,
-    'Treat each "## Page N: ..." section as the intended page structure and use its body as the detailed brief for that page.',
+    'Treat each "## Page N: ..." section as the exact intended page structure.',
+    'For each page, honor Role, Objective, Summary, and key points as the page brief.',
     'If the attached reference document includes image source notes, use the listed ./images/... public paths when relevant.',
     'Determine the presentation content language from the thinking document and source notes; do not infer it from the application UI language.',
     '',

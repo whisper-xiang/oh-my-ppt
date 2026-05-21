@@ -47,7 +47,7 @@ export async function buildThinkingContext(args: ThinkingContextArgs): Promise<{
   const contextParts: string[] = []
 
   if (thinkingMd.trim()) {
-    contextParts.push(`## Current Thinking Document\n${thinkingMd}`)
+    contextParts.push(`## Current Thinking Brief\n${thinkingMd}`)
   }
 
   if (contextMd.trim()) {
@@ -56,6 +56,14 @@ export async function buildThinkingContext(args: ThinkingContextArgs): Promise<{
 
   if (sourceContent) {
     contextParts.push(`## Available Source Files\nThe following source files are available. Use read_file and grep to read them as needed.\n${sourceContent}`)
+  } else {
+    contextParts.push(
+      [
+        '## Source Files',
+        'No source files are available for this turn.',
+        'Do not call read_file, grep/search, glob, or ls. Work only from the current thinking brief, context, recent conversation, and user message.'
+      ].join('\n')
+    )
   }
 
   const recentConversation = Array.isArray(recentMessages)

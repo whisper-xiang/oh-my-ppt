@@ -50,7 +50,7 @@ function parseTopicFromThinkingMd(thinkingMd: string): string {
 
 function parsePageCountFromThinkingMd(thinkingMd: string): number {
   const matches = thinkingMd.match(/^##\s*Page\s+\d+\s*:/gm)
-  return matches ? matches.length : 5
+  return matches ? matches.length : 0
 }
 
 function readMarkdownSectionValue(markdown: string, heading: string): string {
@@ -337,11 +337,18 @@ export function registerThinkingHandlers(ctx: IpcContext): void {
         styleId = catalog.length > 0 ? catalog[0].id : ''
       }
 
+      if (!topic) {
+        throw new Error('thinking.md is missing ## Topic. Please complete the thinking brief first.')
+      }
+      if (pageCount < 1) {
+        throw new Error('thinking.md has no pages. Please create a page-by-page thinking brief first.')
+      }
+
       const thinkingDocumentPath = path.join(dir, 'thinking.md')
 
       const result: ThinkingPrepareGenerationResult = {
         thinkingDocumentPath,
-        topic: topic || 'Untitled',
+        topic,
         pageCount: Math.max(1, Math.min(40, pageCount)),
         styleId,
         fontSelection

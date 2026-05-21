@@ -1,10 +1,12 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
 import log from 'electron-log/main.js'
-import { join } from 'path'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 
 let tray: Tray | null = null
 let hasShownHideBalloon = false
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function resolveTrayIconPaths(): string[] {
   const iconPaths: string[] = []

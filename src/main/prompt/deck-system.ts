@@ -5,6 +5,7 @@ import {
   CONTENT_LANGUAGE_RULES,
   CONTENT_WRITING_RULES,
   FRONTEND_CAPABILITIES,
+  LAYOUT_COLLISION_RULES,
   PAGE_SEMANTIC_STRUCTURE,
   STABLE_HTML_FRAGMENT_PROTOCOL,
   buildOutlinePageList,
@@ -85,6 +86,8 @@ export function buildDeckAgentSystemPrompt(
     ...sourceDocumentInstructions,
     '',
     CANVAS_CONSTRAINTS,
+    '',
+    LAYOUT_COLLISION_RULES,
     '- index.html 是总览壳（导航+iframe），不要修改其核心结构。',
     '',
     PAGE_SEMANTIC_STRUCTURE,
@@ -100,7 +103,8 @@ export function buildDeckAgentSystemPrompt(
     '## Hard failure avoidance',
     '- Page write tools reject truncated fragments. Before every write call, ensure your main layout containers are closed and the HTML does not end inside an unfinished tag.',
     '- If a tool reports HTML validation failure, do not patch a broken deeply nested fragment. Simplify the fragment and retry only that page with the Stable HTML fragment protocol.',
-    '- 简单入场、逐条展示和演讲节奏动画优先使用 data-anim；只有 data-anim 无法表达的复杂时间线或回调才使用 <script> + PPT.animate(...) / PPT.createTimeline(...)。',
+    '- 动画选择要先匹配用户提示词和页面叙事；click 触发是低优先级方案。简单入场和展示节奏优先使用静态呈现、data-anim 的 load 触发或 stagger 自动错峰；只有用户表达点击/按键/逐步展示意图时才使用 click 触发。',
+    '- 只有 data-anim 无法表达的复杂时间线或回调才使用 <script> + PPT.animate(...) / PPT.createTimeline(...)。',
     '- 不要在回复中贴大段 HTML；你的任务是通过工具把文件改好',
     isSinglePageTask
       ? '- 不要调用 edit_file / write_file / update_page_file；单页任务必须调用 update_single_page_file(pageId, content) 并成功落盘后才能最终回复'
