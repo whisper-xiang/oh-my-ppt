@@ -129,11 +129,16 @@ export function ThinkingChat({
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-scroll on new content
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    const el = scrollRef.current
+    if (!el) return
+
+    requestAnimationFrame(() => {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: 'smooth'
+      })
+    })
   }, [messages, loading, thinkingSteps, animatingText])
 
   const handleSend = (): void => {
