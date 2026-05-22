@@ -723,13 +723,14 @@ export function SessionDetailPage(): React.JSX.Element {
         latestPages[Math.min(insertAfter, Math.max(latestPages.length - 1, 0))] ||
         latestPages[latestPages.length - 1]
       targetSelection = (addedPage || fallbackPage)?.id ?? null
+      // Only clear script on success — a new page invalidates the existing script
+      if (id) void ipc.clearSpeechScript(id)
     } catch (err) {
       const message = err instanceof Error ? err.message : t('sessionDetail.addPageFailed')
       toastError(message)
     } finally {
       useSessionDetailUiStore.getState().finishAddPage(targetSelection)
       useGenerateStore.getState().finishGeneration()
-      if (id) void ipc.clearSpeechScript(id)
     }
   }
 

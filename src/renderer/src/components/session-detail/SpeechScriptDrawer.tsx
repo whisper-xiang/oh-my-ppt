@@ -52,25 +52,39 @@ export function SpeechScriptDrawer({
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    void ipc.getSpeechScript(sessionId).then((result) => {
-      if (result.script) {
-        setScript(result.script)
-        setTab('result')
-      } else {
+    void ipc
+      .getSpeechScript(sessionId)
+      .then((result) => {
+        if (result.script) {
+          setScript(result.script)
+          setTab('result')
+        } else {
+          setScript(null)
+          setTab('config')
+        }
+      })
+      .catch(() => {
         setScript(null)
         setTab('config')
-      }
-    })
+      })
   }, [sessionId])
 
   useEffect(() => {
     if (!isGenerating) {
-      void ipc.getSpeechScript(sessionId).then((result) => {
-        if (result.script) {
-          setScript(result.script)
-          setTab('result')
-        }
-      })
+      void ipc
+        .getSpeechScript(sessionId)
+        .then((result) => {
+          if (result.script) {
+            setScript(result.script)
+            setTab('result')
+          } else {
+            // generation failed or was cleared — discard any stale in-memory script
+            setScript(null)
+          }
+        })
+        .catch(() => {
+          setScript(null)
+        })
     }
   }, [isGenerating, sessionId])
 

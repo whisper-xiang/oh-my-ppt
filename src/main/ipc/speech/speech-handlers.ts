@@ -108,7 +108,7 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
 
     const scope: 'all' | 'single' = payload?.scope === 'single' ? 'single' : 'all'
     const currentPageId: string =
-      scope === 'single' && typeof payload?.currentPageId === 'string' ? payload.currentPageId : ''
+      typeof payload?.currentPageId === 'string' ? payload.currentPageId.trim() : ''
     const length: SpeechLength =
       payload?.length === 'short' || payload?.length === 'long' ? payload.length : 'medium'
     const style: SpeechStyle =
@@ -120,6 +120,10 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
 
     const locale = await readAppLocale(ctx)
     const isZh = locale === 'zh'
+
+    if (scope === 'single' && !currentPageId) {
+      throw new Error(uiText(locale, '单页模式需要提供当前页面 ID', 'currentPageId is required for single-page scope'))
+    }
 
     const session = await ctx.db.getSession(sessionId)
     if (!session) {
