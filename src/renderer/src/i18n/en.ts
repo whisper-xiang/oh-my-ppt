@@ -443,6 +443,7 @@ Business presentations, product introductions, project summaries — formal but 
     elementInspector: 'Inspector',
     noElementSelected: 'No element selected',
     closeInspector: 'Close inspector',
+    closeSpeechDrawer: 'Close speech script panel',
     textContent: 'Text',
     textColor: 'Color',
     textStyle: 'Text style',

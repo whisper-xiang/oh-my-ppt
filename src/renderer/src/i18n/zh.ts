@@ -426,6 +426,7 @@ export const zh = {
     elementInspector: '属性面板',
     noElementSelected: '未选择元素',
     closeInspector: '关闭属性面板',
+    closeSpeechDrawer: '关闭演讲稿面板',
     textContent: '文字内容',
     textColor: '文字颜色',
     textStyle: '文字样式',

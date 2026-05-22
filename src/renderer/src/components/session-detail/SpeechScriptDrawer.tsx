@@ -84,7 +84,10 @@ export function SpeechScriptDrawer({
   const handleDownload = (): void => {
     if (!script) return
     const suffix = t('sessionDetail.speechScriptDownloadSuffix')
-    const fileName = sessionTitle ? `${sessionTitle}${suffix}.md` : 'speech-script.md'
+    const safeName = sessionTitle
+      ? sessionTitle.replace(/[\\/:*?"<>|]/g, '_').trim()
+      : ''
+    const fileName = safeName ? `${safeName}${suffix}.md` : 'speech-script.md'
     const blob = new Blob([script], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -105,6 +108,7 @@ export function SpeechScriptDrawer({
           </h3>
           <button
             type="button"
+            aria-label={t('sessionDetail.closeSpeechDrawer')}
             onClick={onClose}
             className="rounded-md p-1 text-[#9a8f80] transition-colors hover:bg-[#ebe4d6]/80 hover:text-[#3e4a32]"
           >

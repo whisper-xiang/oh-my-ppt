@@ -4,8 +4,9 @@ import path from 'path'
 import * as cheerio from 'cheerio'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import log from 'electron-log/main.js'
+import { resolveModelTimeoutMs } from '@shared/model-timeout'
 import type { IpcContext } from '../context'
-import { resolveActiveModelConfig } from '../config/model-config-utils'
+import { resolveActiveModelConfig, resolveGlobalModelTimeouts } from '../config/model-config-utils'
 import { resolveModel } from '../../agent'
 import { readAppLocale, uiText } from '../config/locale-utils'
 
@@ -162,6 +163,8 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
     }
 
     const modelConfig = await resolveActiveModelConfig(ctx)
+    const timeouts = await resolveGlobalModelTimeouts(ctx)
+    const timeoutMs = resolveModelTimeoutMs(timeouts['document'], 'document')
     const model = resolveModel(
       modelConfig.provider,
       modelConfig.apiKey,
@@ -175,6 +178,14 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
     const styleInstruction = buildStyleInstruction(style, isZh, customStyle)
     const total = slideContents.length
     const sessionTitle = session.title || session.topic || (isZh ? '未命名' : 'Untitled')
+
+    // Clear existing script before generation so stale data is never shown on failure
+    const scriptPath = path.join(projectDir, SPEECH_SCRIPT_FILE)
+    try {
+      await fs.promises.unlink(scriptPath)
+    } catch {
+      // file may not exist yet
+    }
 
     const systemPrompt = uiText(
       locale,
@@ -224,10 +235,20 @@ If the previous slide's ending is provided, open with a smooth transition senten
         ? uiText(locale, `上一页结尾：${prevEnding}\n\n`, `Previous slide ending: ${prevEnding}\n\n`)
         : ''
 
+      // Use generation index for progress position; include original slide number for context
+      const positionZh =
+        total === 1
+          ? `第 ${slide.pageNumber} 页`
+          : `第 ${current} / ${total} 页（原始页码：第 ${slide.pageNumber} 页）`
+      const positionEn =
+        total === 1
+          ? `Slide ${slide.pageNumber}`
+          : `Slide ${current} of ${total} (original page number: ${slide.pageNumber})`
+
       const userPrompt = uiText(
         locale,
         `${contextPart}【演示文稿】${sessionTitle}
-【当前位置】第 ${slide.pageNumber} 页 / 共 ${total} 页
+【当前位置】${positionZh}
 【本页标题】${slide.title || '（无标题）'}
 
 【幻灯片文字内容】
@@ -235,7 +256,7 @@ ${slide.text}
 
 请为本页生成演讲稿。`,
         `${contextPart}[Presentation] ${sessionTitle}
-[Position] Slide ${slide.pageNumber} of ${total}
+[Position] ${positionEn}
 [Slide Title] ${slide.title || '(no title)'}
 
 [Slide Text Content]
@@ -246,10 +267,10 @@ Please generate the speaker script for this slide.`
 
       log.info('[speech] generating slide', { sessionId, current, total })
 
-      const response = await model.invoke([
-        new SystemMessage(systemPrompt),
-        new HumanMessage(userPrompt)
-      ])
+      const response = await model.invoke(
+        [new SystemMessage(systemPrompt), new HumanMessage(userPrompt)],
+        { signal: AbortSignal.timeout(timeoutMs) }
+      )
       const part =
         typeof response.content === 'string' ? response.content : JSON.stringify(response.content)
       scriptParts.push(part)
@@ -258,7 +279,6 @@ Please generate the speaker script for this slide.`
     }
 
     const script = scriptParts.join('\n\n---\n\n')
-    const scriptPath = path.join(projectDir, SPEECH_SCRIPT_FILE)
     await fs.promises.writeFile(scriptPath, script, 'utf-8')
 
     log.info('[speech] script saved', { sessionId, scriptPath })
