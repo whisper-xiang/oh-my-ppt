@@ -13,6 +13,7 @@ import type {
   UploadedAsset
 } from '@shared/generation.js'
 import type { UpdateAvailablePayload } from '@shared/app-update.js'
+import type { SpeechConfig } from '@renderer/components/session-detail/SpeechScriptDrawer'
 import type { HistoryVersion, RollbackHistoryResult } from '@shared/history.js'
 import type {
   ThinkingStage,
@@ -569,13 +570,7 @@ export const ipc = {
     getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>,
   generateSpeechScript: (
     sessionId: string,
-    config: {
-      scope: 'all' | 'single'
-      currentPageId?: string
-      length: 'short' | 'medium' | 'long'
-      style: 'formal' | 'conversational' | 'storytelling' | 'custom'
-      customStyle?: string
-    }
+    config: SpeechConfig & { currentPageId?: string }
   ) =>
     getIpc().invoke('speech:generateScript', { sessionId, ...config }) as Promise<{ success: boolean }>,
   getSpeechScript: (sessionId: string) =>

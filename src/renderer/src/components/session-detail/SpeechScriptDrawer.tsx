@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Download, Loader2, X } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '../ui/Button'
@@ -51,48 +51,52 @@ export function SpeechScriptDrawer({
   const [script, setScript] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
+  const loadScript = (switchTab: boolean): void => {
     void ipc
       .getSpeechScript(sessionId)
       .then((result) => {
         if (result.script) {
           setScript(result.script)
-          setTab('result')
+          if (switchTab) setTab('result')
         } else {
           setScript(null)
-          setTab('config')
+          if (switchTab) setTab('config')
         }
       })
       .catch(() => {
         setScript(null)
-        setTab('config')
+        if (switchTab) setTab('config')
       })
+  }
+
+  // Load on mount / session change
+  useEffect(() => {
+    loadScript(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
+  // Reload after generation finishes (skip initial render via ref)
+  const isFirstRender = useRef(true)
   useEffect(() => {
-    if (!isGenerating) {
-      void ipc
-        .getSpeechScript(sessionId)
-        .then((result) => {
-          if (result.script) {
-            setScript(result.script)
-            setTab('result')
-          } else {
-            // generation failed or was cleared — discard any stale in-memory script
-            setScript(null)
-          }
-        })
-        .catch(() => {
-          setScript(null)
-        })
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
     }
-  }, [isGenerating, sessionId])
+    if (!isGenerating) {
+      loadScript(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGenerating])
 
   const handleCopy = async (): Promise<void> => {
     if (!script) return
-    await navigator.clipboard.writeText(script)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(script)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard unavailable — silently no-op
+    }
   }
 
   const handleDownload = (): void => {
@@ -108,7 +112,7 @@ export function SpeechScriptDrawer({
     a.href = url
     a.download = fileName
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
   return (

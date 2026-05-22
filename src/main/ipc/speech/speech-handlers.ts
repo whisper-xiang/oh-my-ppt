@@ -147,12 +147,15 @@ export function registerSpeechHandlers(ctx: IpcContext): void {
     const slideContents: Array<{ pageNumber: number; title: string; text: string }> = []
     for (const p of filteredPages) {
       if (!p.html_path) continue
-      if (!ctx.isPathInside(p.html_path, projectDir)) {
-        log.warn('[speech] skipping page with unsafe htmlPath', { htmlPath: p.html_path, projectDir })
+      const htmlPath = path.isAbsolute(p.html_path)
+        ? path.resolve(p.html_path)
+        : path.resolve(projectDir, p.html_path)
+      if (!ctx.isPathInside(htmlPath, projectDir)) {
+        log.warn('[speech] skipping page with unsafe htmlPath', { htmlPath, projectDir })
         continue
       }
       try {
-        const html = await fs.promises.readFile(p.html_path, 'utf-8')
+        const html = await fs.promises.readFile(htmlPath, 'utf-8')
         const text = extractTextFromHtml(html)
         if (text) {
           slideContents.push({ pageNumber: p.page_number, title: p.title || '', text })

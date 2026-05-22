@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { UploadedAsset } from '@shared/generation.js'
+import type { SpeechConfig } from '@renderer/components/session-detail/SpeechScriptDrawer'
 
 export type SessionDetailChatType = 'main' | 'page'
 export type InteractionMode = 'preview' | 'ai-inspect' | 'edit'
@@ -34,7 +35,7 @@ interface SessionDetailUiStore {
   isGeneratingSpeechScript: boolean
   speechProgress: { current: number; total: number } | null
   speechScriptDialogOpen: boolean
-  speechConfig: { scope: 'all' | 'single'; length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }
+  speechConfig: SpeechConfig
 
   setInput: (input: string) => void
   setChatType: (chatType: SessionDetailChatType) => void
@@ -69,7 +70,7 @@ interface SessionDetailUiStore {
   setIsGeneratingSpeechScript: (v: boolean) => void
   setSpeechProgress: (progress: { current: number; total: number } | null) => void
   setSpeechScriptDialogOpen: (v: boolean) => void
-  setSpeechConfig: (config: { scope: 'all' | 'single'; length: 'short' | 'medium' | 'long'; style: 'formal' | 'conversational' | 'storytelling' | 'custom'; customStyle?: string }) => void
+  setSpeechConfig: (config: SpeechConfig) => void
   finishAddPage: (selectedPageId?: string | null) => void
   resetForPageChange: () => void
   resetForSessionChange: () => void
