@@ -13,6 +13,7 @@ import type {
   UploadedAsset
 } from '@shared/generation.js'
 import type { UpdateAvailablePayload } from '@shared/app-update.js'
+import type { SpeechConfig } from '@renderer/components/session-detail/SpeechScriptDrawer'
 import type { HistoryVersion, RollbackHistoryResult } from '@shared/history.js'
 import type {
   ThinkingStage,
@@ -567,6 +568,27 @@ export const ipc = {
     }>,
   openPresentation: (payload: { sessionId: string; startIndex?: number }) =>
     getIpc().invoke('presentation:open', payload) as Promise<{ success: boolean }>,
+  generateSpeechScript: (
+    sessionId: string,
+    config: SpeechConfig & { currentPageId?: string }
+  ) =>
+    getIpc().invoke('speech:generateScript', { sessionId, ...config }) as Promise<{ success: boolean }>,
+  getSpeechScript: (sessionId: string) =>
+    getIpc().invoke('speech:getScript', { sessionId }) as Promise<{
+      success: boolean
+      script: string | null
+    }>,
+  clearSpeechScript: (sessionId: string) =>
+    getIpc().invoke('speech:clearScript', { sessionId }) as Promise<{ success: boolean }>,
+  onSpeechProgress: (
+    callback: (payload: { sessionId: string; current: number; total: number }) => void
+  ): (() => void) => {
+    const channel = 'speech:progress'
+    const handler = (_event: unknown, payload: unknown): void =>
+      callback(payload as { sessionId: string; current: number; total: number })
+    getIpc().on(channel, handler)
+    return () => getIpc().removeListener(channel, handler)
+  },
 
   thinkingCreateWorkspace: () =>
     getIpc().invoke('thinking:createWorkspace') as Promise<ThinkingWorkspace>,

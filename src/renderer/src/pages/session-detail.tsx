@@ -31,6 +31,7 @@ import { PreviewToolbar } from '../components/session-detail/PreviewToolbar'
 import { ElementInspectorPanel } from '../components/session-detail/ElementInspectorPanel'
 import { SessionToolbar } from '../components/session-detail/SessionToolbar'
 import { AssetPickerDialog } from '../components/session-detail/AssetPickerDialog'
+import { SpeechScriptDrawer } from '../components/session-detail/SpeechScriptDrawer'
 import type { ElementEditDraft } from '../components/session-detail/ElementInspectorPanel'
 import type { ChatType, SessionPreviewPage } from '../components/session-detail/types'
 import { useSessionStore, useGenerateStore } from '../store'
@@ -173,6 +174,12 @@ export function SessionDetailPage(): React.JSX.Element {
   const assetPickerOpen = useSessionDetailUiStore((state) => state.assetPickerOpen)
   const assetPickerType = useSessionDetailUiStore((state) => state.assetPickerType)
   const setAssetPickerOpen = useSessionDetailUiStore((state) => state.setAssetPickerOpen)
+  const speechScriptDialogOpen = useSessionDetailUiStore((state) => state.speechScriptDialogOpen)
+  const setSpeechScriptDialogOpen = useSessionDetailUiStore((state) => state.setSpeechScriptDialogOpen)
+  const speechConfig = useSessionDetailUiStore((state) => state.speechConfig)
+  const setSpeechConfig = useSessionDetailUiStore((state) => state.setSpeechConfig)
+  const isGeneratingSpeechScript = useSessionDetailUiStore((state) => state.isGeneratingSpeechScript)
+  const speechProgress = useSessionDetailUiStore((state) => state.speechProgress)
   const setAddPageDialogOpen = useSessionDetailUiStore((state) => state.setAddPageDialogOpen)
   const setIsAddingPage = useSessionDetailUiStore((state) => state.setIsAddingPage)
   const activeChatRef = useRef<{ chatType: ChatType; pageId?: string }>({ chatType: 'page' })
@@ -507,6 +514,15 @@ export function SessionDetailPage(): React.JSX.Element {
     }
   }, [addMessage, id, updateProgress])
 
+  useEffect(() => {
+    if (!id) return
+    const unsubscribe = ipc.onSpeechProgress((payload) => {
+      if (payload.sessionId !== id) return
+      useSessionDetailUiStore.getState().setSpeechProgress({ current: payload.current, total: payload.total })
+    })
+    return () => unsubscribe()
+  }, [id])
+
   const isSupportedImageFile = (file: File): boolean => {
     if (file.type.startsWith('image/')) return true
     return /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name)
@@ -707,6 +723,8 @@ export function SessionDetailPage(): React.JSX.Element {
         latestPages[Math.min(insertAfter, Math.max(latestPages.length - 1, 0))] ||
         latestPages[latestPages.length - 1]
       targetSelection = (addedPage || fallbackPage)?.id ?? null
+      // Only clear script on success — a new page invalidates the existing script
+      if (id) void ipc.clearSpeechScript(id)
     } catch (err) {
       const message = err instanceof Error ? err.message : t('sessionDetail.addPageFailed')
       toastError(message)
@@ -731,6 +749,7 @@ export function SessionDetailPage(): React.JSX.Element {
       useGenerateStore.getState().setPages(result.generatedPages)
       useSessionDetailUiStore.getState().setSelectedPageId(result.selectedPageId)
       useSessionDetailUiStore.getState().bumpPreviewKey()
+      void ipc.clearSpeechScript(id)
     } catch (error) {
       toastError(error instanceof Error ? error.message : t('pageManagement.reorderFailed'))
     } finally {
@@ -756,6 +775,7 @@ export function SessionDetailPage(): React.JSX.Element {
       useSessionDetailUiStore.getState().setSelectedPageId(result.selectedPageId)
       useSessionDetailUiStore.getState().bumpPreviewKey()
       setDeleteConfirmPage(null)
+      void ipc.clearSpeechScript(id)
     } catch (error) {
       toastError(error instanceof Error ? error.message : t('pageManagement.deleteFailed'))
     } finally {
@@ -801,6 +821,38 @@ export function SessionDetailPage(): React.JSX.Element {
     const indexPath = basePath.replace(/[^/\\]+\.html$/i, 'index.html')
     const pageHash = selectedPage?.id || normalizedOrderedPages[0]?.id
     await ipc.openInBrowser(indexPath, pageHash ? `#${pageHash}` : undefined, id || undefined)
+  }
+
+  const handleOpenSpeechDialog = (): void => {
+    useSessionDetailUiStore.getState().setSpeechScriptDialogOpen(true)
+  }
+
+  const handleDoGenerateSpeechScript = async (config: {
+    scope: 'all' | 'single'
+    length: 'short' | 'medium' | 'long'
+    style: 'formal' | 'conversational' | 'storytelling' | 'custom'
+    customStyle?: string
+  }): Promise<void> => {
+    const detailState = useSessionDetailUiStore.getState()
+    if (!id || detailState.isGeneratingSpeechScript) return
+    detailState.setIsGeneratingSpeechScript(true)
+    detailState.setSpeechProgress(null)
+    const currentPageId = selectedPage?.id
+    try {
+      const result = await ipc.generateSpeechScript(id, {
+        ...config,
+        currentPageId: config.scope === 'single' ? currentPageId : undefined
+      })
+      if (!result.success) {
+        toastError(t('sessionDetail.speechScriptError'))
+      }
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : t('sessionDetail.speechScriptError'))
+    } finally {
+      const s = useSessionDetailUiStore.getState()
+      s.setIsGeneratingSpeechScript(false)
+      s.setSpeechProgress(null)
+    }
   }
 
   const handleExportPdf = async (): Promise<void> => {
@@ -1612,6 +1664,7 @@ export function SessionDetailPage(): React.JSX.Element {
                     startIndex: idx >= 0 ? idx : 0
                   })
                 }}
+                onGenerateSpeechScript={handleOpenSpeechDialog}
               />
             </div>
           </div>
@@ -1676,6 +1729,19 @@ export function SessionDetailPage(): React.JSX.Element {
                   setDeleteConfirmOpen(true)
                 }}
               />
+              {speechScriptDialogOpen && (
+                <SpeechScriptDrawer
+                  sessionId={id || ''}
+                  isGenerating={isGeneratingSpeechScript}
+                  speechProgress={speechProgress}
+                  speechConfig={speechConfig}
+                  onConfigChange={setSpeechConfig}
+                  onGenerate={(config) => void handleDoGenerateSpeechScript(config)}
+                  onClose={() => setSpeechScriptDialogOpen(false)}
+                  sessionTitle={currentSession?.title || currentSession?.topic || undefined}
+                  currentPageTitle={selectedPage?.title || undefined}
+                />
+              )}
               {interactionMode === 'edit' && textSelection && (
                 <ElementInspectorPanel
                   selection={textSelection}

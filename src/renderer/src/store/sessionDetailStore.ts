@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { UploadedAsset } from '@shared/generation.js'
+import type { SpeechConfig } from '@renderer/components/session-detail/SpeechScriptDrawer'
 
 export type SessionDetailChatType = 'main' | 'page'
 export type InteractionMode = 'preview' | 'ai-inspect' | 'edit'
@@ -31,6 +32,10 @@ interface SessionDetailUiStore {
   sidebarCollapsed: boolean
   assetPickerOpen: boolean
   assetPickerType: 'image' | 'video'
+  isGeneratingSpeechScript: boolean
+  speechProgress: { current: number; total: number } | null
+  speechScriptDialogOpen: boolean
+  speechConfig: SpeechConfig
 
   setInput: (input: string) => void
   setChatType: (chatType: SessionDetailChatType) => void
@@ -62,6 +67,10 @@ interface SessionDetailUiStore {
   setIsManagingPages: (managing: boolean) => void
   toggleSidebarCollapsed: () => void
   setAssetPickerOpen: (open: boolean, type?: 'image' | 'video') => void
+  setIsGeneratingSpeechScript: (v: boolean) => void
+  setSpeechProgress: (progress: { current: number; total: number } | null) => void
+  setSpeechScriptDialogOpen: (v: boolean) => void
+  setSpeechConfig: (config: SpeechConfig) => void
   finishAddPage: (selectedPageId?: string | null) => void
   resetForPageChange: () => void
   resetForSessionChange: () => void
@@ -94,6 +103,10 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
   sidebarCollapsed: false,
   assetPickerOpen: false,
   assetPickerType: 'image' as const,
+  isGeneratingSpeechScript: false,
+  speechProgress: null,
+  speechScriptDialogOpen: false,
+  speechConfig: { scope: 'all' as const, length: 'medium' as const, style: 'conversational' as const },
 
   setInput: (input) => set({ input }),
   setChatType: (chatType) => set({ chatType }),
@@ -155,6 +168,10 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
       assetPickerOpen: open,
       ...(type ? { assetPickerType: type } : { assetPickerType: state.assetPickerType })
     })),
+  setIsGeneratingSpeechScript: (isGeneratingSpeechScript) => set({ isGeneratingSpeechScript }),
+  setSpeechProgress: (speechProgress) => set({ speechProgress }),
+  setSpeechScriptDialogOpen: (speechScriptDialogOpen) => set({ speechScriptDialogOpen }),
+  setSpeechConfig: (speechConfig) => set({ speechConfig }),
   finishAddPage: (selectedPageId) =>
     set((state) => ({
       isAddingPage: false,
@@ -187,6 +204,9 @@ export const useSessionDetailUiStore = create<SessionDetailUiStore>((set) => ({
       isRetryingSinglePage: false,
       isManagingPages: false,
       sidebarCollapsed: false,
-      assetPickerOpen: false
+      assetPickerOpen: false,
+      isGeneratingSpeechScript: false,
+      speechProgress: null,
+      speechScriptDialogOpen: false
     })
 }))

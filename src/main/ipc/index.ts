@@ -18,6 +18,7 @@ import { registerDocumentParseHandlers } from './io/document-parse-handlers'
 import { registerPptxImportHandlers } from './io/pptx-import-handlers'
 import { registerHistoryHandlers } from './history/history-handlers'
 import { registerPresentationHandlers } from './session/presentation-handlers'
+import { registerSpeechHandlers } from './speech/speech-handlers'
 import { registerThinkingHandlers } from './thinking/thinking-handlers'
 
 export { registerLocalAssetProtocol }
@@ -45,5 +46,6 @@ export function setupIPC(
   registerPptxImportHandlers(context)
   registerHistoryHandlers(context)
   registerPresentationHandlers(context)
+  registerSpeechHandlers(context)
   registerThinkingHandlers(context)
 }

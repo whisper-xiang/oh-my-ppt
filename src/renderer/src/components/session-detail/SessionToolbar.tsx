@@ -9,7 +9,8 @@ import {
   Loader2,
   Monitor,
   Package,
-  Presentation
+  Presentation,
+  ScrollText
 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { useSessionDetailUiStore } from '@renderer/store/sessionDetailStore'
@@ -41,7 +42,8 @@ export function SessionToolbar({
   onOpenHistory,
   onOpenPreview,
   onRevealFile,
-  onPresent
+  onPresent,
+  onGenerateSpeechScript
 }: {
   hasPages: boolean
   historyDisabled?: boolean
@@ -59,13 +61,16 @@ export function SessionToolbar({
   onOpenPreview: () => void
   onRevealFile: () => void
   onPresent?: () => void
+  onGenerateSpeechScript?: () => void
 }): React.JSX.Element {
   const t = useT()
+
   const isExportingPdf = useSessionDetailUiStore((state) => state.isExportingPdf)
   const isExportingPng = useSessionDetailUiStore((state) => state.isExportingPng)
   const isExportingPptx = useSessionDetailUiStore((state) => state.isExportingPptx)
   const isExportingSlidePack = useSessionDetailUiStore((state) => state.isExportingSlidePack)
   const isExportingSessionZip = useSessionDetailUiStore((state) => state.isExportingSessionZip)
+  const isGeneratingSpeechScript = useSessionDetailUiStore((state) => state.isGeneratingSpeechScript)
   const isExportingImagePdf = isExportingPng || isExportingPdf
   const isExportingPackage = isExportingSlidePack || isExportingSessionZip
   const isExporting =
@@ -204,6 +209,28 @@ export function SessionToolbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+      {hasPages && onGenerateSpeechScript && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={toolbarButtonClass}
+              onClick={onGenerateSpeechScript}
+              disabled={isGeneratingSpeechScript}
+            >
+              {isGeneratingSpeechScript ? (
+                <Loader2 className={cn(toolbarIconClass, 'animate-spin')} />
+              ) : (
+                <ScrollText className={toolbarIconClass} />
+              )}
+              {t('sessionDetail.speechScript')}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('sessionDetail.speechScriptTooltip')}</TooltipContent>
+        </Tooltip>
       )}
       {canPreview && (
         <Tooltip>

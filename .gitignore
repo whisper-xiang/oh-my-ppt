@@ -4,6 +4,7 @@ out
 .DS_Store
 .eslintcache
 *.log*
+.claude/
 
 *.node.tsbuildinfo
 *.web.tsbuildinfo
