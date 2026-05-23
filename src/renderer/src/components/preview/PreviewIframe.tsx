@@ -658,16 +658,27 @@ export const PreviewIframe = forwardRef<
   useEffect(() => {
     const webview = webviewElement
     if (!webview || !thumbnail) return
+    let disposed = false
 
-    const handleDomReady = (): void => {
+    const freezeThumbnail = (): void => {
+      if (disposed) return
       safeExecuteJavaScript(webview, buildThumbnailFreezeScript())
     }
+    const runIfLoaded = (): void => {
+      if (disposed) return
+      if (typeof webview.isLoading === 'function' && webview.isLoading()) return
+      freezeThumbnail()
+    }
 
-    handleDomReady()
-    webview.addEventListener('dom-ready', handleDomReady as EventListener)
+    webview.addEventListener('dom-ready', freezeThumbnail as EventListener)
+    webview.addEventListener('did-finish-load', freezeThumbnail as EventListener)
+    const loadedCheck = window.setTimeout(runIfLoaded, 0)
 
     return () => {
-      webview.removeEventListener('dom-ready', handleDomReady as EventListener)
+      disposed = true
+      window.clearTimeout(loadedCheck)
+      webview.removeEventListener('dom-ready', freezeThumbnail as EventListener)
+      webview.removeEventListener('did-finish-load', freezeThumbnail as EventListener)
     }
   }, [thumbnail, webviewSrc, webviewElement])
 
