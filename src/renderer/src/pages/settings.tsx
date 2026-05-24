@@ -598,7 +598,11 @@ export function SettingsPage(): React.JSX.Element {
                   onChange={(e) => updateModelForm({ baseUrl: e.target.value })}
                   className="h-8"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">{t('settings.baseUrlHint')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {modelForm.provider === 'google'
+                    ? t('settings.baseUrlHintGoogle')
+                    : t('settings.baseUrlHint')}
+                </p>
               </div>
 
               <div>

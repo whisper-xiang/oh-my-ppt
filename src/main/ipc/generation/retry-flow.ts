@@ -9,6 +9,7 @@ import { normalizeLayoutIntent, type LayoutIntent } from '@shared/layout-intent'
 import { validatePersistedPageHtml } from '../../tools/html-utils'
 import type { DesignContract } from '../../tools/types'
 import { buildDesignContractWithLLM, runDeepAgentDeckGeneration } from '../engine/generate'
+import type { GeneratedPagePayload } from '@shared/generation'
 import { nanoid } from 'nanoid'
 import {
   buildRetryUserMessage,
@@ -84,6 +85,7 @@ export async function executeRetryFailedPages(
     db,
     agentManager,
     createDeckProgressEmitter,
+    getPageSourceUrl,
     DESIGN_CONTRACT_TEMPERATURE,
     PAGE_GENERATION_TEMPERATURE
   } = ctx
@@ -297,6 +299,28 @@ export async function executeRetryFailedPages(
     await upsertRetrySessionPage(page, 'completed', null)
     persistedRetryFailedPageIds.delete(page.pageId)
     persistedRetryCompletedPageIds.add(page.pageId)
+    const existingSessionPage = existingSessionPageBySlug.get(page.pageId)
+    const payload: GeneratedPagePayload = {
+      id: existingSessionPage?.id,
+      pageNumber: page.pageNumber,
+      title: page.title,
+      html,
+      pageId: page.pageId,
+      htmlPath: page.htmlPath,
+      sourceUrl: getPageSourceUrl(page.htmlPath)
+    }
+    emitRetryChunk({
+      type: 'page_updated',
+      payload: {
+        runId: context.runId,
+        stage: 'rendering',
+        label: progressText(context.appLocale, 'completed'),
+        progress: 90,
+        currentPage: page.pageNumber,
+        totalPages: retryPages.length,
+        ...payload
+      }
+    })
   }
   const persistFailedRetryPage = async (page: {
     pageNumber: number

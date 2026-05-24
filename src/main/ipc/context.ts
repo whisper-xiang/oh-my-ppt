@@ -335,6 +335,17 @@ export function createIpcContext(
           progress: chunk.payload.progress ?? null,
           htmlPath: chunk.payload.htmlPath ?? null
         }
+      case 'page_started':
+      case 'page_failed':
+        return {
+          type: chunk.type,
+          stage: chunk.payload.stage,
+          pageNumber: chunk.payload.pageNumber,
+          pageId: chunk.payload.pageId,
+          title: chunk.payload.title,
+          progress: chunk.payload.progress ?? null,
+          error: chunk.payload.error ?? null
+        }
       case 'run_completed':
         return {
           type: chunk.type,
@@ -444,8 +455,10 @@ export function createIpcContext(
       enrichedChunk.type === 'stage_started' ||
       enrichedChunk.type === 'stage_progress' ||
       enrichedChunk.type === 'llm_status' ||
+      enrichedChunk.type === 'page_started' ||
       enrichedChunk.type === 'page_generated' ||
       enrichedChunk.type === 'page_updated' ||
+      enrichedChunk.type === 'page_failed' ||
       enrichedChunk.type === 'run_completed' ||
       enrichedChunk.type === 'run_error'
     ) {
@@ -498,8 +511,10 @@ export function createIpcContext(
         chunk.type !== 'stage_started' &&
         chunk.type !== 'stage_progress' &&
         chunk.type !== 'llm_status' &&
+        chunk.type !== 'page_started' &&
         chunk.type !== 'page_generated' &&
-        chunk.type !== 'page_updated'
+        chunk.type !== 'page_updated' &&
+        chunk.type !== 'page_failed'
       ) {
         emitGenerateChunk(sessionId, chunk)
         return

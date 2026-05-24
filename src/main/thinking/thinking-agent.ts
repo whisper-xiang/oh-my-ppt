@@ -10,6 +10,7 @@ import { buildThinkingContext, type ThinkingContextArgs } from './context-builde
 import {
   checkStageTransition,
   detectStageFallback,
+  isValidTransition,
   isRestartRequest,
   resolveRequestedStage
 } from './stage-manager'
@@ -18,7 +19,7 @@ import {
   createThinkingWorkflowTools,
   type ThinkingWorkflowState
 } from './thinking-tools'
-import type { ThinkingChatMessage, ThinkingStage, ThinkingChatResult } from '@shared/thinking'
+import type { ThinkingStage, ThinkingChatResult } from '@shared/thinking'
 
 interface ThinkingRuntime {
   agent: ReturnType<typeof createDeepAgent>
@@ -30,20 +31,23 @@ const THINKING_WORKFLOW_TOOL_NAMES = new Set([
   'update_thinking_document'
 ])
 
-const SOURCE_READ_TOOL_NAMES = new Set(['read_file', 'grep'])
+const SOURCE_READ_TOOL_NAMES = ['read_file', 'grep'] as const
 
-function createThinkingToolFilterMiddleware(hasSources: boolean) {
+function createThinkingToolAllowlistMiddleware(allowedToolNames: Set<string>) {
   return createMiddleware({
-    name: 'thinkingToolFilter',
+    name: 'thinkingToolAllowlist',
     wrapModelCall: async (request, handler) => {
-      const tools = request.tools?.filter((tool) => {
-        const name = String(tool.name || '')
-        if (THINKING_WORKFLOW_TOOL_NAMES.has(name)) return true
-        return hasSources && SOURCE_READ_TOOL_NAMES.has(name)
-      })
+      const tools = request.tools?.filter((tool) => allowedToolNames.has(String(tool.name || '')))
       return handler({ ...request, tools })
     }
   })
+}
+
+function getThinkingAllowedToolNames(hasSources: boolean): Set<string> {
+  return new Set([
+    ...THINKING_WORKFLOW_TOOL_NAMES,
+    ...(hasSources ? SOURCE_READ_TOOL_NAMES : [])
+  ])
 }
 
 function getObject(value: unknown): Record<string, unknown> | null {
@@ -147,45 +151,6 @@ function upsertSection(markdown: string, heading: string, content: string): stri
     return `${markdown.slice(0, insertAt).trimEnd()}\n\n${nextSection}${markdown.slice(insertAt).trimStart()}`
   }
   return `# Thinking Brief\n\n${nextSection}${markdown.trim()}`
-}
-
-function shouldPromoteCollectToOutline(args: {
-  currentStage: ThinkingStage
-  userMessage: string
-  thinkingMd: string
-  sourceContent: string
-}): boolean {
-  if (args.currentStage !== 'collect') return false
-  if (countThinkingPages(args.thinkingMd) >= 2) return false
-
-  const explicitOutlineRequest =
-    /生成|大纲|拆页|规划|outline|pages?|slides?/i.test(args.userMessage)
-  const hasUsefulSource = args.sourceContent.trim().length > 0
-  const explicitSourceRequest =
-    hasUsefulSource &&
-    /根据.*(?:文档|资料|文件|素材|图片).*生成|按.*(?:文档|资料|文件|素材|图片).*生成|based on.*(?:document|file|source|material)/i.test(
-      args.userMessage
-    )
-
-  return explicitOutlineRequest || explicitSourceRequest
-}
-
-function countThinkingPages(thinkingMd: string): number {
-  const matches = thinkingMd.match(/^##\s*Page\s+\d+\s*:/gm)
-  return matches ? matches.length : 0
-}
-
-function requiresThinkingUpdate(args: {
-  currentStage: ThinkingStage
-  effectiveStage: ThinkingStage
-  userMessage: string
-}): boolean {
-  if (args.effectiveStage !== args.currentStage && args.effectiveStage !== 'collect') {
-    return true
-  }
-  return /生成|大纲|拆页|规划|展开|细化|详细|继续写|修改|调整|删掉|删除|增加|outline|expand|detail|refine/i.test(
-    args.userMessage
-  )
 }
 
 function mergeLatestDirectionIntoContextMd(args: {
@@ -329,6 +294,56 @@ function getNestedField(obj: unknown, key: string): unknown {
   return (obj as Record<string, unknown>)[key]
 }
 
+function getThinkingRepairTarget(args: {
+  currentStage: ThinkingStage
+  rawAgentRequestedStage: ThinkingStage | null
+  rawRequestedStage: ThinkingStage | null
+  userMessage: string
+}): ThinkingStage | null {
+  if (args.rawRequestedStage === 'collect') {
+    return null
+  }
+  if (args.currentStage === 'collect' && isCollectDesignRequest(args.userMessage)) {
+    return 'outline'
+  }
+  if (
+    args.rawAgentRequestedStage &&
+    args.rawAgentRequestedStage !== 'collect' &&
+    isValidTransition(args.currentStage, args.rawAgentRequestedStage)
+  ) {
+    return args.rawAgentRequestedStage
+  }
+  if (
+    args.rawRequestedStage &&
+    args.rawRequestedStage !== 'collect' &&
+    isValidTransition(args.currentStage, args.rawRequestedStage)
+  ) {
+    return args.rawRequestedStage
+  }
+  return null
+}
+
+function isCollectDesignRequest(userMessage: string): boolean {
+  return /设计吧|设计一下|开始生成|出大纲|好[，,]?\s*开始吧|可以[，,]?\s*规划一下|规划一下|开始吧/i.test(
+    userMessage
+  )
+}
+
+function buildForcedThinkingUpdateMessage(targetStage: ThinkingStage, fullUserMessage: string): string {
+  return [
+    `Internal repair task. The previous response did not persist /thinking.md in a form that can enter stage "${targetStage}".`,
+    'You must now call update_thinking_document to persist a complete page-by-page thinking brief into /thinking.md.',
+    'Include the full page list. Every page must include title, role, objective, summary, and substantive keyPoints.',
+    `Then call update_context_document with stage set to "${targetStage}".`,
+    'Use read_file/grep first if sources are available and needed.',
+    'Do not use write_file or edit_file.',
+    'Do not ask the user a new question in this repair task.',
+    'After the tool calls, return one concise user-facing reply describing what is ready.',
+    '',
+    fullUserMessage
+  ].join('\n')
+}
+
 async function runAgentMessage(args: {
   runtime: ThinkingRuntime
   message: string
@@ -380,6 +395,8 @@ function getOrCreateRuntime(
     currentStage: args.currentStage
   })
 
+  const allowedToolNames = getThinkingAllowedToolNames(args.hasSources)
+
   const agent = createDeepAgent({
     model,
     backend: new FilesystemBackend({
@@ -392,7 +409,7 @@ function getOrCreateRuntime(
     ],
     systemPrompt: args.systemPrompt,
     tools: workflowTools.tools as any,
-    middleware: [createThinkingToolFilterMiddleware(args.hasSources)]
+    middleware: [createThinkingToolAllowlistMiddleware(allowedToolNames)]
   })
 
   const runtime: ThinkingRuntime = { agent, workflowState: workflowTools.state }
@@ -450,29 +467,8 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     userMessage,
     recentMessages
   })
-  const effectiveStage: ThinkingStage = shouldPromoteCollectToOutline({
-    currentStage: inputStage,
-    userMessage,
-    thinkingMd: inputThinkingMd,
-    sourceContent: initialContext.sourceContent
-  })
-    ? 'outline'
-    : inputStage
-  const { systemPrompt, userMessage: fullUserMessage } =
-    effectiveStage === inputStage
-      ? initialContext
-      : await buildThinkingContext({
-          stage: effectiveStage,
-          thinkingMd: inputThinkingMd,
-          contextMd: inputContextMd,
-          sourcesDir,
-          userMessage: [
-            userMessage,
-            '',
-            'The user explicitly requested a page plan or outline. In this turn, create and persist a complete page-by-page thinking brief with update_thinking_document. Every page must include title, role, objective, summary, and substantive keyPoints. Do not write placeholders.'
-          ].join('\n'),
-          recentMessages
-        })
+
+  const { systemPrompt, userMessage: fullUserMessage } = initialContext
 
   // Invalidate cached runtime so system prompt is fresh
   runtimeCache.delete(thinkingId)
@@ -484,14 +480,14 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     baseUrl,
     maxTokens,
     systemPrompt,
-    currentStage: effectiveStage,
+    currentStage: inputStage,
     hasSources: initialContext.sourceContent.trim().length > 0
   })
 
   log.info('[thinking:agent] running chat', {
     thinkingId,
     stage: currentStage,
-    effectiveStage,
+    inputStage,
     messageLength: fullUserMessage.length
   })
 
@@ -551,7 +547,7 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
   if (!runtime.workflowState.contextUpdated && updatedContextMd === inputContextMd) {
     log.warn('[thinking:agent] context.md was not updated by workflow tool; retrying forced context update', {
       thinkingId,
-      stage: effectiveStage
+      stage: inputStage
     })
     const forcedMessage = [
       'Internal repair task. Your previous response did not call update_context_document.',
@@ -578,47 +574,10 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     }
   }
 
-  if (
-    requiresThinkingUpdate({ currentStage: inputStage, effectiveStage, userMessage }) &&
-    effectiveStage !== 'collect' &&
-    !runtime.workflowState.thinkingUpdated &&
-    updatedThinkingMd === inputThinkingMd
-  ) {
-    log.warn('[thinking:agent] thinking.md was not updated for a planning turn; retrying forced thinking update', {
-      thinkingId,
-      stage: effectiveStage
-    })
-    const forcedMessage = [
-      'Internal repair task. This turn requires /thinking.md to be updated.',
-      'You must now call update_thinking_document to persist a complete thinking brief into /thinking.md.',
-      'If you pass pages, include the full page list. Every page must include title, role, objective, summary, and substantive keyPoints.',
-      'Do not write placeholders.',
-      'Do not use write_file or edit_file.',
-      'Do not ask the user a new question in this repair task.',
-      '',
-      fullUserMessage
-    ].join('\n')
-    try {
-      await runAgentMessage({
-        runtime,
-        message: forcedMessage,
-        modelTimeoutMs
-      })
-      if (fs.existsSync(thinkingMdPath)) {
-        updatedThinkingMd = await fs.promises.readFile(thinkingMdPath, 'utf-8')
-      }
-    } catch (err) {
-      log.warn('[thinking:agent] forced thinking write retry failed; leaving thinking.md unchanged', {
-        thinkingId,
-        error: err instanceof Error ? err.message : String(err)
-      })
-    }
-  }
-
   if (!runtime.workflowState.contextUpdated) {
     const mergedContextMd = mergeLatestDirectionIntoContextMd({
       contextMd: updatedContextMd,
-      currentStage: effectiveStage,
+      currentStage: inputStage,
       userMessage
     })
     if (mergedContextMd !== updatedContextMd) {
@@ -627,20 +586,86 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     }
   }
 
-  const autoStage = checkStageTransition(effectiveStage, updatedThinkingMd)
+  // Stage resolution: 1) agent-requested (via tool)  2) keyword fallback  3) structural check.
+  // All explicit requests still pass through the same transition and content-readiness rules.
+  let rawAgentRequestedStage = runtime.workflowState.requestedStage
   const rawRequestedStage = detectStageFallback(userMessage)
-  const resolvedRequestedStage = resolveRequestedStage({
-    currentStage: effectiveStage,
+  let agentRequestedStage = resolveRequestedStage({
+    currentStage: inputStage,
+    requestedStage: rawAgentRequestedStage,
+    thinkingMd: updatedThinkingMd
+  })
+  let resolvedRequestedStage = resolveRequestedStage({
+    currentStage: inputStage,
     requestedStage: rawRequestedStage,
     thinkingMd: updatedThinkingMd
   })
-  let newStage = resolvedRequestedStage || autoStage
+  const repairTarget = getThinkingRepairTarget({
+    currentStage: inputStage,
+    rawAgentRequestedStage,
+    rawRequestedStage,
+    userMessage
+  })
+
+  if (
+    repairTarget &&
+    !resolveRequestedStage({
+      currentStage: inputStage,
+      requestedStage: repairTarget,
+      thinkingMd: updatedThinkingMd
+    })
+  ) {
+    log.warn('[thinking:agent] thinking.md is not ready for requested stage; retrying forced thinking update', {
+      thinkingId,
+      stage: inputStage,
+      repairTarget,
+      rawAgentRequestedStage,
+      rawRequestedStage
+    })
+    try {
+      const repairResult = await runAgentMessage({
+        runtime,
+        message: buildForcedThinkingUpdateMessage(repairTarget, fullUserMessage),
+        modelTimeoutMs,
+        onThinkingEvent
+      })
+      const repairReply = repairResult.replyText || repairResult.latestAssistantStateText
+      if (repairReply.trim()) {
+        replyText = repairReply.trim()
+      }
+      if (fs.existsSync(thinkingMdPath)) {
+        updatedThinkingMd = await fs.promises.readFile(thinkingMdPath, 'utf-8')
+      }
+      if (fs.existsSync(contextMdPath)) {
+        updatedContextMd = await fs.promises.readFile(contextMdPath, 'utf-8')
+      }
+      rawAgentRequestedStage = runtime.workflowState.requestedStage
+      agentRequestedStage = resolveRequestedStage({
+        currentStage: inputStage,
+        requestedStage: rawAgentRequestedStage,
+        thinkingMd: updatedThinkingMd
+      })
+      resolvedRequestedStage = resolveRequestedStage({
+        currentStage: inputStage,
+        requestedStage: rawRequestedStage,
+        thinkingMd: updatedThinkingMd
+      })
+    } catch (err) {
+      log.warn('[thinking:agent] forced thinking update retry failed; leaving thinking.md unchanged', {
+        thinkingId,
+        repairTarget,
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }
+
+  const autoStage = checkStageTransition(inputStage, updatedThinkingMd)
+  let newStage = agentRequestedStage || resolvedRequestedStage || autoStage
 
   if (
     rawRequestedStage === 'collect' &&
     resolvedRequestedStage === 'collect' &&
-    restartRequested &&
-    effectiveStage === inputStage
+    restartRequested
   ) {
     updatedThinkingMd = buildInitialThinkingMd()
     updatedContextMd = buildInitialContextMd('collect')
@@ -659,6 +684,8 @@ export async function runThinkingChat(args: RunThinkingChatArgs): Promise<Thinki
     thinkingMdChanged: updatedThinkingMd !== inputThinkingMd,
     contextToolCalls: runtime.workflowState.contextUpdateCount,
     thinkingToolCalls: runtime.workflowState.thinkingUpdateCount,
+    agentRequestedStage: rawAgentRequestedStage,
+    resolvedAgentRequestedStage: agentRequestedStage,
     stageTransition: currentStage !== newStage ? `${currentStage} → ${newStage}` : 'none'
   })
 

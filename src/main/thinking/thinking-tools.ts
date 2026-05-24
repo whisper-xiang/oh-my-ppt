@@ -3,13 +3,17 @@ import path from 'path'
 import { tool, type StructuredToolInterface } from '@langchain/core/tools'
 import { z } from 'zod'
 import { writeContextMd, writeThinkingMd } from './workspace'
+import { isValidTransition, VALID_TRANSITIONS } from './stage-manager'
 import type { ThinkingStage } from '@shared/thinking'
+
+const THINKING_STAGES = ['collect', 'outline', 'draft', 'refine', 'ready'] as const
 
 export interface ThinkingWorkflowState {
   contextUpdated: boolean
   thinkingUpdated: boolean
   contextUpdateCount: number
   thinkingUpdateCount: number
+  requestedStage: ThinkingStage | null
 }
 
 const pageRoleSchema = z.enum(['cover', 'section', 'content', 'case', 'comparison', 'data', 'summary'])
@@ -35,7 +39,13 @@ const contextDocumentSchema = z.object({
   latestDirection: z
     .string()
     .optional()
-    .describe('Latest user message or direction, summarized without tool chatter.')
+    .describe('Latest user message or direction, summarized without tool chatter.'),
+  stage: z
+    .enum(THINKING_STAGES)
+    .optional()
+    .describe(
+      'Transition to this stage. Only set when the user explicitly requests or when requirements for the next stage are met.'
+    )
 })
 
 const thinkingDocumentSchema = z.object({
@@ -264,11 +274,20 @@ export function createThinkingWorkflowTools(args: {
     contextUpdated: false,
     thinkingUpdated: false,
     contextUpdateCount: 0,
-    thinkingUpdateCount: 0
+    thinkingUpdateCount: 0,
+    requestedStage: null
   }
 
   const updateContextDocument = tool(
-    async (input: ContextDocumentInput) => {
+    async (input: ContextDocumentInput & { stage?: ThinkingStage }) => {
+      const requestedStage = input.stage
+      let stageNote = ''
+      if (requestedStage && isValidTransition(args.currentStage, requestedStage)) {
+        state.requestedStage = requestedStage
+      } else if (requestedStage) {
+        const validTargets = VALID_TRANSITIONS[args.currentStage].join(', ')
+        stageNote = ` Requested stage ${requestedStage} was ignored because it is not a valid transition from ${args.currentStage}. Valid targets: ${validTargets}.`
+      }
       const content = buildContextMd({
         stage: args.currentStage,
         topic: input.topic,
@@ -281,12 +300,12 @@ export function createThinkingWorkflowTools(args: {
       await writeContextMd(args.thinkingDir, content)
       state.contextUpdated = true
       state.contextUpdateCount += 1
-      return `context.md updated for stage ${args.currentStage}`
+      return `context.md updated for stage ${args.currentStage}.${stageNote}`
     },
     {
       name: 'update_context_document',
       description:
-        'Required thinking workflow tool. Persist rolling conversation memory to /context.md every turn: user intent, confirmed decisions, open questions, source notes, and latest direction. Stage is managed by the system; do not set it. Use this instead of write_file/edit_file for context.md.',
+        'Required thinking workflow tool. Persist rolling conversation memory to /context.md every turn: user intent, confirmed decisions, open questions, source notes, and latest direction. Optionally set `stage` to transition to a new stage when the user explicitly requests it or requirements for the next stage are met. Use this instead of write_file/edit_file for context.md.',
       schema: contextDocumentSchema
     }
   )

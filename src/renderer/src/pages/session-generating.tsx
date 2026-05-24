@@ -1,22 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import {
-  Sparkles,
-  Loader2,
-  CheckCircle2,
-  CircleAlert,
-  Home,
-  ChevronRight,
-  ChevronLeft
-} from 'lucide-react'
 import { ipc } from '@renderer/lib/ipc'
 import type { GenerateChunkEvent } from '@shared/generation.js'
-import { Button } from '../components/ui/Button'
-import { ScrollArea } from '../components/ui/ScrollArea'
 import videoSrc from '../assets/images/video.mp4'
-import dayjs from 'dayjs'
 import { getEditorGate, type EditorGate } from '../lib/sessionMetadata'
 import { useLang, type Lang } from '../i18n'
+import {
+  GenerationPreviewGrid,
+  GenerationSidebar,
+  GenerationStatusPanel,
+  type GenerationPreviewPage,
+  type GenerationStageKey
+} from '../components/session-generating'
 
 type LocationState = {
   initialPrompt?: string
@@ -24,14 +19,19 @@ type LocationState = {
   rerunToken?: number
 }
 
+type SessionGeneratedPage = {
+  id?: string
+  pageNumber: number
+  title: string
+  htmlPath?: string
+  pageId?: string
+  sourceUrl?: string
+  status?: string
+  error?: string | null
+}
+
 const NEUTRAL_GENERATION_PROMPT =
   'Create a clear first draft that can be previewed directly. Determine the content language from the session topic, outline, detailed brief, and source documents; do not infer it from the application UI language or this instruction language.'
-
-const extractFailedPages = (message: string | null): string[] => {
-  if (!message) return []
-  const matches = Array.from(message.matchAll(/\S+\([^)]+\)/g))
-  return matches.map((match) => match[0]).slice(0, 12)
-}
 
 const isSessionFullyGenerated = (gate: EditorGate): boolean =>
   gate.generatedCount >= gate.totalCount && gate.failedCount === 0
@@ -165,6 +165,115 @@ const progressLine = (args: {
   return parts.join(' · ')
 }
 
+const buildPagePlaceholders = (
+  totalPages: number,
+  lang: Lang,
+  existing: GenerationPreviewPage[] = []
+): GenerationPreviewPage[] => {
+  const count = Math.max(1, Math.floor(totalPages || 1))
+  const byNumber = new Map(existing.map((page) => [page.pageNumber, page]))
+  return Array.from({ length: count }, (_, index) => {
+    const pageNumber = index + 1
+    const existingPage = byNumber.get(pageNumber)
+    if (existingPage) return existingPage
+    return {
+      id: `placeholder-${pageNumber}`,
+      pageNumber,
+      title: friendlyText(lang, `第 ${pageNumber} 页`, `Page ${pageNumber}`),
+      status: 'pending'
+    }
+  })
+}
+
+const mergePreviewPage = (
+  pages: GenerationPreviewPage[],
+  incoming: GenerationPreviewPage,
+  totalPages: number,
+  lang: Lang
+): GenerationPreviewPage[] => {
+  const placeholders = buildPagePlaceholders(totalPages, lang, pages)
+  const index = placeholders.findIndex((page) => page.pageNumber === incoming.pageNumber)
+  const previousPage = index >= 0 ? placeholders[index] : undefined
+  const nextPage = {
+    ...incoming,
+    id: incoming.id || incoming.pageId || `page-${incoming.pageNumber}`,
+    pageId: incoming.pageId || `page-${incoming.pageNumber}`,
+    status: incoming.status,
+    previewVersion: (previousPage?.previewVersion || 0) + 1
+  }
+  if (index >= 0) {
+    placeholders[index] = {
+      ...placeholders[index],
+      ...nextPage
+    }
+  } else {
+    placeholders.push(nextPage)
+  }
+  return placeholders.sort((a, b) => a.pageNumber - b.pageNumber)
+}
+
+const buildPreviewPagesFromGeneratedPages = (
+  pageCount: number,
+  pages: SessionGeneratedPage[],
+  lang: Lang
+): GenerationPreviewPage[] => {
+  const maxPageNumber = pages.reduce((max, page) => Math.max(max, page.pageNumber || 0), 0)
+  const totalPages = Math.max(1, pageCount, maxPageNumber, pages.length)
+  return buildPagePlaceholders(
+    totalPages,
+    lang,
+    pages.map((page) => ({
+      id: page.id || page.pageId || `page-${page.pageNumber}`,
+      pageNumber: page.pageNumber,
+      title: page.title,
+      htmlPath: page.htmlPath,
+      pageId: page.pageId || `page-${page.pageNumber}`,
+      sourceUrl: page.sourceUrl,
+      status:
+        page.status === 'failed'
+          ? 'failed'
+          : page.status === 'completed' || page.htmlPath || page.sourceUrl
+            ? 'completed'
+            : 'pending'
+    }))
+  )
+}
+
+const updatePreviewPageStatus = (
+  pages: GenerationPreviewPage[],
+  incoming: {
+    id?: string
+    pageNumber: number
+    title: string
+    pageId?: string
+    htmlPath?: string
+    sourceUrl?: string
+    status: GenerationPreviewPage['status']
+  },
+  totalPages: number,
+  lang: Lang
+): GenerationPreviewPage[] => {
+  const placeholders = buildPagePlaceholders(totalPages, lang, pages)
+  return placeholders
+    .map((page) => {
+      if (page.pageNumber !== incoming.pageNumber) return page
+      const nextStatus =
+        page.status === 'completed' && incoming.status === 'generating'
+          ? page.status
+          : incoming.status
+      return {
+        ...page,
+        id: incoming.id || page.id,
+        pageId: incoming.pageId || page.pageId,
+        htmlPath: incoming.htmlPath || page.htmlPath,
+        sourceUrl: incoming.sourceUrl || page.sourceUrl,
+        title: incoming.title || page.title,
+        status: nextStatus
+      }
+    })
+    .sort((a, b) => a.pageNumber - b.pageNumber)
+}
+
 export function SessionGeneratingPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -186,12 +295,13 @@ export function SessionGeneratingPage(): React.JSX.Element {
     { text: t('generating.created'), time: new Date().toISOString() }
   ])
   const [error, setError] = useState<string | null>(null)
-  const [sessionTitle, setSessionTitle] = useState<string>(t('generating.currentSession'))
   const [totalPages, setTotalPages] = useState<number>(1)
-  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [editorGate, setEditorGate] = useState<EditorGate>(() => getEditorGate(null))
   const [currentStage, setCurrentStage] = useState<string>('preflight')
-  const [completedPageCount, setCompletedPageCount] = useState<number>(0)
+  const [previewPages, setPreviewPages] = useState<GenerationPreviewPage[]>(() =>
+    buildPagePlaceholders(1, lang)
+  )
+  const [presentationTitle, setPresentationTitle] = useState<string>('')
 
   const appendEvent = (line: string, timestamp?: string): void => {
     const el = eventsContainerRef.current
@@ -238,13 +348,13 @@ export function SessionGeneratingPage(): React.JSX.Element {
   }
 
   useLayoutEffect(() => {
-    if (panelCollapsed || !shouldAutoScrollRef.current) return
+    if (!shouldAutoScrollRef.current) return
     scrollLogToBottom()
-  }, [events, panelCollapsed, status])
+  }, [events, status])
 
   useEffect(() => {
     if (!id) {
-      navigate('/sessions')
+      navigate('/sessions', { replace: true })
       return
     }
     let active = true
@@ -255,10 +365,15 @@ export function SessionGeneratingPage(): React.JSX.Element {
       startedSessionRef.current = null
       activeRunIdRef.current = null
       terminalStatusRef.current = null
+      currentStageRef.current = 'preflight'
+      lastProgressLogRef.current = null
+      shouldAutoScrollRef.current = true
+      stickToBottomRef.current = true
       window.setTimeout(() => {
         setStatus('running')
         setProgress(0)
         setError(null)
+        setCurrentStage('preflight')
         setEvents([{ text: t('generating.created'), time: new Date().toISOString() }])
       }, 0)
     }
@@ -286,6 +401,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
         if (!Number.isFinite(next)) return
         const pages = Math.max(1, Math.floor(next as number))
         setTotalPages((prev) => Math.max(prev, pages))
+        setPreviewPages((prev) => buildPagePlaceholders(Math.max(prev.length, pages), lang, prev))
       }
       if (event.type === 'stage_started' || event.type === 'stage_progress') {
         applyProgress(event.payload.progress)
@@ -340,9 +456,6 @@ export function SessionGeneratingPage(): React.JSX.Element {
           ? friendlyFailureProgressDetail(lang)
           : friendlyProgressDetail(detail, lang)
         const pageMatch = detail.match(/(\d+)\/(\d+)\s*(页|pages?)/)
-        if (pageMatch) {
-          setCompletedPageCount(parseInt(pageMatch[1], 10))
-        }
 
         // Filter: only append meaningful events to log
         const hasPageCompletion = Boolean(pageMatch)
@@ -391,6 +504,22 @@ export function SessionGeneratingPage(): React.JSX.Element {
       if (event.type === 'page_generated' || event.type === 'page_updated') {
         applyProgress(event.payload.progress)
         applyTotalPages(Math.max(event.payload.totalPages ?? 0, event.payload.pageNumber))
+        setPreviewPages((prev) =>
+          mergePreviewPage(
+            prev,
+            {
+              id: event.payload.id || event.payload.pageId || `page-${event.payload.pageNumber}`,
+              pageNumber: event.payload.pageNumber,
+              title: event.payload.title,
+              htmlPath: event.payload.htmlPath,
+              pageId: event.payload.pageId || `page-${event.payload.pageNumber}`,
+              sourceUrl: event.payload.sourceUrl,
+              status: 'completed'
+            },
+            Math.max(prev.length, event.payload.totalPages || event.payload.pageNumber),
+            lang
+          )
+        )
         appendEvent(
           `${event.payload.label} · ${t('generating.pageDetail', { pageNumber: event.payload.pageNumber, title: event.payload.title })}`,
           event.payload.timestamp
@@ -399,6 +528,36 @@ export function SessionGeneratingPage(): React.JSX.Element {
       }
 
       if (event.type === 'assistant_message') {
+        return
+      }
+
+      if (event.type === 'page_started' || event.type === 'page_failed') {
+        applyProgress(event.payload.progress)
+        applyTotalPages(Math.max(event.payload.totalPages ?? 0, event.payload.pageNumber))
+        setPreviewPages((prev) =>
+          updatePreviewPageStatus(
+            prev,
+            {
+              id: event.payload.id || event.payload.pageId || `page-${event.payload.pageNumber}`,
+              pageNumber: event.payload.pageNumber,
+              title: event.payload.title,
+              htmlPath: event.payload.htmlPath,
+              pageId: event.payload.pageId || `page-${event.payload.pageNumber}`,
+              status: event.type === 'page_started' ? 'generating' : 'failed'
+            },
+            Math.max(prev.length, event.payload.totalPages || event.payload.pageNumber),
+            lang
+          )
+        )
+        if (event.type === 'page_failed') {
+          appendEvent(
+            progressLine({
+              label: friendlyText(lang, '页面生成失败', 'Page generation failed'),
+              detail: event.payload.title
+            }),
+            event.payload.timestamp
+          )
+        }
         return
       }
 
@@ -426,15 +585,23 @@ export function SessionGeneratingPage(): React.JSX.Element {
         appendEvent(t('generating.failedRetryOrBack'), event.payload.timestamp)
         void ipc
           .getSession(id)
-          .then(({ session }) => {
+          .then(({ session, generatedPages }) => {
             if (!active) return
+            const snapshot = session as {
+              status?: string
+              title?: string | null
+              page_count?: number | null
+              metadata?: string | null
+            } | null
+            setPresentationTitle(String(snapshot?.title || ''))
             setEditorGate(
-              getEditorGate(
-                session as {
-                  status?: string
-                  page_count?: number | null
-                  metadata?: string | null
-                } | null
+              getEditorGate(snapshot)
+            )
+            setPreviewPages(
+              buildPreviewPagesFromGeneratedPages(
+                typeof snapshot?.page_count === 'number' ? snapshot.page_count : 0,
+                generatedPages,
+                lang
               )
             )
           })
@@ -498,15 +665,23 @@ export function SessionGeneratingPage(): React.JSX.Element {
           setError(message)
           void ipc
             .getSession(id)
-            .then(({ session }) => {
+            .then(({ session, generatedPages }) => {
               if (!active) return
+              const snapshot = session as {
+                status?: string
+                title?: string | null
+                page_count?: number | null
+                metadata?: string | null
+              } | null
+              setPresentationTitle(String(snapshot?.title || ''))
               setEditorGate(
-                getEditorGate(
-                  session as {
-                    status?: string
-                    page_count?: number | null
-                    metadata?: string | null
-                  } | null
+                getEditorGate(snapshot)
+              )
+              setPreviewPages(
+                buildPreviewPagesFromGeneratedPages(
+                  typeof snapshot?.page_count === 'number' ? snapshot.page_count : 0,
+                  generatedPages,
+                  lang
                 )
               )
             })
@@ -515,8 +690,9 @@ export function SessionGeneratingPage(): React.JSX.Element {
     }
 
     void Promise.all([ipc.getSession(id), ipc.getGenerateState(id).catch(() => null)])
-      .then(([{ session }, runState]) => {
+      .then(([sessionResult, runState]) => {
         if (!active) return
+        const { session, generatedPages } = sessionResult
         const snapshot = (session || {}) as {
           status?: string
           title?: string | null
@@ -525,13 +701,18 @@ export function SessionGeneratingPage(): React.JSX.Element {
         }
         const currentStatus = snapshot.status || 'active'
         const snapshotGate = getEditorGate(snapshot)
+        setPresentationTitle(String(snapshot.title || ''))
         setEditorGate(snapshotGate)
-        if (snapshot.title && snapshot.title.trim().length > 0) {
-          setSessionTitle(snapshot.title)
-        }
         if (typeof snapshot.page_count === 'number' && snapshot.page_count > 0) {
           setTotalPages(Math.floor(snapshot.page_count))
         }
+        setPreviewPages(
+          buildPreviewPagesFromGeneratedPages(
+            typeof snapshot.page_count === 'number' ? snapshot.page_count : 0,
+            generatedPages,
+            lang
+          )
+        )
 
         const hasManualStartIntent = Boolean(
           state?.retry ||
@@ -646,25 +827,72 @@ export function SessionGeneratingPage(): React.JSX.Element {
   }, [id, navigate, location.key, state?.initialPrompt, state?.retry, state?.rerunToken, lang, t])
 
   const displayProgress = Math.max(0, Math.min(100, Math.round(progress)))
-  const failedPages = extractFailedPages(error)
   const fullyGenerated = isSessionFullyGenerated(editorGate)
   const hasGeneratedPages = editorGate.generatedCount > 0
   const canEnterEditor = getEditorGate(
     { page_count: editorGate.totalCount, generatedCount: editorGate.generatedCount },
     0.68
   ).canEdit
+  const completedPreviewCount = previewPages.filter((page) => page.status === 'completed').length
+  const failedPreviewLabels = previewPages
+    .filter((page) => page.status === 'failed')
+    .map((page) => `P${page.pageNumber}`)
+  const failedPageSummary =
+    failedPreviewLabels.length > 0
+      ? friendlyText(
+          lang,
+          `${failedPreviewLabels.join('、')} 失败`,
+          `${failedPreviewLabels.join(', ')} failed`
+        )
+      : null
+  const failureMessage =
+    failedPageSummary ||
+    (error && /部分页面生成失败|some pages failed|pages failed/i.test(error)
+      ? t('generating.failedRetry')
+      : error || t('generating.failedRetry'))
+  const displayedTotalPages = Math.max(totalPages, previewPages.length)
+  const generationStages = [
+    'preflight',
+    'planning',
+    'rendering',
+    'validation'
+  ] as const satisfies readonly GenerationStageKey[]
+  const stageLabels: Record<GenerationStageKey, string> = {
+    preflight: t('generating.stages.preflight'),
+    planning: t('generating.stages.planning'),
+    rendering: t('generating.stages.rendering'),
+    validation: t('generating.stages.validation')
+  }
+  const handleContinueRemaining = (): void => {
+    if (!id) return
+    navigate(`/sessions/${id}/generating`, {
+      replace: true,
+      state: {
+        retry: true,
+        rerunToken: Date.now()
+      }
+    })
+  }
+  const handleRegenerate = (): void => {
+    if (!id) return
+    navigate(`/sessions/${id}/generating`, {
+      replace: true,
+      state: {
+        initialPrompt: state?.initialPrompt,
+        retry: false,
+        rerunToken: Date.now()
+      }
+    })
+  }
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-[linear-gradient(165deg,#d8edf8_0%,#cce6ee_38%,#e9e3d1_100%)]">
+    <div className="relative flex h-full flex-col overflow-hidden bg-[#edf3e8]">
       <style>{`
         @keyframes gen-shimmer-move { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+        @keyframes gen-page-rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
       `}</style>
 
-      <div className="app-drag-region app-titlebar relative z-10 flex items-center bg-[#fff9ef]/92 backdrop-blur-sm" />
-
-      {/* ── Main content area: video background ── */}
-      <div className="relative flex flex-1 overflow-hidden">
-        {/* Looping video background */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <video
           src={videoSrc}
           controls={false}
@@ -672,281 +900,62 @@ export function SessionGeneratingPage(): React.JSX.Element {
           loop
           muted
           playsInline
-          className="absolute inset-0 h-full w-full object-cover"
+          className="h-full w-full object-cover object-bottom opacity-70"
         />
-
-        {/* Info panel — top-left overlay */}
-        <div className="app-no-drag absolute left-6 top-16 z-10 flex max-w-[460px] items-start gap-3 rounded-xl border border-[#d4d9be]/80 bg-[#fff9ef]/72 px-4 py-3 text-[#4f613f] shadow-[0_10px_22px_rgba(79,97,63,0.18)] backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#d8ccb5]/80 bg-[#fff9ef]/78 text-[#5d6b4d] transition-colors hover:bg-[#fff7e8] hover:text-[#3e4a32]"
-            aria-label={t('generating.backHome')}
-            title={t('generating.backHome')}
-          >
-            <Home className="h-4 w-4" />
-          </button>
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#7d8b63]">
-              {t('generating.eyebrow')}
-            </p>
-            <p className="mt-1 organic-serif text-2xl font-semibold leading-none">
-              {t('generating.title')}
-            </p>
-            <p className="mt-2 max-w-[380px] truncate text-xs text-[#7b8963]">{sessionTitle}</p>
-          </div>
-        </div>
-
-        {/* ── Right-side log panel ── */}
-        {panelCollapsed ? (
-          <button
-            type="button"
-            onClick={() => {
-              shouldAutoScrollRef.current = true
-              stickToBottomRef.current = true
-              setPanelCollapsed(false)
-            }}
-            className="app-no-drag absolute right-6 top-[calc(var(--app-titlebar-height)+12px)] z-30 inline-flex items-center gap-2 rounded-xl border border-[#d8ccb5]/75 bg-[#fff9ef]/86 px-3 py-2 text-[#5f7550] shadow-[0_14px_30px_rgba(83,73,57,0.24)] backdrop-blur-sm transition-colors hover:bg-[#fff6e8]"
-            aria-label={t('generating.expandLog')}
-            title={t('generating.expandLog')}
-          >
-            {status === 'running' && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#6f8159]" />
-            )}
-            {status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
-            {status === 'failed' && <CircleAlert className="h-3.5 w-3.5 text-[#b86966]" />}
-            <ChevronLeft className="h-4 w-4" />
-            <span className="text-xs font-semibold tracking-wide">{t('generating.logTitle')}</span>
-          </button>
-        ) : (
-          <aside className="app-no-drag absolute bottom-6 right-6 top-[calc(var(--app-titlebar-height)+12px)] z-20 flex w-[320px] min-h-0 flex-col rounded-xl border border-[#d8ccb5]/70 bg-[#fff9ef]/74 p-3 shadow-[0_20px_46px_rgba(88,74,54,0.26)] backdrop-blur-xl">
-            <div className="mb-2.5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium text-[#495a3b]">
-                <Sparkles className="h-4 w-4 text-[#6f8159]" />
-                {t('generating.logTitle')}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="rounded-full border border-[#d8ccb5]/80 bg-[#fff9ef]/84 p-2">
-                  {status === 'running' && (
-                    <Loader2 className="h-4 w-4 animate-spin text-[#6f8159]" />
-                  )}
-                  {status === 'completed' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                  {status === 'failed' && <CircleAlert className="h-4 w-4 text-[#b86966]" />}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPanelCollapsed(true)}
-                  className="rounded-full border border-[#d8ccb5]/80 bg-[#fff9ef]/84 p-2 transition-colors hover:bg-[#fff7e8]"
-                  aria-label={t('generating.collapseLog')}
-                  title={t('generating.collapseLog')}
-                >
-                  <ChevronRight className="h-4 w-4 text-[#6f8159]" />
-                </button>
-              </div>
-            </div>
-
-            <ScrollArea
-              className="min-h-0 flex-1 rounded-lg border border-[#e4d9c3]/55 bg-[#fffaf1]/36"
-              viewportRef={eventsContainerRef}
-              onViewportScroll={(e) => {
-                const el = e.currentTarget
-                stickToBottomRef.current = isNearLogBottom(el)
-                if (stickToBottomRef.current) {
-                  shouldAutoScrollRef.current = true
-                }
-              }}
-              viewportClassName="px-2 py-2"
-            >
-              <div className="space-y-2">
-                {events.map((event, index) => (
-                  <div
-                    key={`${event.text}-${index}`}
-                    className="relative rounded-lg border border-[#e4d9c3]/70 bg-white/42 px-2.5 py-1.5 text-xs leading-5 text-[#5a674c]"
-                  >
-                    {event.time && (
-                      <div className="mb-0.5 text-[10px] leading-4 text-[#a09882]">
-                        {dayjs(event.time).format('HH:mm:ss')}
-                      </div>
-                    )}
-                    <div className="break-words">{event.text}</div>
-                  </div>
-                ))}
-                {status === 'running' && (
-                  <div className="flex items-center gap-2 rounded-lg border border-[#e4d9c3]/70 bg-white/42 px-2.5 py-1.5 text-xs text-[#a09882]">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>{t('generating.growing')}</span>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </aside>
-        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(237,243,232,0.86)_0%,rgba(237,243,232,0.72)_42%,rgba(237,243,232,0.48)_100%)]" />
       </div>
 
-      {/* ── Bottom progress bar ── */}
-      <div className="relative z-20 border-t border-[#d8ccb5]/65 bg-[#fff7e7]/88 px-6 py-2 backdrop-blur-sm">
-        <div className="mx-auto max-w-[1400px]">
-          <div className="mb-1.5 flex items-center justify-between text-[11px] text-[#617350]">
-            <div className="flex items-center gap-2">
-              {status === 'completed' && (
-                <span>{t('sessions.statusComplete')}</span>
-              )}
-              {status === 'failed' && (
-                <span>{t('generating.interrupted')}</span>
-              )}
-              {/* Step indicator */}
-              {(() => {
-                const stages = ['preflight', 'planning', 'rendering', 'validation'] as const
-                const stageLabels: Record<string, string> = {
-                  preflight: t('generating.stages.preflight'),
-                  planning: t('generating.stages.planning'),
-                  rendering: t('generating.stages.rendering'),
-                  validation: t('generating.stages.validation')
-                }
-                const activeIndex = stages.indexOf(currentStage as typeof stages[number])
-                const renderStage = stages[2]
-                return (
-                  <div className="flex items-center gap-1 text-[10px]">
-                    {stages.map((stage, i) => {
-                      const isActive = i === activeIndex
-                      const isDone = i < activeIndex || status === 'completed'
-                      const isRenderingActive = stage === renderStage && isActive
-                      return (
-                        <span key={stage} className="flex items-center gap-1">
-                          {i > 0 && (
-                            <span className={`mx-0.5 h-px w-3 ${isDone ? 'bg-[#6f9f59]' : 'bg-[#c8bfb0]'}`} />
-                          )}
-                          <span
-                            className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 font-medium ${
-                              isDone
-                                ? 'text-[#4f7b3f]'
-                                : isActive
-                                  ? 'bg-[#eef5e8] text-[#3e5a30]'
-                                  : 'text-[#a09882]'
-                            }`}
-                          >
-                            {isDone && !isActive && (
-                              <CheckCircle2 className="h-3 w-3" />
-                            )}
-                            {isActive && (
-                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#4f7b3f]" />
-                            )}
-                            {isRenderingActive && completedPageCount > 0
-                              ? `${stageLabels[stage]} ${completedPageCount}/${totalPages}`
-                              : stageLabels[stage]}
-                          </span>
-                        </span>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-            </div>
-            <div className="flex items-center gap-2">
-              {status === 'running' && (
-                <>
-                  {canEnterEditor && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/sessions/${id}`)}
-                      className="inline-flex h-6 cursor-pointer items-center rounded-md border border-[#b5c9a8]/80 bg-[#eef5e8]/80 px-2 text-[10px] font-semibold text-[#4f7b3f] transition-colors hover:bg-[#e2edd8] hover:text-[#3e5a30]"
-                    >
-                      {t('generating.enterEditor')}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!id) return
-                      void ipc.cancelGenerate(id)
-                    }}
-                    className="inline-flex h-6 cursor-pointer items-center rounded-md border border-[#d7b5ae]/80 bg-[#fbf1ee]/80 px-2 text-[10px] font-semibold text-[#93564f] transition-colors hover:bg-[#f5e0db] hover:text-[#7a3e38]"
-                  >
-                    {t('generating.cancelGeneration')}
-                  </button>
-                </>
-              )}
-              <span className="font-semibold">{displayProgress}%</span>
-            </div>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full border border-[#d8ccb5]/80 bg-[#fff9ef]/75 shadow-[inset_0_1px_2px_rgba(74,58,40,0.12)]">
-            <div
-              className="h-full rounded-full bg-[linear-gradient(90deg,#9ecf8a_0%,#6f9f59_52%,#4f7b3f_100%)] bg-[length:200%_100%] transition-[width] duration-500"
-              style={{
-                width: `${Math.max(2, displayProgress)}%`,
-                animation: 'gen-shimmer-move 2.8s linear infinite'
-              }}
-            />
-          </div>
+      <div className="app-drag-region app-titlebar relative z-20 flex items-center bg-[#f7f0e2]/90 backdrop-blur-sm" />
 
-          {status === 'failed' && (
-            <div className="mt-2 rounded-lg border border-[#d7b5ae] bg-[#fbf1ee] px-4 py-3 text-sm text-[#93564f]">
-              <div>{error || t('generating.failedRetry')}</div>
-              {failedPages.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {failedPages.map((page) => (
-                    <span
-                      key={page}
-                      className="rounded-md border border-[#d7b5ae]/70 bg-[#fff8f4]/75 px-2 py-1 text-xs text-[#8e5a53]"
-                    >
-                      {page}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="mt-3 flex items-center gap-2">
-                {canEnterEditor && (
-                  <Button
-                    size="sm"
-                    onClick={() => navigate(`/sessions/${id}`)}
-                  >
-                    {t('generating.enterEditor')}
-                  </Button>
-                )}
-                {!fullyGenerated && hasGeneratedPages && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      navigate(`/sessions/${id}/generating`, {
-                        replace: true,
-                        state: {
-                          retry: true,
-                          rerunToken: Date.now()
-                        }
-                      })
-                    }
-                  >
-                    {t('generating.continueRemaining')}
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate('/sessions', { replace: true })}
-                >
-                  {t('generating.backToSessions')}
-                </Button>
-                {!hasGeneratedPages && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      navigate(`/sessions/${id}/generating`, {
-                        replace: true,
-                        state: {
-                          initialPrompt: state?.initialPrompt,
-                          retry: false,
-                          rerunToken: Date.now()
-                        }
-                      })
-                    }
-                  >
-                    {t('generating.regenerate')}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="app-no-drag relative z-10 flex min-h-0 flex-1 flex-col gap-4 px-5 pb-5 pt-4 lg:flex-row">
+        <GenerationSidebar
+          title={presentationTitle || t('generating.title')}
+          backHomeLabel={t('generating.backHome')}
+          logTitle={friendlyText(lang, '生成日志', 'Generation log')}
+          pageCountLabel={`${completedPreviewCount}/${displayedTotalPages}`}
+          growingLabel={t('generating.growing')}
+          failedLabel={t('generating.failed')}
+          events={events}
+          status={status}
+          onBackHome={() => navigate('/')}
+          viewportRef={eventsContainerRef}
+          onViewportScroll={(e) => {
+            const el = e.currentTarget
+            stickToBottomRef.current = isNearLogBottom(el)
+            if (stickToBottomRef.current) {
+              shouldAutoScrollRef.current = true
+            }
+          }}
+        />
+
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <GenerationStatusPanel
+            status={status}
+            progress={displayProgress}
+            stages={generationStages}
+            stageLabels={stageLabels}
+            currentStage={currentStage}
+            completedPageCount={completedPreviewCount}
+            totalPages={displayedTotalPages}
+            error={failureMessage}
+            interruptedLabel={t('generating.interrupted')}
+            enterEditorLabel={t('generating.enterEditor')}
+            continueRemainingLabel={t('generating.continueRemaining')}
+            regenerateLabel={t('generating.regenerate')}
+            cancelLabel={t('generating.cancelGeneration')}
+            hasGeneratedPages={hasGeneratedPages && !fullyGenerated}
+            canEnterEditor={canEnterEditor}
+            onEnterEditor={() => navigate(`/sessions/${id}`)}
+            onContinueRemaining={handleContinueRemaining}
+            onRegenerate={handleRegenerate}
+            onCancel={() => {
+              if (!id) return
+              void ipc.cancelGenerate(id)
+            }}
+          />
+
+          <GenerationPreviewGrid pages={previewPages} />
+        </main>
       </div>
     </div>
   )

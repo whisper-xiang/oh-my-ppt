@@ -3,6 +3,7 @@ import path from 'path'
 import log from 'electron-log/main.js'
 import type { ThinkingChatMessage, ThinkingStage } from '@shared/thinking'
 import { getStagePrompt } from './prompts'
+import { VALID_TRANSITIONS } from './stage-manager'
 
 export interface ThinkingContextArgs {
   stage: ThinkingStage
@@ -21,6 +22,11 @@ export async function buildThinkingContext(args: ThinkingContextArgs): Promise<{
   const { stage, thinkingMd, contextMd, sourcesDir, userMessage, recentMessages } = args
 
   const stagePrompt = getStagePrompt(stage)
+  const validTargets = VALID_TRANSITIONS[stage].filter((s) => s !== stage)
+  const stageAwareSuffix = validTargets.length > 0
+    ? `\n\nYou are in stage "${stage}". When the user's intent clearly matches a later stage, call update_context_document with \`stage\` set to the target stage. Valid transitions from ${stage}: ${validTargets.join(', ')}.`
+    : ''
+  const systemPrompt = stagePrompt + stageAwareSuffix
 
   // Build source file index instead of inlining content — AI will use read_file/grep tools to read on demand
   let sourceContent = ''
@@ -41,8 +47,6 @@ export async function buildThinkingContext(args: ThinkingContextArgs): Promise<{
       sourceContent = fileEntries.join('\n')
     }
   }
-
-  const systemPrompt = stagePrompt
 
   const contextParts: string[] = []
 

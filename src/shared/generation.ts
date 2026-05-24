@@ -135,6 +135,15 @@ export interface GeneratedPagePayload {
   sourceUrl?: string
 }
 
+export interface PageStatusPayload {
+  id?: string
+  pageNumber: number
+  title: string
+  pageId?: string
+  htmlPath?: string
+  error?: string
+}
+
 export interface GenerateStagePayload {
   runId: string
   sessionId?: string
@@ -178,6 +187,10 @@ export type GenerateChunkEvent =
   | {
       type: 'page_updated'
       payload: GenerateStagePayload & GeneratedPagePayload
+    }
+  | {
+      type: 'page_started' | 'page_failed'
+      payload: GenerateStagePayload & PageStatusPayload
     }
   | {
       type: 'run_completed'

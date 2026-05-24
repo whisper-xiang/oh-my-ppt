@@ -371,6 +371,25 @@ export async function executeDeckGeneration(
       pageId: page.pageId,
       htmlPath: page.htmlPath
     })
+    const pageRef = pageRefs.find((item) => item.pageId === page.pageId)
+    emitDeckChunk({
+      type: 'page_generated',
+      payload: {
+        runId: context.runId,
+        stage: 'rendering',
+        label: progressText(context.appLocale, 'completed'),
+        progress: 10 + Math.round((page.pageNumber / Math.max(pageRefs.length, 1)) * 80),
+        currentPage: page.pageNumber,
+        totalPages: pageRefs.length,
+        id: pageRef?.id,
+        pageNumber: page.pageNumber,
+        title: page.title,
+        html,
+        pageId: page.pageId,
+        htmlPath: page.htmlPath,
+        sourceUrl: getPageSourceUrl(page.htmlPath)
+      }
+    })
     await persistGenerationSnapshotMetadata()
   }
   const persistFailedGeneratedPage = async (page: {
@@ -587,18 +606,6 @@ export async function executeDeckGeneration(
         status: 'completed'
       })
     }
-    emitDeckChunk({
-      type: 'page_generated',
-      payload: {
-        runId: context.runId,
-        stage: 'rendering',
-        label: progressText(context.appLocale, 'completed'),
-        progress: 10 + Math.round((page.pageNumber / Math.max(pageRefs.length, 1)) * 80),
-        currentPage: page.pageNumber,
-        totalPages: pageRefs.length,
-        ...page
-      }
-    })
     const changed = beforePageMap.get(pageRef.pageId) !== html
     await db.addMessage(context.sessionId, {
       role: 'tool',
@@ -636,6 +643,22 @@ export async function executeDeckGeneration(
     for (const failedPage of failedPages) {
       const pageRef = pageRefs.find((page) => page.pageId === failedPage.pageId)
       if (!pageRef) continue
+      emitDeckChunk({
+        type: 'page_failed',
+        payload: {
+          runId: context.runId,
+          stage: 'validation',
+          label: progressText(context.appLocale, 'failed'),
+          progress: 92,
+          currentPage: pageRef.pageNumber,
+          totalPages: pageRefs.length,
+          pageNumber: pageRef.pageNumber,
+          pageId: pageRef.pageId,
+          title: pageRef.title,
+          htmlPath: pageRef.htmlPath,
+          error: failedPage.reason
+        }
+      })
       await db.upsertGenerationPage({
         runId: context.runId,
         sessionId: context.sessionId,

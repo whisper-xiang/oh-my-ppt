@@ -1038,6 +1038,7 @@ export const runDeepAgentDeckGeneration = async (args: {
       throw new Error(uiText(args.appLocale, '生成已取消', 'Generation canceled'))
     }
     const pageStartedAt = Date.now()
+    const currentPagePath = args.pageFileMap[page.pageId]
 
     emitPageStatus({
       pageId: page.pageId,
@@ -1045,8 +1046,22 @@ export const runDeepAgentDeckGeneration = async (args: {
       detail: `${page.pageId} · ${page.title}`,
       pageProgress: 5
     })
+    args.emit?.({
+      type: 'page_started',
+      payload: {
+        runId: args.runId || '',
+        stage: 'rendering',
+        label: progressText(args.appLocale, 'generating'),
+        progress: getOverallRenderProgress(),
+        currentPage: page.pageNumber,
+        totalPages,
+        pageNumber: page.pageNumber,
+        pageId: page.pageId,
+        title: page.title,
+        htmlPath: currentPagePath
+      }
+    })
 
-    const currentPagePath = args.pageFileMap[page.pageId]
     if (!currentPagePath) {
       throw new Error(`pageFileMap 缺少 ${page.pageId} 对应文件路径`)
     }
@@ -1382,6 +1397,22 @@ export const runDeepAgentDeckGeneration = async (args: {
           }
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error)
+          args.emit?.({
+            type: 'page_failed',
+            payload: {
+              runId: args.runId || '',
+              stage: 'rendering',
+              label: progressText(args.appLocale, 'failed'),
+              progress: getOverallRenderProgress(),
+              currentPage: page.pageNumber,
+              totalPages,
+              pageNumber: page.pageNumber,
+              pageId: page.pageId,
+              title: page.title,
+              htmlPath: args.pageFileMap[page.pageId] || '',
+              error: reason
+            }
+          })
           await args.onPageFailed?.({
             pageNumber: page.pageNumber,
             pageId: page.pageId,

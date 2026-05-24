@@ -1,6 +1,6 @@
 import type { ThinkingStage } from '@shared/thinking'
 
-const VALID_TRANSITIONS: Record<ThinkingStage, ThinkingStage[]> = {
+export const VALID_TRANSITIONS: Record<ThinkingStage, ThinkingStage[]> = {
   collect: ['collect', 'outline'],
   outline: ['collect', 'draft', 'ready'],
   draft: ['collect', 'outline', 'refine', 'ready'],
@@ -41,7 +41,7 @@ export function detectStageFallback(userMessage: string): ThinkingStage | null {
     return 'refine'
   }
 
-  if (/可以了|生成吧|确认生成|就按这个|ready|confirm|looks good/.test(lower)) {
+  if (/可以了|生成吧|开始生成|确认生成|就按这个|ready|confirm|looks good/.test(lower)) {
     return 'ready'
   }
 
@@ -56,19 +56,23 @@ export function resolveRequestedStage(args: {
   if (!args.requestedStage) return null
   if (args.requestedStage === args.currentStage) return args.requestedStage
   if (!VALID_TRANSITIONS[args.currentStage].includes(args.requestedStage)) return null
-
-  const pageCount = countPageHeadings(args.thinkingMd)
-  if (args.requestedStage !== 'collect' && pageCount === 0) return null
-  if (
-    (args.requestedStage === 'draft' ||
-      args.requestedStage === 'refine' ||
-      args.requestedStage === 'ready') &&
-    pageCount < 2
-  ) {
-    return null
-  }
+  if (!hasThinkingContentForStage(args.requestedStage, args.thinkingMd)) return null
 
   return args.requestedStage
+}
+
+export function isValidTransition(from: ThinkingStage, to: ThinkingStage): boolean {
+  return VALID_TRANSITIONS[from].includes(to)
+}
+
+function hasThinkingContentForStage(stage: ThinkingStage, thinkingMd: string): boolean {
+  if (stage === 'collect') return true
+
+  const pageCount = countPageHeadings(thinkingMd)
+  const hasTopic = hasNonEmptySection(thinkingMd, 'Topic')
+  if (stage === 'outline') return hasTopic && pageCount >= 2
+
+  return hasTopic && hasCompletePagePlan(thinkingMd)
 }
 
 export function isRestartRequest(userMessage: string): boolean {
@@ -78,6 +82,38 @@ export function isRestartRequest(userMessage: string): boolean {
 function countPageHeadings(thinkingMd: string): number {
   const matches = thinkingMd.match(/^##\s*Page\s+\d+\s*:/gm)
   return matches ? matches.length : 0
+}
+
+function hasCompletePagePlan(thinkingMd: string): boolean {
+  const pageSections = getPageSections(thinkingMd)
+  return pageSections.length >= 2 && pageSections.every(hasCompletePageSection)
+}
+
+function getPageSections(thinkingMd: string): string[] {
+  const headingRegex = /^##\s*Page\s+\d+\s*:/gm
+  const headings = Array.from(thinkingMd.matchAll(headingRegex))
+  return headings.map((heading, index) => {
+    const start = heading.index || 0
+    const next = headings[index + 1]
+    const end = typeof next?.index === 'number' ? next.index : thinkingMd.length
+    return thinkingMd.slice(start, end).trim()
+  })
+}
+
+function hasCompletePageSection(pageSection: string): boolean {
+  const hasTitle = /^##\s*Page\s+\d+\s*:\s*\S+/m.test(pageSection)
+  const hasRole = /^-\s*Role:\s*\S+/mi.test(pageSection)
+  const hasObjective = /^-\s*Objective:\s*\S+/mi.test(pageSection)
+  const contentLines = pageSection
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^##\s*Page\s+\d+\s*:/i.test(line))
+    .filter((line) => !/^-\s*(Role|Objective):/i.test(line))
+  const hasSummary = contentLines.some((line) => !line.startsWith('- '))
+  const hasKeyPoints = contentLines.some((line) => /^-\s+\S+/.test(line))
+
+  return hasTitle && hasRole && hasObjective && hasSummary && hasKeyPoints
 }
 
 function hasNonEmptySection(markdown: string, heading: string): boolean {

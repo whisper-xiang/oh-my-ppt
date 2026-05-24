@@ -181,6 +181,7 @@ export const en = {
     providerPlaceholder: 'Select Provider',
     modelHint: 'Any compatible model name for this provider is accepted.',
     baseUrlHint: 'Enter a service URL compatible with the selected provider protocol.',
+    baseUrlHintGoogle: 'Leave empty for official Google API. Fill only if using a proxy.',
     maxTokensHint: 'Max output tokens, default 4096. Generally no need to change. Adjust based on model limits.',
     timeoutSection: 'Model timeouts (seconds)',
     timeoutPlanning: 'Outline planning',
@@ -706,7 +707,9 @@ Business presentations, product introductions, project summaries — formal but 
     fontMode: 'Font',
     prepareFailed: 'Failed to prepare generation',
     uploadFailed: 'Failed to upload sources',
-    uploadTooltip: 'Supports .md, .txt, .csv, .docx documents and .png, .jpg, .webp images',
+    removeSource: 'Remove source',
+    removeSourceFailed: 'Failed to remove source',
+    uploadTooltip: 'Supports .md, .txt, .csv, .docx documents (up to {documentMaxSize}MB each) and .png, .jpg, .webp images (up to {imageMaxSize}MB each)',
     needMoreWork: 'Complete the outline before generating'
   }
 } satisfies DeepStringShape<typeof zh>

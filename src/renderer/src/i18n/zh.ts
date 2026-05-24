@@ -173,6 +173,7 @@ export const zh = {
     providerPlaceholder: '选择 Provider',
     modelHint: '只要该 provider 兼容这个模型名即可，不做限制。',
     baseUrlHint: '请填写兼容 provider 协议的服务地址。',
+    baseUrlHintGoogle: '使用 Google 官方 API 无需填写，使用代理时填写代理地址。',
     maxTokensHint: '模型最大输出 token 数，默认 4096。一般无需修改，可按模型支持的上限调整。',
     timeoutSection: '模型超时设置（秒）',
     timeoutPlanning: '大纲规划',
@@ -327,7 +328,7 @@ export const zh = {
     incompleteNone: '会话尚未完成：当前 0/{total} 页。请重新生成。',
     noValidPagesEvent: '已失败',
     backHome: '返回首页',
-    title: 'AI 正在生成你的创意',
+    title: '正在生成创意',
     expandLog: '展开日志面板',
     collapseLog: '收起日志面板',
     logTitle: '进度日志',
@@ -661,7 +662,7 @@ export const zh = {
     chatTitle: 'AI 对话',
     thinking: '思考中...',
     inputPlaceholder: '描述你想呈现的主题和内容...',
-    welcomeMessage: '你好，我来帮你把创意整理成清晰的内容方案。\n\n可以从这些地方开始：\n\n- **说一个想法**，我会帮你拆成结构和重点\n- **上传素材**，我会从里面提炼可用内容\n- **说“按这个生成创意大纲”**，我会先整理方案再进入生成\n\n把你的创意、资料或方向发给我就行。',
+    welcomeMessage: '你好，我来帮你把创意整理成清晰的内容方案。\n\n可以这样开始：\n\n- **说一个想法**，我会帮你拆成结构和重点\n- **上传素材后说”按这个生成大纲”**，我会从素材中提炼内容，整理成方案再进入生成\n\n把你的创意、资料或方向发给我就行。',
     sourceCount: '{count} 个素材',
     pageCardsTitle: '页面大纲',
     pageCountLabel: '{count} 页',
@@ -681,7 +682,9 @@ export const zh = {
     fontMode: '字体方案',
     prepareFailed: '准备生成失败',
     uploadFailed: '素材上传失败',
-    uploadTooltip: '支持 .md、.txt、.csv、.docx 文档和 .png、.jpg、.webp 图片',
+    removeSource: '移除素材',
+    removeSourceFailed: '移除素材失败',
+    uploadTooltip: '支持 .md、.txt、.csv、.docx 文档（单个 ≤ {documentMaxSize}MB）和 .png、.jpg、.webp 图片（单张 ≤ {imageMaxSize}MB）',
     needMoreWork: '请先完成大纲后再生成'
   }
 } as const

@@ -12,7 +12,7 @@ Workflow:
 - Never repeat source content back.
 - Never create placeholder pages. Do not write TBD, 待定, 待完善, or empty filler.
 - Keep confirmed decisions separate from guesses. Do not persist guesses as confirmed decisions.
-- Stage is managed by the system. Do not claim a stage transition unless the user explicitly requested it.
+- To transition to a new stage, call update_context_document with the 'stage' field set to the target stage. Only do this when the user explicitly requests a transition or when requirements for the next stage are clearly met.
 
 Thinking.md format: # Thinking Brief / ## Topic / ## Audience / ## Setting / ## Tone / ## Style / ## Font / ## Page Count / ## Page 1: title.
 Each page must include:
