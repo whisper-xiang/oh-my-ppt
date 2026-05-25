@@ -313,6 +313,23 @@
     return scaleKey === defaultCategoryAxis;
   }
 
+  function resolveChartTooltipValue(context) {
+    if (!context) return "";
+    var chartOptions = context.chart && context.chart.options && typeof context.chart.options === "object"
+      ? context.chart.options
+      : null;
+    var indexAxis = chartOptions && chartOptions.indexAxis === "y" ? "y" : "x";
+    var parsed = context.parsed && typeof context.parsed === "object" ? context.parsed : null;
+    if (parsed) {
+      var valueAxis = indexAxis === "y" ? "x" : "y";
+      if (parsed[valueAxis] !== undefined) return parsed[valueAxis];
+      if (parsed.y !== undefined) return parsed.y;
+      if (parsed.x !== undefined) return parsed.x;
+    }
+    if (context.formattedValue !== undefined) return context.formattedValue;
+    return context.raw;
+  }
+
   function ensureChartNumberFormatters(config) {
     if (!config || typeof config !== "object") return;
     var options = config.options && typeof config.options === "object" ? config.options : (config.options = {});
@@ -344,9 +361,7 @@
     if (typeof callbacks.label !== "function") {
       callbacks.label = function (context) {
         var label = context && context.dataset && context.dataset.label ? String(context.dataset.label) + ": " : "";
-        var value = context && context.parsed && typeof context.parsed === "object"
-          ? (context.parsed.y !== undefined ? context.parsed.y : context.parsed.x)
-          : context && context.raw;
+        var value = resolveChartTooltipValue(context);
         return label + (typeof value === "number" ? formatChartNumber(value, 6) : String(value == null ? "" : value));
       };
     }
@@ -851,7 +866,7 @@
     } else if (patch && typeof patch === "object") {
       if (Object.prototype.hasOwnProperty.call(patch, "data")) chart.data = normalizeChartData(patch.data);
       if (Object.prototype.hasOwnProperty.call(patch, "options")) {
-        var patchedConfig = { options: patch.options };
+        var patchedConfig = { data: chart.data, options: patch.options };
         ensureChartNumberFormatters(patchedConfig);
         chart.options = patchedConfig.options;
       }

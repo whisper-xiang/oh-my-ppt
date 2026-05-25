@@ -504,21 +504,42 @@ describe('PPT.animate tracks animations for stop/resume', () => {
 })
 
 describe('PPT.createChart tick formatters', () => {
+  function installMockChart() {
+    const previousChart = (globalThis as Record<string, unknown>).Chart
+    const instances = new Map<HTMLCanvasElement, Record<string, any>>()
+    const ChartMock = vi.fn(function (this: Record<string, any>, target: HTMLCanvasElement, config: Record<string, any>) {
+      this.canvas = target
+      this.data = config.data
+      this.options = config.options
+      this.resize = vi.fn()
+      this.update = vi.fn()
+      this.destroy = vi.fn()
+      instances.set(target, this)
+    }) as unknown as ReturnType<typeof vi.fn> & {
+      getChart: ReturnType<typeof vi.fn>
+    }
+    ChartMock.getChart = vi.fn((target: HTMLCanvasElement) => instances.get(target) || null)
+    ;(globalThis as Record<string, unknown>).Chart = ChartMock
+    return {
+      ChartMock,
+      restore: () => {
+        if (previousChart === undefined) {
+          delete (globalThis as Record<string, unknown>).Chart
+        } else {
+          ;(globalThis as Record<string, unknown>).Chart = previousChart
+        }
+      }
+    }
+  }
+
   it('keeps category axis labels instead of displaying numeric indexes', () => {
     const { PPT } = setupRuntime()
     document.body.innerHTML = '<canvas id="chart"></canvas>'
 
-    let capturedConfig: Record<string, any> | null = null
-    const previousChart = (globalThis as Record<string, unknown>).Chart
-    ;(globalThis as Record<string, unknown>).Chart = vi.fn(function (this: Record<string, unknown>, target: HTMLCanvasElement, config: Record<string, any>) {
-      this.canvas = target
-      this.resize = vi.fn()
-      this.update = vi.fn()
-      capturedConfig = config
-    })
+    const { restore } = installMockChart()
 
     try {
-      ;(PPT.createChart as Function)(document.getElementById('chart'), {
+      const chart = (PPT.createChart as Function)(document.getElementById('chart'), {
         type: 'line',
         data: {
           labels: ['2000', '2005', '2010'],
@@ -532,20 +553,82 @@ describe('PPT.createChart tick formatters', () => {
         }
       })
 
-      const xCallback = capturedConfig?.options.scales.x.ticks.callback
-      const yCallback = capturedConfig?.options.scales.y.ticks.callback
+      const xCallback = chart.options.scales.x.ticks.callback
+      const yCallback = chart.options.scales.y.ticks.callback
       const categoryScale = {
-        getLabelForValue: (value: number) => capturedConfig?.data.labels[value]
+        getLabelForValue: (value: number) => chart.data.labels[value]
       }
 
       expect(xCallback.call(categoryScale, 1)).toBe('2005')
       expect(yCallback(20.300000000000004)).toBe('20.3')
     } finally {
-      if (previousChart === undefined) {
-        delete (globalThis as Record<string, unknown>).Chart
-      } else {
-        ;(globalThis as Record<string, unknown>).Chart = previousChart
+      restore()
+    }
+  })
+
+  it('keeps category labels when updateChart replaces options', () => {
+    const { PPT } = setupRuntime()
+    document.body.innerHTML = '<canvas id="chart"></canvas>'
+
+    const { restore } = installMockChart()
+
+    try {
+      const canvas = document.getElementById('chart')
+      const chart = (PPT.createChart as Function)(canvas, {
+        type: 'bar',
+        data: {
+          labels: ['North', 'South'],
+          datasets: [{ data: [10, 20] }]
+        },
+        options: {}
+      })
+
+      ;(PPT.updateChart as Function)(canvas, {
+        options: {
+          scales: {
+            x: { ticks: {} }
+          }
+        }
+      })
+
+      const xCallback = chart.options.scales.x.ticks.callback
+      const categoryScale = {
+        getLabelForValue: (value: number) => chart.data.labels[value]
       }
+
+      expect(xCallback.call(categoryScale, 1)).toBe('South')
+    } finally {
+      restore()
+    }
+  })
+
+  it('uses the value axis in horizontal bar tooltips', () => {
+    const { PPT } = setupRuntime()
+    document.body.innerHTML = '<canvas id="chart"></canvas>'
+
+    const { restore } = installMockChart()
+
+    try {
+      const chart = (PPT.createChart as Function)(document.getElementById('chart'), {
+        type: 'bar',
+        data: {
+          labels: ['North', 'South'],
+          datasets: [{ label: 'Revenue', data: [10, 20] }]
+        },
+        options: {
+          indexAxis: 'y'
+        }
+      })
+
+      const labelCallback = chart.options.plugins.tooltip.callbacks.label
+      expect(labelCallback({
+        chart,
+        dataset: { label: 'Revenue' },
+        parsed: { x: 20.300000000000004, y: 1 },
+        raw: 20.300000000000004
+      })).toBe('Revenue: 20.3')
+    } finally {
+      restore()
     }
   })
 })

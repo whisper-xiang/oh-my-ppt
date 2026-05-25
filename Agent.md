@@ -1,6 +1,7 @@
 # Agent.md
 
 > 不要跑 `npm run lint`。
+> 不要跑 `npm run build`。
 
 ## Project
 
@@ -11,19 +12,10 @@ Electron 桌面应用，主进程 (`src/main/`) + 渲染进程 (`src/renderer/`)
 - `singleQuote`, `no semi`, `printWidth: 100`, `trailingComma: none`
 - 路径别名: `@shared/*`, `@renderer/*`
 
-## Constraints
+## Execution Rules
 
-1. **pageNumber**: 读写 metadata 必须用 `derivePageNumber(pageId, fallback)`，不能直接用存储值
-2. **retry 模式**: 不持久化用户消息，不更新 session status，userMessage 中英双语
-3. **类型安全**: 禁止 `as any`
-4. **运行态保护**: `startingSessionIds` / `beginSessionRunState` / `finalizeGenerationFailure` / `agentManager.removeSession` 不可删
-
-## File Conventions
-
-```
-src/main/ipc/generation/xxx-flow.ts  → 每个 flow = resolveXxxContext + executeXxxGeneration
-src/main/ipc/generation/types.ts     → 所有生成类型定义
-src/main/ipc/generation/metadata-parser.ts → derivePageNumber
-src/renderer/lib/ipc.ts             → 前端 IPC 封装
-src/renderer/store/                  → Zustand stores
-```
+- 先定位变更属于生成、编辑、导入、导出还是运行时；不要只修单一路径
+- 公共规则改动要同时确认生成与编辑链路是否覆盖，尤其是整页编辑、deck 编辑、selector 编辑
+- 改运行时资源时，同步确认 session asset 兼容/刷新机制
+- 修 bug 时优先补定向回归测试，覆盖当前问题和相邻入口
+- 验证优先跑最小相关测试；不要跑 `npm run lint` 或 `npm run build`
