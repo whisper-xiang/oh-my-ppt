@@ -335,6 +335,7 @@ export function createIpcContext(
           progress: chunk.payload.progress ?? null,
           htmlPath: chunk.payload.htmlPath ?? null
         }
+      case 'page_planned':
       case 'page_started':
       case 'page_failed':
         return {
@@ -455,6 +456,7 @@ export function createIpcContext(
       enrichedChunk.type === 'stage_started' ||
       enrichedChunk.type === 'stage_progress' ||
       enrichedChunk.type === 'llm_status' ||
+      enrichedChunk.type === 'page_planned' ||
       enrichedChunk.type === 'page_started' ||
       enrichedChunk.type === 'page_generated' ||
       enrichedChunk.type === 'page_updated' ||

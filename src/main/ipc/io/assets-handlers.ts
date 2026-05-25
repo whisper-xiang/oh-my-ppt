@@ -16,7 +16,11 @@ const ASSET_MIME_MAP: Record<string, string> = {
   webm: 'video/webm',
   ogg: 'video/ogg',
   ogv: 'video/ogg',
+  js: 'text/javascript',
+  css: 'text/css',
   woff2: 'font/woff2',
+  woff: 'font/woff',
+  ttf: 'font/ttf',
   html: 'text/html'
 }
 

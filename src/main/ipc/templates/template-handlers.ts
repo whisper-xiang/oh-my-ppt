@@ -1,0 +1,30 @@
+import { ipcMain } from 'electron'
+import type { IpcContext } from '../context'
+import {
+  createSessionFromTemplate,
+  createTemplateFromSession,
+  deleteTemplate,
+  getTemplate,
+  listTemplates,
+  updateTemplateMetadata
+} from './template-service'
+
+export function registerTemplateHandlers(ctx: IpcContext): void {
+  ipcMain.handle('templates:list', async () => listTemplates())
+
+  ipcMain.handle('templates:get', async (_event, templateId: string) => getTemplate(templateId))
+
+  ipcMain.handle('templates:createFromSession', async (_event, payload: unknown) =>
+    createTemplateFromSession(ctx, payload)
+  )
+
+  ipcMain.handle('templates:createSession', async (_event, payload: unknown) =>
+    createSessionFromTemplate(ctx, payload)
+  )
+
+  ipcMain.handle('templates:updateMetadata', async (_event, payload: unknown) =>
+    updateTemplateMetadata(payload)
+  )
+
+  ipcMain.handle('templates:delete', async (_event, templateId: string) => deleteTemplate(templateId))
+}

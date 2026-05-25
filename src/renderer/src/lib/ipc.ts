@@ -113,6 +113,18 @@ export interface ImportSessionFileResult {
   warnings?: string[]
 }
 
+export interface TemplateListItem {
+  id: string
+  name: string
+  description: string
+  source: 'user'
+  pageCount: number
+  tags: string[]
+  previewHtmlPath: string | null
+  createdAt: number
+  updatedAt: number
+}
+
 export interface EnsureElementAnchorPayload {
   sessionId?: string
   htmlPath: string
@@ -306,8 +318,51 @@ export const ipc = {
     getIpc().invoke('session:updateTitle', payload) as Promise<{ ok: boolean }>,
   importSessionFile: () =>
     getIpc().invoke('session:importFile') as Promise<ImportSessionFileResult>,
+  listTemplates: () =>
+    getIpc().invoke('templates:list') as Promise<{ items: TemplateListItem[] }>,
+  createTemplateFromSession: (payload: {
+    sessionId: string
+    name?: string
+    description?: string
+    tags?: string[]
+  }) =>
+    getIpc().invoke('templates:createFromSession', payload) as Promise<{
+      success: true
+      id: string
+    }>,
+  createSessionFromTemplate: (payload: {
+    templateId: string
+    title?: string
+    pageCount?: number
+    referenceDocumentPath?: string
+  }) =>
+    getIpc().invoke('templates:createSession', payload) as Promise<{
+      success: true
+      sessionId: string
+    }>,
+  updateTemplateMetadata: (payload: {
+    templateId: string
+    name: string
+    description?: string
+    tags?: string[]
+  }) =>
+    getIpc().invoke('templates:updateMetadata', payload) as Promise<{
+      success: true
+      item: TemplateListItem
+    }>,
+  deleteTemplate: (templateId: string) =>
+    getIpc().invoke('templates:delete', templateId) as Promise<{
+      success: true
+      deleted: boolean
+    }>,
   startGenerate: (payload: GenerateStartPayload) =>
     getIpc().invoke('generate:start', payload) as Promise<{
+      success: boolean
+      runId?: string
+      alreadyRunning?: boolean
+    }>,
+  startTemplateGenerate: (payload: GenerateStartPayload & { retry?: boolean }) =>
+    getIpc().invoke('generate:startTemplate', payload) as Promise<{
       success: boolean
       runId?: string
       alreadyRunning?: boolean

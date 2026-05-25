@@ -19,6 +19,7 @@ export const en = {
   nav: {
     home: 'Home',
     sessions: 'Sessions',
+    templates: 'Templates',
     styles: 'Styles',
     fonts: 'Fonts',
     settings: 'Settings',
@@ -128,6 +129,7 @@ export const en = {
     sourceDocument: 'Document',
     sourceAi: 'AI created',
     sourceThinking: 'Think Mode',
+    sourceTemplate: 'Template',
     statusComplete: 'Complete',
     statusPartialComplete: 'Partially complete',
     statusPartialCompleteTip: 'Enter editor to fix error pages',

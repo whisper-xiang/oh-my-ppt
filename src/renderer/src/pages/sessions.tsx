@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/Dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/Tooltip'
-import { FileArchive, FileText, FileUp, FolderOpen, MessageSquare, MessagesSquare, Pencil, Sparkles, Trash2, X, type LucideIcon } from 'lucide-react'
-import { type Session, useSessionStore } from '../store'
+import { FileArchive, FileText, FileUp, FolderOpen, LayoutTemplate, MessageSquare, MessagesSquare, Pencil, Sparkles, Trash2, X, type LucideIcon } from 'lucide-react'
+import { type Session, useSessionStore, useTemplateStore } from '../store'
 import { useToastStore } from '../store'
 import { getEditorGate, parseSessionMetadata } from '../lib/sessionMetadata'
 import { useT } from '../i18n'
+import { SaveTemplateDialog } from '../components/templates/SaveTemplateDialog'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
 
@@ -17,10 +18,17 @@ dayjs.extend(duration)
 
 const getSourceTag = (
   session: Session,
-  labels: { pptx: string; sessionFile: string; document: string; ai: string; thinking: string }
+  labels: { pptx: string; sessionFile: string; document: string; ai: string; thinking: string; template: string }
 ): { label: string; Icon: LucideIcon; className: string } => {
   const metadata = parseSessionMetadata(session.metadata)
   const source = typeof metadata.source === 'string' ? metadata.source : ''
+  if (source === 'template') {
+    return {
+      label: labels.template,
+      Icon: LayoutTemplate,
+      className: 'border-[#e5bec7]/80 bg-[#fff1f4] text-[#80505c]'
+    }
+  }
   if (source === 'session-file-import' || session.model === 'session-file-import') {
     return {
       label: labels.sessionFile,
@@ -59,6 +67,7 @@ const getSourceTag = (
 export function SessionsPage(): React.JSX.Element {
   const navigate = useNavigate()
   const { sessions, fetchSessions, deleteSession, updateSessionTitle, importSessionFile } = useSessionStore()
+  const { createTemplateFromSession } = useTemplateStore()
   const { success, error } = useToastStore()
   const t = useT()
   const [renameSession, setRenameSession] = useState<Session | null>(null)
@@ -67,6 +76,8 @@ export function SessionsPage(): React.JSX.Element {
   const [deleteSessionTarget, setDeleteSessionTarget] = useState<Session | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [importingSession, setImportingSession] = useState(false)
+  const [saveTemplateTarget, setSaveTemplateTarget] = useState<Session | null>(null)
+  const [savingTemplate, setSavingTemplate] = useState(false)
 
   useEffect(() => {
     void fetchSessions()
@@ -80,8 +91,13 @@ export function SessionsPage(): React.JSX.Element {
     page_count: number | null
   }): boolean => getEditorGate(session, 0.68).canEdit
 
-  const getSessionRoute = (session: { id: string; status: string; metadata: string | null; page_count: number | null }): string =>
-    canEnterEditor(session) ? `/sessions/${session.id}` : `/sessions/${session.id}/generating`
+  const getSessionRoute = (session: { id: string; status: string; metadata: string | null; page_count: number | null }): string => {
+    if (canEnterEditor(session)) return `/sessions/${session.id}`
+    const metadata = parseSessionMetadata(session.metadata)
+    return metadata.source === 'template'
+      ? `/sessions/${session.id}/template-generating`
+      : `/sessions/${session.id}/generating`
+  }
 
   const openRenameDialog = (session: Session): void => {
     setRenameSession(session)
@@ -161,6 +177,34 @@ export function SessionsPage(): React.JSX.Element {
     }
   }
 
+  const handleSaveTemplate = async (payload: {
+    name: string
+    description: string
+    tags: string[]
+  }): Promise<void> => {
+    if (!saveTemplateTarget || savingTemplate) return
+    setSavingTemplate(true)
+    try {
+      await createTemplateFromSession({
+        sessionId: saveTemplateTarget.id,
+        ...payload
+      })
+      success('已保存为模板', {
+        action: {
+          label: '查看模板',
+          onClick: () => navigate('/templates')
+        }
+      })
+      setSaveTemplateTarget(null)
+    } catch (err) {
+      error('保存模板失败', {
+        description: err instanceof Error ? err.message : t('common.retryLater')
+      })
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl p-6">
       <div className="mb-6">
@@ -225,7 +269,8 @@ export function SessionsPage(): React.JSX.Element {
               sessionFile: t('sessions.sourceSessionFile'),
               document: t('sessions.sourceDocument'),
               ai: t('sessions.sourceAi'),
-              thinking: t('sessions.sourceThinking')
+              thinking: t('sessions.sourceThinking'),
+              template: t('sessions.sourceTemplate')
             })
             const SourceIcon = sourceTag.Icon
             const statusClassName = isFullyComplete
@@ -257,6 +302,33 @@ export function SessionsPage(): React.JSX.Element {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
+                    <TooltipProvider delayDuration={180}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="inline-flex"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={editorGate.generatedCount <= 0}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setSaveTemplateTarget(session)
+                              }}
+                            >
+                              <LayoutTemplate className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="end">
+                          {editorGate.generatedCount <= 0
+                            ? '至少生成 1 页后才能保存为模板'
+                            : '保存为模板'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -375,6 +447,13 @@ export function SessionsPage(): React.JSX.Element {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <SaveTemplateDialog
+        open={Boolean(saveTemplateTarget)}
+        defaultName={saveTemplateTarget?.title || ''}
+        saving={savingTemplate}
+        onOpenChange={(open) => !open && setSaveTemplateTarget(null)}
+        onSubmit={(payload) => void handleSaveTemplate(payload)}
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   FileSearch,
   History,
   Image as ImageIcon,
+  LayoutTemplate,
   Loader2,
   Monitor,
   Package,
@@ -41,6 +42,7 @@ export function SessionToolbar({
   onOpenHistory,
   onOpenPreview,
   onRevealFile,
+  onSaveTemplate,
   onPresent
 }: {
   hasPages: boolean
@@ -58,6 +60,7 @@ export function SessionToolbar({
   onOpenHistory: () => void
   onOpenPreview: () => void
   onRevealFile: () => void
+  onSaveTemplate?: () => void
   onPresent?: () => void
 }): React.JSX.Element {
   const t = useT()
@@ -95,6 +98,26 @@ export function SessionToolbar({
           </TooltipTrigger>
           <TooltipContent side="bottom" align="start">
             {t('sessionDetail.historyTooltip')}
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {hasPages && onSaveTemplate && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={toolbarButtonClass}
+              onClick={onSaveTemplate}
+              disabled={isExporting}
+            >
+              <LayoutTemplate className={toolbarIconClass} />
+              保存模板
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start">
+            保存当前演示为模板
           </TooltipContent>
         </Tooltip>
       )}

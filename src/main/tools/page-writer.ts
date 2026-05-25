@@ -972,12 +972,9 @@ export function createPageWriteTools(args: {
       agentName
     })
     const result = await serializedWrite(context.projectDir, async () => {
-      if (!context.designContract?.titleFont || !context.designContract?.bodyFont) {
-        throw new Error('design contract 缺少 titleFont/bodyFont，无法写入页面字体。')
-      }
       const designFonts = {
-        titleFont: context.designContract.titleFont,
-        bodyFont: context.designContract.bodyFont
+        titleFont: context.designContract?.titleFont || 'Inter',
+        bodyFont: context.designContract?.bodyFont || 'Inter'
       }
       const normalized = await normalizeAndInjectPageRuntime(
         preparedContent.content,

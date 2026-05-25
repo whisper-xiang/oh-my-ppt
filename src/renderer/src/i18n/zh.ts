@@ -16,6 +16,7 @@ export const zh = {
   nav: {
     home: '首页',
     sessions: '会话',
+    templates: '模板',
     styles: '风格',
     fonts: '字体',
     settings: '设置',
@@ -122,6 +123,7 @@ export const zh = {
     sourceDocument: '文档创建',
     sourceAi: 'AI 创建',
     sourceThinking: '探索模式',
+    sourceTemplate: '模板创建',
     statusComplete: '已完成',
     statusPartialComplete: '部分完成',
     statusPartialCompleteTip: '可进入编辑页修复错误页面',

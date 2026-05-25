@@ -20,6 +20,7 @@ import { registerHistoryHandlers } from './history/history-handlers'
 import { registerPresentationHandlers } from './session/presentation-handlers'
 import { registerSpeechHandlers } from './speech/speech-handlers'
 import { registerThinkingHandlers } from './thinking/thinking-handlers'
+import { registerTemplateHandlers } from './templates/template-handlers'
 
 export { registerLocalAssetProtocol }
 
@@ -48,4 +49,5 @@ export function setupIPC(
   registerPresentationHandlers(context)
   registerSpeechHandlers(context)
   registerThinkingHandlers(context)
+  registerTemplateHandlers(context)
 }

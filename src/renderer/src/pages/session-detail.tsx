@@ -32,16 +32,17 @@ import { ElementInspectorPanel } from '../components/session-detail/ElementInspe
 import { SessionToolbar } from '../components/session-detail/SessionToolbar'
 import { AssetPickerDialog } from '../components/session-detail/AssetPickerDialog'
 import { SpeechScriptDrawer } from '../components/session-detail/SpeechScriptDrawer'
+import { SaveTemplateDialog } from '../components/templates/SaveTemplateDialog'
 import type { ElementEditDraft } from '../components/session-detail/ElementInspectorPanel'
 import type { ChatType, SessionPreviewPage } from '../components/session-detail/types'
-import { useSessionStore, useGenerateStore } from '../store'
+import { useSessionStore, useGenerateStore, useTemplateStore } from '../store'
 import { useSessionDetailUiStore } from '../store/sessionDetailStore'
 import { useEditHistoryStore } from '../store/editHistoryStore'
 import type { GenerateChunkEvent } from '@shared/generation.js'
 import type { HistoryVersion } from '@shared/history.js'
 import type { SpeechConfig } from '@shared/speech'
 import { useToastStore } from '../store'
-import { getEditorGate } from '../lib/sessionMetadata'
+import { getEditorGate, parseSessionMetadata } from '../lib/sessionMetadata'
 import { useT } from '../i18n'
 import dayjs from 'dayjs'
 import { nanoid } from 'nanoid'
@@ -158,6 +159,7 @@ export function SessionDetailPage(): React.JSX.Element {
     setMessages,
     addMessage
   } = useSessionStore()
+  const { createTemplateFromSession } = useTemplateStore()
   const { isGenerating, updateProgress, cancelGeneration, progress, currentPages, error } =
     useGenerateStore()
   const chatType = useSessionDetailUiStore((state) => state.chatType)
@@ -197,6 +199,8 @@ export function SessionDetailPage(): React.JSX.Element {
   const [deleteConfirmPage, setDeleteConfirmPage] = useState<SessionPreviewPage | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [pendingDeleteSelector, setPendingDeleteSelector] = useState<string | null>(null)
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [savingTemplate, setSavingTemplate] = useState(false)
   const previewIframeRef = useRef<PreviewIframeHandle | null>(null)
   const sendingMessageRef = useRef(false)
   const [addPageInput, setAddPageInput] = useState('')
@@ -327,7 +331,13 @@ export function SessionDetailPage(): React.JSX.Element {
     )
       return
     if (!canEditInSessionDetail) {
-      navigate(`/sessions/${id}/generating`, { replace: true })
+      const metadata = parseSessionMetadata(currentSession.metadata)
+      navigate(
+        metadata.source === 'template'
+          ? `/sessions/${id}/template-generating`
+          : `/sessions/${id}/generating`,
+        { replace: true }
+      )
     }
   }, [canEditInSessionDetail, currentSession, id, navigate])
 
@@ -1625,6 +1635,34 @@ export function SessionDetailPage(): React.JSX.Element {
     handleAddElement(asset.relativePath, asset.originalName || asset.fileName)
   }
 
+  const handleSaveTemplate = async (payload: {
+    name: string
+    description: string
+    tags: string[]
+  }): Promise<void> => {
+    if (!id || savingTemplate) return
+    setSavingTemplate(true)
+    try {
+      await createTemplateFromSession({
+        sessionId: id,
+        ...payload
+      })
+      toastSuccess('已保存为模板', {
+        action: {
+          label: '查看模板',
+          onClick: () => navigate('/templates')
+        }
+      })
+      setSaveTemplateOpen(false)
+    } catch (err) {
+      toastError('保存模板失败', {
+        description: err instanceof Error ? err.message : t('common.retryLater')
+      })
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
   return (
     <TooltipProvider delayDuration={180}>
       <div
@@ -1655,6 +1693,7 @@ export function SessionDetailPage(): React.JSX.Element {
                     void ipc.revealFile(selectedPage.htmlPath, id || undefined)
                   }
                 }}
+                onSaveTemplate={() => setSaveTemplateOpen(true)}
                 onPresent={() => {
                   const idx = normalizedOrderedPages.findIndex((p) => p.id === selectedPageId)
                   void ipc.openPresentation({
@@ -2023,6 +2062,13 @@ export function SessionDetailPage(): React.JSX.Element {
           open={assetPickerOpen}
           onClose={() => setAssetPickerOpen(false)}
           onConfirm={handleAddElement}
+        />
+        <SaveTemplateDialog
+          open={saveTemplateOpen}
+          defaultName={currentSession?.title || '未命名模板'}
+          saving={savingTemplate}
+          onOpenChange={setSaveTemplateOpen}
+          onSubmit={(payload) => void handleSaveTemplate(payload)}
         />
         <AlertDialog
           open={deleteConfirmOpen}

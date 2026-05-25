@@ -848,6 +848,8 @@ export const runDeepAgentDeckGeneration = async (args: {
   outlineTitles: string[]
   outlineItems: OutlineItem[]
   sourceDocumentPaths?: string[]
+  systemPromptAddendum?: string
+  singlePagePromptAddendum?: string
   generationMode?: 'generate' | 'retry'
   pageTasks?: Array<{
     pageNumber: number
@@ -856,7 +858,7 @@ export const runDeepAgentDeckGeneration = async (args: {
     contentOutline?: string | null
     layoutIntent?: OutlineItem['layoutIntent']
   }>
-  designContract: DesignContract
+  designContract?: DesignContract
   projectDir: string
   indexPath: string
   pageFileMap: Record<string, string>
@@ -1009,12 +1011,14 @@ export const runDeepAgentDeckGeneration = async (args: {
     indexPath: args.indexPath,
     totalPages,
     fixedConcurrency: useDualWorkerQueue ? 2 : 1,
-    designContract: {
-      theme: args.designContract.theme,
-      background: args.designContract.background,
-      palette: args.designContract.palette,
-      titleStyle: args.designContract.titleStyle
-    }
+    designContract: args.designContract
+      ? {
+          theme: args.designContract.theme,
+          background: args.designContract.background,
+          palette: args.designContract.palette,
+          titleStyle: args.designContract.titleStyle
+        }
+      : null
   })
 
   const referenceDocumentRetriever = args.sourceDocumentPaths?.length
@@ -1107,6 +1111,7 @@ export const runDeepAgentDeckGeneration = async (args: {
       temperature: args.temperature,
       maxTokens: args.maxTokens,
       styleId: args.styleId,
+      systemPromptAddendum: args.systemPromptAddendum,
       context: {
         sessionId: args.sessionId,
         projectDir: args.projectDir,
@@ -1140,20 +1145,23 @@ export const runDeepAgentDeckGeneration = async (args: {
           messages: [
             {
               role: 'user',
-              content: buildSinglePageGenerationPrompt({
-                topic: args.topic,
-                deckTitle: args.deckTitle,
-                pageId: page.pageId,
-                pageNumber: page.pageNumber,
-                pageTitle: page.title,
-                pageOutline: page.outline,
-                layoutIntent: page.layoutIntent,
-                sourceDocumentPaths: args.sourceDocumentPaths,
-                referenceDocumentSnippets,
-                isRetryMode: args.generationMode === 'retry',
-                designContract: args.designContract,
-                retryContext
-              })
+              content: [
+                args.singlePagePromptAddendum?.trim() || '',
+                buildSinglePageGenerationPrompt({
+                  topic: args.topic,
+                  deckTitle: args.deckTitle,
+                  pageId: page.pageId,
+                  pageNumber: page.pageNumber,
+                  pageTitle: page.title,
+                  pageOutline: page.outline,
+                  layoutIntent: page.layoutIntent,
+                  sourceDocumentPaths: args.sourceDocumentPaths,
+                  referenceDocumentSnippets,
+                  isRetryMode: args.generationMode === 'retry',
+                  designContract: args.designContract,
+                  retryContext
+                })
+              ].filter(Boolean).join('\n\n')
             }
           ]
         },

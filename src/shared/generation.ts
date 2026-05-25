@@ -189,6 +189,10 @@ export type GenerateChunkEvent =
       payload: GenerateStagePayload & GeneratedPagePayload
     }
   | {
+      type: 'page_planned'
+      payload: GenerateStagePayload & PageStatusPayload
+    }
+  | {
       type: 'page_started' | 'page_failed'
       payload: GenerateStagePayload & PageStatusPayload
     }
