@@ -1,6 +1,11 @@
 import { ipcMain } from 'electron'
 import type { IpcContext } from '../context'
-import { loadEditableSessionPages, persistManagedPages } from './page-management-service'
+import {
+  createBlankSessionPage,
+  loadEditableSessionPages,
+  persistManagedPages,
+  renameSessionPageTitle
+} from './page-management-service'
 import { ensureHistoryBaselineSafe, recordHistoryOperationStrict } from '../../history/git-history-service'
 
 export function registerPageManagementHandlers(ctx: IpcContext): void {
@@ -198,6 +203,121 @@ export function registerPageManagementHandlers(ctx: IpcContext): void {
         error: p.error
       })),
       selectedPageId: newSelectedId
+    }
+  })
+
+  ipcMain.handle('session:createBlankPage', async (_event, payload) => {
+    const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+    const sessionId = typeof record.sessionId === 'string' ? record.sessionId.trim() : ''
+    const sourcePageId = typeof record.sourcePageId === 'string' ? record.sourcePageId.trim() : ''
+    if (!sessionId) throw new Error('sessionId 不能为空')
+    if (!sourcePageId) throw new Error('sourcePageId 不能为空')
+    const { projectDir, pages } = await loadEditableSessionPages(ctx, sessionId)
+    await ensureHistoryBaselineSafe(ctx.db, sessionId, projectDir)
+    const sourcePage = pages.find((page) => page.id === sourcePageId || page.pageId === sourcePageId)
+    const result = await createBlankSessionPage(ctx, {
+      sessionId,
+      sourcePageId
+    })
+    const prompt = sourcePage
+      ? `新增空白页到末尾：复制 P${sourcePage.pageNumber}《${sourcePage.title}》`
+      : '新增空白页到末尾'
+    await recordHistoryOperationStrict(ctx.db, {
+      sessionId,
+      type: 'addPage',
+      scope: 'session',
+      projectDir,
+      prompt,
+      metadata: {
+        addPage: true,
+        blankPage: true,
+        sourcePageId,
+        selectedPageId: result.selectedPageId,
+        totalPages: result.pages.length
+      }
+    })
+
+    return {
+      ok: true,
+      generatedPages: result.pages.map((p) => ({
+        id: p.id,
+        pageNumber: p.pageNumber,
+        pageId: p.pageId,
+        title: p.title,
+        html: p.html || '',
+        htmlPath: p.htmlPath,
+        status: p.status,
+        error: p.error
+      })),
+      selectedPageId: result.selectedPageId
+    }
+  })
+
+  ipcMain.handle('session:updatePageTitle', async (_event, payload) => {
+    const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+    const sessionId = typeof record.sessionId === 'string' ? record.sessionId.trim() : ''
+    const pageId = typeof record.pageId === 'string' ? record.pageId.trim() : ''
+    const title = typeof record.title === 'string' ? record.title.replace(/\s+/g, ' ').trim() : ''
+    if (!sessionId) throw new Error('sessionId 不能为空')
+    if (!pageId) throw new Error('pageId 不能为空')
+    if (!title) throw new Error('页面标题不能为空')
+
+    const { projectDir, pages } = await loadEditableSessionPages(ctx, sessionId)
+    const page = pages.find((item) => item.id === pageId || item.pageId === pageId)
+    if (!page) throw new Error('未找到要修改标题的页面')
+    if (page.title === title) {
+      return {
+        ok: true,
+        generatedPages: pages.map((p) => ({
+          id: p.id,
+          pageNumber: p.pageNumber,
+          pageId: p.pageId,
+          title: p.title,
+          html: '',
+          htmlPath: p.htmlPath,
+          status: p.status,
+          error: p.error
+        })),
+        selectedPageId: page.id
+      }
+    }
+
+    await ensureHistoryBaselineSafe(ctx.db, sessionId, projectDir)
+    const result = await renameSessionPageTitle(ctx, {
+      sessionId,
+      pageId,
+      title
+    })
+    const prompt = `修改页面标题：P${page.pageNumber}《${page.title}》->《${title}》`
+    await recordHistoryOperationStrict(ctx.db, {
+      sessionId,
+      type: 'edit',
+      scope: 'page',
+      projectDir,
+      prompt,
+      metadata: {
+        pageId: page.id,
+        pageSlug: page.pageId,
+        oldTitle: page.title,
+        newTitle: title,
+        selectedPageId: result.selectedPageId,
+        titleEdit: true
+      }
+    })
+
+    return {
+      ok: true,
+      generatedPages: result.pages.map((p) => ({
+        id: p.id,
+        pageNumber: p.pageNumber,
+        pageId: p.pageId,
+        title: p.title,
+        html: p.html || '',
+        htmlPath: p.htmlPath,
+        status: p.status,
+        error: p.error
+      })),
+      selectedPageId: result.selectedPageId
     }
   })
 }

@@ -8,6 +8,7 @@ import type {
 import type { PreviewIframeHandle } from '../components/preview/PreviewIframe'
 import { TooltipProvider } from '../components/ui/Tooltip'
 import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
 import {
   Dialog,
   DialogContent,
@@ -208,6 +209,10 @@ export function SessionDetailPage(): React.JSX.Element {
   const previewIframeRef = useRef<PreviewIframeHandle | null>(null)
   const sendingMessageRef = useRef(false)
   const [addPageInput, setAddPageInput] = useState('')
+  const [blankPageDialogOpen, setBlankPageDialogOpen] = useState(false)
+  const [blankPageSourceId, setBlankPageSourceId] = useState<string>('')
+  const [titleEditPage, setTitleEditPage] = useState<SessionPreviewPage | null>(null)
+  const [titleEditDraft, setTitleEditDraft] = useState('')
   const {
     success: toastSuccess,
     error: toastError,
@@ -684,6 +689,11 @@ export function SessionDetailPage(): React.JSX.Element {
     setAddPageDialogOpen(true)
   }
 
+  const handleOpenBlankPageDialog = (): void => {
+    setBlankPageSourceId(selectedPage?.id || normalizedOrderedPages[0]?.id || '')
+    setBlankPageDialogOpen(true)
+  }
+
   const handleRetryFailedPage = async (page: SessionPreviewPage): Promise<void> => {
     if (!id || !page.id) return
     useSessionDetailUiStore.getState().setIsRetryingSinglePage(true)
@@ -749,6 +759,35 @@ export function SessionDetailPage(): React.JSX.Element {
     }
   }
 
+  const handleCreateBlankPage = async (): Promise<void> => {
+    if (!id || !blankPageSourceId) return
+    const sourcePage = normalizedOrderedPages.find((page) => page.id === blankPageSourceId)
+    if (!sourcePage) return
+    setBlankPageDialogOpen(false)
+    setIsAddingPage(true)
+    useGenerateStore.setState({ isGenerating: true, error: null, status: 'running' })
+    let targetSelection: string | null | undefined = undefined
+
+    try {
+      const result = await ipc.createBlankSessionPage({
+        sessionId: id,
+        sourcePageId: sourcePage.id
+      })
+      useGenerateStore.getState().setPages(result.generatedPages)
+      await loadSession(id)
+      useGenerateStore.getState().setPages(useSessionStore.getState().currentGeneratedPages)
+      targetSelection = result.selectedPageId || null
+      useSessionDetailUiStore.getState().bumpPreviewKey()
+      void ipc.clearSpeechScript(id).catch((err) => console.warn('[speech] clearSpeechScript failed', err))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('sessionDetail.addBlankPageFailed')
+      toastError(message)
+    } finally {
+      useSessionDetailUiStore.getState().finishAddPage(targetSelection)
+      useGenerateStore.getState().finishGeneration()
+    }
+  }
+
   const handleReorderPages = async (
     orderedPageIds: string[],
     selectedForKeep?: string
@@ -774,6 +813,40 @@ export function SessionDetailPage(): React.JSX.Element {
 
   const handleDeletePage = async (page: SessionPreviewPage): Promise<void> => {
     setDeleteConfirmPage(page)
+  }
+
+  const handleOpenTitleEditDialog = (page: SessionPreviewPage): void => {
+    setTitleEditPage(page)
+    setTitleEditDraft(page.title || '')
+  }
+
+  const handleSavePageTitle = async (): Promise<void> => {
+    if (!id || !titleEditPage) return
+    const title = titleEditDraft.replace(/\s+/g, ' ').trim()
+    if (!title) {
+      toastError(t('pageManagement.pageTitleRequired'))
+      return
+    }
+    if (title === titleEditPage.title) {
+      setTitleEditPage(null)
+      return
+    }
+    useSessionDetailUiStore.getState().setIsManagingPages(true)
+    try {
+      const result = await ipc.updateSessionPageTitle({
+        sessionId: id,
+        pageId: titleEditPage.id,
+        title
+      })
+      useGenerateStore.getState().setPages(result.generatedPages)
+      useSessionDetailUiStore.getState().setSelectedPageId(result.selectedPageId || titleEditPage.id)
+      useSessionDetailUiStore.getState().bumpPreviewKey()
+      setTitleEditPage(null)
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : t('pageManagement.updateTitleFailed'))
+    } finally {
+      useSessionDetailUiStore.getState().setIsManagingPages(false)
+    }
   }
 
   const handleConfirmDeletePage = async (): Promise<void> => {
@@ -1730,11 +1803,13 @@ export function SessionDetailPage(): React.JSX.Element {
           <PageSidebar
             pages={normalizedOrderedPages}
             disabled={interactionMode === 'ai-inspect' && isGenerating}
+            onAddBlankPage={handleOpenBlankPageDialog}
             onAddPage={handleOpenAddPageDialog}
             onRetryFailedPage={handleRetryFailedPage}
             onReorderPages={handleReorderPages}
             onDeletePage={handleDeletePage}
-            pageManagementDisabled={isGenerating || isAddingPage || isRetryingSinglePage}
+            onRenamePage={handleOpenTitleEditDialog}
+            pageManagementDisabled={isGenerating || isAddingPage || isRetryingSinglePage || isManagingPages}
             collapsed={sidebarCollapsed}
             onToggleCollapsed={toggleSidebarCollapsed}
           />
@@ -1923,6 +1998,58 @@ export function SessionDetailPage(): React.JSX.Element {
           </div>
         )}
 
+        {/* Add Blank Page Dialog */}
+        {blankPageDialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="w-[520px] rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="mb-2 text-base font-semibold text-[#2f3a2a]">
+                {t('sessionDetail.addBlankPage')}
+              </h3>
+              <p className="mb-4 text-xs leading-5 text-[#8a9a7b]">
+                {t('sessionDetail.addBlankPageHint')}
+              </p>
+              <div className="mb-4 max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                {normalizedOrderedPages.map((page) => (
+                  <button
+                    key={page.id}
+                    type="button"
+                    onClick={() => setBlankPageSourceId(page.id)}
+                    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                      blankPageSourceId === page.id
+                        ? 'border-[#8eaa70] bg-[#eef6e7] text-[#2f3a2a]'
+                        : 'border-[#d4e4c1]/60 bg-[#f8f6f0] text-[#5d6b4d] hover:bg-[#f0ece3]'
+                    }`}
+                  >
+                    <span className="shrink-0 rounded-md bg-[#d4e4c1]/70 px-2 py-1 text-[11px] font-semibold text-[#3e4a32]">
+                      P{page.pageNumber}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      {page.title || t('sessionDetail.untitledPage')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBlankPageDialogOpen(false)}
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-[#5d6b4d] transition-colors hover:bg-[#f0ece3] cursor-pointer"
+                >
+                  {t('sessionDetail.addPageCancel')}
+                </button>
+                <button
+                  type="button"
+                  disabled={!blankPageSourceId}
+                  onClick={() => void handleCreateBlankPage()}
+                  className="rounded-xl bg-[#5d6b4d] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3e4a32] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                >
+                  {t('sessionDetail.addBlankPageCreate')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Add Page Dialog */}
         {addPageDialogOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -2007,6 +2134,57 @@ export function SessionDetailPage(): React.JSX.Element {
             </div>
           </div>
         )}
+        <Dialog
+          open={Boolean(titleEditPage)}
+          onOpenChange={(open) => {
+            if (!open && !isManagingPages) setTitleEditPage(null)
+          }}
+        >
+          <DialogContent showClose={!isManagingPages}>
+            <DialogHeader>
+              <DialogTitle>{t('pageManagement.editPageTitle')}</DialogTitle>
+              <DialogDescription>{t('pageManagement.editPageTitleDescription')}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-[#5d6b4d]" htmlFor="page-title-input">
+                {t('pageManagement.pageTitleLabel')}
+              </label>
+              <Input
+                id="page-title-input"
+                value={titleEditDraft}
+                onChange={(event) => setTitleEditDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void handleSavePageTitle()
+                  }
+                }}
+                placeholder={t('pageManagement.pageTitlePlaceholder')}
+                disabled={isManagingPages}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setTitleEditPage(null)}
+                disabled={isManagingPages}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void handleSavePageTitle()}
+                disabled={isManagingPages || !titleEditDraft.trim()}
+              >
+                {t('pageManagement.savePageTitle')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog
           open={Boolean(deleteConfirmPage)}
           onOpenChange={(open) => {

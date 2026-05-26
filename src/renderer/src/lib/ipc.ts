@@ -313,6 +313,43 @@ export const ipc = {
       }>
       selectedPageId: string | null
     }>,
+  createBlankSessionPage: (payload: {
+    sessionId: string
+    sourcePageId: string
+  }) =>
+    getIpc().invoke('session:createBlankPage', payload) as Promise<{
+      ok: boolean
+      generatedPages: Array<{
+        id: string
+        pageNumber: number
+        pageId: string
+        title: string
+        html: string
+        htmlPath?: string
+        status?: string
+        error?: string | null
+      }>
+      selectedPageId: string | null
+    }>,
+  updateSessionPageTitle: (payload: {
+    sessionId: string
+    pageId: string
+    title: string
+  }) =>
+    getIpc().invoke('session:updatePageTitle', payload) as Promise<{
+      ok: boolean
+      generatedPages: Array<{
+        id: string
+        pageNumber: number
+        pageId: string
+        title: string
+        html: string
+        htmlPath?: string
+        status?: string
+        error?: string | null
+      }>
+      selectedPageId: string | null
+    }>,
   getSessionMessages: (payload: {
     sessionId: string
     chatType: 'main' | 'page'
