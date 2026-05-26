@@ -16,7 +16,11 @@ const ASSET_MIME_MAP: Record<string, string> = {
   webm: 'video/webm',
   ogg: 'video/ogg',
   ogv: 'video/ogg',
+  js: 'text/javascript',
+  css: 'text/css',
   woff2: 'font/woff2',
+  woff: 'font/woff',
+  ttf: 'font/ttf',
   html: 'text/html'
 }
 
@@ -56,7 +60,9 @@ export function allowLocalAssetRoot(rootPath: string): void {
 
 export function registerLocalAssetProtocol(): void {
   protocol.handle('local-asset', (request) => {
-    const requestedPath = decodeURIComponent(request.url.replace('local-asset://', ''))
+    const requestedPath = decodeURIComponent(
+      request.url.replace('local-asset://', '').split(/[?#]/, 1)[0]
+    )
     const filePath = assertLocalAssetAllowed(requestedPath)
     if (!filePath) return new Response('Forbidden', { status: 403 })
     try {

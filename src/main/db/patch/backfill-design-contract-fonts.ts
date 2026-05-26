@@ -1,5 +1,6 @@
 import type { createClient } from '@libsql/client'
 import type { DesignContract } from '../../tools/types'
+import { createDefaultDesignContract } from '../../utils/design-contract'
 
 type LibSqlClient = ReturnType<typeof createClient>
 
@@ -34,6 +35,17 @@ const withFontFallback = (contract: DesignContract): DesignContract => {
 }
 
 export const patchDesignContractFonts = async (client: LibSqlClient): Promise<void> => {
+  await client.execute({
+    sql: `
+      UPDATE sessions
+      SET design_contract = ?, updated_at = ?
+      WHERE provider = 'import'
+        AND model IN ('session-file-import', 'pptx-import')
+        AND (design_contract IS NULL OR TRIM(design_contract) = '')
+    `,
+    args: [JSON.stringify(createDefaultDesignContract()), Math.floor(Date.now() / 1000)]
+  })
+
   const result = await client.execute(`
     SELECT id, design_contract
     FROM sessions

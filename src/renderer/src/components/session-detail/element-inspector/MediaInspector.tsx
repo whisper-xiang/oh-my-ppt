@@ -34,68 +34,62 @@ export function MediaInspector({
 }: ElementEditorProps): React.JSX.Element {
   const t = useT()
   const mediaAttrs = selection.snapshot?.attrs || {}
+  const isVideo = selection.elementTag === 'video'
   const hasVideoControls =
-    'controls' in mediaAttrs || 'muted' in mediaAttrs || 'loop' in mediaAttrs || 'autoplay' in mediaAttrs
+    'controls' in mediaAttrs ||
+    'muted' in mediaAttrs ||
+    'loop' in mediaAttrs ||
+    'autoplay' in mediaAttrs ||
+    'playsInline' in mediaAttrs ||
+    'preload' in mediaAttrs
   return (
     <InspectorSection
       title={t('sessionDetail.media')}
       icon={<Image className="h-3.5 w-3.5 text-[#7a875f]" />}
     >
       <div className="space-y-2.5">
-        <label className="block space-y-1.5">
-          <span className="text-[11px] font-medium text-[#7a875f]">
-            {t('sessionDetail.objectFit')}
-          </span>
-          <Select
-            value={draft.objectFit || 'contain'}
-            onValueChange={(value) =>
-              onDraftChange(
-                { ...draft, objectFit: value },
-                { commit: true, fields: ['objectFit'] }
-              )
-            }
-          >
-            <SelectTrigger className="h-8 rounded-full border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="contain">contain</SelectItem>
-              <SelectItem value="cover">cover</SelectItem>
-              <SelectItem value="fill">fill</SelectItem>
-              <SelectItem value="none">none</SelectItem>
-              <SelectItem value="scale-down">scale-down</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-[11px] font-medium text-[#7a875f]">{t('sessionDetail.alt')}</span>
-          <Input
-            value={draft.alt}
-            onChange={(event) => onDraftChange({ ...draft, alt: event.target.value })}
-            onBlur={(event) =>
-              onDraftChange({ ...draft, alt: event.target.value }, { commit: true, fields: ['alt'] })
-            }
-            className="h-8 rounded-full border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
-          />
-        </label>
+        {!isVideo && (
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-medium text-[#7a875f]">
+              {t('sessionDetail.objectFit')}
+            </span>
+            <Select
+              value={draft.objectFit || 'contain'}
+              onValueChange={(value) =>
+                onDraftChange(
+                  { ...draft, objectFit: value },
+                  { commit: true, fields: ['objectFit'] }
+                )
+              }
+            >
+              <SelectTrigger className="h-8 rounded-full border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="contain">contain</SelectItem>
+                <SelectItem value="cover">cover</SelectItem>
+                <SelectItem value="fill">fill</SelectItem>
+                <SelectItem value="none">none</SelectItem>
+                <SelectItem value="scale-down">scale-down</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+        )}
+        {!isVideo && (
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-medium text-[#7a875f]">{t('sessionDetail.alt')}</span>
+            <Input
+              value={draft.alt}
+              onChange={(event) => onDraftChange({ ...draft, alt: event.target.value })}
+              onBlur={(event) =>
+                onDraftChange({ ...draft, alt: event.target.value }, { commit: true, fields: ['alt'] })
+              }
+              className="h-8 rounded-full border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </label>
+        )}
         {hasVideoControls && (
           <>
-            <label className="block space-y-1.5">
-              <span className="text-[11px] font-medium text-[#7a875f]">
-                {t('sessionDetail.poster')}
-              </span>
-              <Input
-                value={draft.poster}
-                onChange={(event) => onDraftChange({ ...draft, poster: event.target.value })}
-                onBlur={(event) =>
-                  onDraftChange(
-                    { ...draft, poster: event.target.value },
-                    { commit: true, fields: ['poster'] }
-                  )
-                }
-                className="h-8 rounded-full border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-            </label>
             <div className="grid grid-cols-2 gap-2">
               <ToggleRow
                 label={t('sessionDetail.controls')}
@@ -123,6 +117,16 @@ export function MediaInspector({
                 checked={draft.autoplay}
                 onChange={(autoplay) =>
                   onDraftChange({ ...draft, autoplay }, { commit: true, fields: ['autoplay'] })
+                }
+              />
+              <ToggleRow
+                label={t('sessionDetail.playsInline')}
+                checked={draft.playsInline}
+                onChange={(playsInline) =>
+                  onDraftChange(
+                    { ...draft, playsInline },
+                    { commit: true, fields: ['playsInline'] }
+                  )
                 }
               />
             </div>

@@ -89,6 +89,7 @@ export const FRONTEND_CAPABILITIES = [
   '```js',
   'const chart = PPT.createChart(canvasEl, { type: "bar", data: { labels: ["A","B"], datasets: [{ data: [10,20] }] }, options: {} });',
   '```',
+  '- 类目轴标签必须写在 data.labels；不要给 category x/y 轴自定义 ticks.callback。若确实需要自定义，必须用 function(value) { return this.getLabelForValue(value); } 取回标签，不能直接返回 value（否则会显示 0、1、2、3）。',
   '⛔ 错误写法（全部会被验证拦截，导致该页生成失败）：',
   '- new Chart(ctx, config) → 必须用 PPT.createChart(el, config)',
   '- canvas 上直接写 h-32 / h-full / flex-1 → 高度必须写在父容器',

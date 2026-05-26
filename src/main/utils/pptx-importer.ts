@@ -788,10 +788,10 @@ const buildChartBlock = (args: {
     return `<section data-block-id="${escapeHtml(args.blockId)}" style="${css};display:flex;align-items:center;justify-content:center;color:#6b7280;">图表已作为占位导入</section>`
   }
   const series = args.element.data as ChartSeries[]
-  const labels = series[0]?.values?.map((item) => item.x || '') || []
+  const labels = series[0]?.values?.map((item) => item.x ?? '') || []
   const datasets = series.map((item, index) => ({
     label: item.key || `Series ${index + 1}`,
-    data: (item.values || []).map((value) => value.y || 0),
+    data: (item.values || []).map((value) => value.y ?? 0),
     borderColor: args.element.colors?.[index] || undefined,
     backgroundColor: args.element.colors?.[index] || undefined
   }))

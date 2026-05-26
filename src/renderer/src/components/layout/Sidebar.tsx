@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { Home, FolderOpen, Settings, Plus, ArrowLeft, SwatchBook, Type } from 'lucide-react'
+import { Home, FolderOpen, Settings, Plus, ArrowLeft, SwatchBook, Type, LayoutTemplate } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import logoUrl from '@renderer/assets/images/logo.png'
 import { useT } from '@renderer/i18n'
@@ -32,6 +32,7 @@ export function Sidebar(): React.JSX.Element {
   const navItems = [
     { path: '/', icon: Home, label: t('nav.home') },
     { path: '/sessions', icon: FolderOpen, label: t('nav.sessions') },
+    { path: '/templates', icon: LayoutTemplate, label: t('nav.templates') },
     { path: '/styles', icon: SwatchBook, label: t('nav.styles') },
     { path: '/fonts', icon: Type, label: t('nav.fonts') },
     { path: '/settings', icon: Settings, label: t('nav.settings') },

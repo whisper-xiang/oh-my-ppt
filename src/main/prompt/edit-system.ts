@@ -179,6 +179,8 @@ function buildSelectorEditPrompt(
     '',
     PAGE_SEMANTIC_STRUCTURE,
     '',
+    FRONTEND_CAPABILITIES,
+    '',
     '## 动画局部编辑',
     '- 选择器编辑模式下不主动新增动画；仅当用户要求给目标元素添加/修改动画时处理。',
     '- 简单入场、逐条展示或演讲节奏动画，优先只在目标元素或最小必要父容器上添加/调整 data-anim 属性。',

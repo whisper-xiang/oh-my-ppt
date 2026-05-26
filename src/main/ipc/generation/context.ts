@@ -8,7 +8,7 @@ import type { IpcContext } from '../context'
 import type { GenerateChatType, GenerateMode } from './types'
 import { resolveActiveModelConfig, resolveGlobalModelTimeouts } from '../config/model-config-utils'
 import { hasStyleSkill, listStyleCatalog, loadStyleSkill } from '../../utils/style-skills'
-import { extractOutlineTitles } from '../utils'
+import { extractOutlineTitles, parseJsonObject } from '../utils'
 
 export type CommonGenerationContext = {
   session: Awaited<ReturnType<IpcContext['db']['getSession']>>
@@ -134,6 +134,20 @@ export async function resolveSourceDocuments(
     typeof rawReferenceDocumentPath === 'string' ? rawReferenceDocumentPath.trim() : ''
 
   const sessionDocsDir = path.join(projectDir, 'docs')
+  const resolveExistingSessionDoc = (docPath: string): string | null => {
+    if (!docPath.trim()) return null
+    const normalizedDocPath = docPath.startsWith('/') ? docPath : `/docs/${docPath}`
+    if (!normalizedDocPath.startsWith('/docs/')) return null
+    const filePath = path.resolve(projectDir, normalizedDocPath.replace(/^\/+/, ''))
+    const relativeToProject = path.relative(projectDir, filePath)
+    if (relativeToProject.startsWith('..') || path.isAbsolute(relativeToProject)) return null
+    try {
+      return fs.statSync(filePath).isFile() ? normalizedDocPath : null
+    } catch {
+      return null
+    }
+  }
+
   if (rawDocPaths.length > 0) {
     await fs.promises.mkdir(sessionDocsDir, { recursive: true })
     const copiedPaths: string[] = []
@@ -159,17 +173,8 @@ export async function resolveSourceDocuments(
   if (!shouldUseReferenceDocument || !referenceDocumentPath) return []
 
   await fs.promises.mkdir(sessionDocsDir, { recursive: true })
-  const normalizedReferenceDocumentPath = referenceDocumentPath.startsWith('/')
-    ? referenceDocumentPath
-    : `/docs/${referenceDocumentPath}`
-  if (!normalizedReferenceDocumentPath.startsWith('/docs/')) return []
-  const filePath = path.resolve(projectDir, normalizedReferenceDocumentPath.replace(/^\/+/, ''))
-  const relativeToProject = path.relative(projectDir, filePath)
-  if (relativeToProject.startsWith('..') || path.isAbsolute(relativeToProject)) return []
-  if (fs.existsSync(filePath)) {
-    return [normalizedReferenceDocumentPath]
-  }
-  return []
+  const resolved = resolveExistingSessionDoc(referenceDocumentPath)
+  return resolved ? [resolved] : []
 }
 
 export function buildRetryUserMessage(retrySupplementRaw: string): string {
@@ -196,22 +201,6 @@ export function buildTotalPages(sessionRecord: Record<string, unknown>): number 
 export function buildOutlineTitles(rawUserMessage: string): string[] {
   return extractOutlineTitles(rawUserMessage)
 }
-
-const parseJsonObject = (value: unknown): Record<string, unknown> => {
-  if (!value) return {}
-  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>
-  if (typeof value !== 'string') return {}
-  try {
-    const parsed = JSON.parse(value) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-
 
 export async function resolveCommonContext(
   ctx: IpcContext,

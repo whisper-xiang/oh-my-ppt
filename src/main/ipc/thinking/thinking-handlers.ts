@@ -102,14 +102,6 @@ function parsePageCountFromThinkingMd(thinkingMd: string): number {
   return matches ? matches.length : 0
 }
 
-function readMarkdownSectionValue(markdown: string, heading: string): string {
-  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const inline = markdown.match(new RegExp(`^##\\s*${escaped}\\s*:\\s*(.+)`, 'm'))
-  if (inline) return inline[1].trim()
-  const block = markdown.match(new RegExp(`^##\\s*${escaped}\\s*\\n([\\s\\S]*?)(?=^##\\s+|(?![\\s\\S]))`, 'm'))
-  return block?.[1]?.trim().split('\n')[0]?.trim() || ''
-}
-
 function readMarkdownSectionBlock(markdown: string, heading: string): string {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const inline = markdown.match(new RegExp(`^##\\s*${escaped}\\s*:\\s*(.+)`, 'm'))

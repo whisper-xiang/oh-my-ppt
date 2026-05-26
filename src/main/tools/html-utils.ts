@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import type { Element as CheerioElement } from 'domhandler'
 import {
   SHARED_PAGE_STYLES_END,
   SHARED_PAGE_STYLES_START,
@@ -108,7 +109,7 @@ const hasRiskyContentPositionClass = (classRaw: string): boolean => {
   )
 }
 
-const isTextBearingLayoutNode = ($: cheerio.CheerioAPI, node: cheerio.Element): boolean => {
+const isTextBearingLayoutNode = ($: cheerio.CheerioAPI, node: CheerioElement): boolean => {
   const el = $(node)
   if (el.is('svg, path, line, circle, rect, ellipse, polygon, polyline')) return false
   if (el.find('h1,h2,h3,h4,h5,h6,p,li,[data-role="title"]').length > 0) return true
@@ -428,17 +429,15 @@ export const validatePersistedPageHtml = (
 
   $('video').each((index, node) => {
     const video = $(node)
-    const missingAttrs = ['autoplay', 'muted', 'loop', 'playsinline'].filter(
+    const missingAttrs = ['controls', 'playsinline'].filter(
       (attr) => video.attr(attr) === undefined
     )
-    if (video.attr('controls') !== undefined) {
-      errors.push(`第 ${index + 1} 个 video 禁止包含 controls 属性`)
-    }
     if (missingAttrs.length > 0) {
       errors.push(`第 ${index + 1} 个 video 缺少属性：${missingAttrs.join(', ')}`)
     }
-    if ((video.attr('preload') || '').toLowerCase() !== 'auto') {
-      errors.push(`第 ${index + 1} 个 video 必须设置 preload="auto"`)
+    const preload = (video.attr('preload') || '').toLowerCase()
+    if (preload && !['metadata', 'auto', 'none'].includes(preload)) {
+      errors.push(`第 ${index + 1} 个 video 的 preload 只能是 metadata、auto 或 none`)
     }
   })
 

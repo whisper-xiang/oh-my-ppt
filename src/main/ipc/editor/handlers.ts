@@ -14,6 +14,7 @@ import {
   patchGenericElementProperties,
   ensureElementAnchorInHtml,
   patchAddElement,
+  removeLegacyVideoAutoplayScript,
   stableSelectorFor
 } from './shared'
 
@@ -285,6 +286,7 @@ export function registerEditorHandlers(ctx: IpcContext): void {
         }
       }
 
+      html = removeLegacyVideoAutoplayScript(html)
       await fs.promises.writeFile(safeHtmlPath, html, 'utf-8')
     })
 

@@ -404,6 +404,8 @@ export function patchGenericElementProperties(
       muted?: unknown
       loop?: unknown
       autoplay?: unknown
+      playsInline?: unknown
+      preload?: unknown
     }
   }
 ): string {
@@ -463,6 +465,15 @@ export function patchGenericElementProperties(
     if (value) target.attr(name, '')
     else target.removeAttr(name)
   }
+  const playsInline = normalizeBoolean(attrs.playsInline)
+  if (playsInline !== null) {
+    if (playsInline) target.attr('playsinline', '')
+    else target.removeAttr('playsinline')
+  }
+  if (typeof attrs.preload === 'string') {
+    const preload = attrs.preload.toLowerCase()
+    if (['metadata', 'auto', 'none'].includes(preload)) target.attr('preload', preload)
+  }
 
   return $.html()
 }
@@ -521,5 +532,19 @@ export function patchAddElement(
   } else {
     parent.children().eq(insertIndex).before(htmlFragment)
   }
+  return $.html()
+}
+
+export function removeLegacyVideoAutoplayScript(html: string): string {
+  const $ = cheerio.load(html, { scriptingEnabled: false })
+  $('#ppt-video-autoplay').remove()
+  $('video').each((_, node) => {
+    const video = $(node)
+    video.attr('controls', '')
+    video.attr('playsinline', '')
+    if (video.attr('preload') === undefined) {
+      video.attr('preload', 'metadata')
+    }
+  })
   return $.html()
 }

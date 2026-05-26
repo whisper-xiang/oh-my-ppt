@@ -96,6 +96,8 @@ export interface PreviewIframeHandle {
         muted?: boolean
         loop?: boolean
         autoplay?: boolean
+        playsInline?: boolean
+        preload?: string
       }
     }
   ) => void
@@ -368,6 +370,8 @@ export const PreviewIframe = forwardRef<
             muted?: boolean
             loop?: boolean
             autoplay?: boolean
+            playsInline?: boolean
+            preload?: string
           }
         }
       ): void {

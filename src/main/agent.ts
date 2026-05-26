@@ -135,6 +135,7 @@ export function createSessionDeckAgent(args: {
   maxTokens?: number;
   styleId?: string | null;
   context: SessionDeckGenerationContext;
+  systemPromptAddendum?: string;
 }): DeepAgentStreamResult {
   const model = resolveModel(args.provider, args.apiKey, args.model, args.baseUrl, args.temperature, args.maxTokens);
   const context: SessionDeckGenerationContext = {
@@ -156,7 +157,10 @@ export function createSessionDeckAgent(args: {
     return "";
   };
   const tools = createSessionBoundDeckTools(context);
-  const systemPrompt = buildDeckAgentSystemPrompt(args.styleId, context);
+  const systemPrompt = [
+    buildDeckAgentSystemPrompt(args.styleId, context),
+    args.systemPromptAddendum?.trim() || "",
+  ].filter(Boolean).join("\n\n");
 
   log.info("[deepagent] create session deck agent", {
     sessionId: context.sessionId,

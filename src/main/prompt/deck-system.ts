@@ -34,7 +34,9 @@ export function buildDeckAgentSystemPrompt(
     (Array.isArray(context.allowedPageIds) && context.allowedPageIds.length === 1) ||
     context.outlineTitles.length === 1
   const step3Instruction = isSinglePageTask
-    ? '3. Required: call update_single_page_file(pageId=target page, content). Single-page tasks expose only this page-writing tool. A final text response without this tool call is a failed generation.'
+    ? context.templatePageReadRequired
+      ? '3. Required: after reading the target template page with read_file, call update_single_page_file(pageId=target page, content). A final text response without the read_file + update_single_page_file sequence is a failed generation.'
+      : '3. Required: call update_single_page_file(pageId=target page, content). A final text response without this tool call is a failed generation.'
     : '3. Call update_page_file(content) page by page. For multi-page generation, write each target page file in order. You may pass pageId to override automatic targeting.'
   const sourceDocumentPaths = (context.sourceDocumentPaths || []).filter(Boolean)
   const isRetryMode = context.mode === 'retry'
@@ -103,6 +105,12 @@ export function buildDeckAgentSystemPrompt(
     '## Hard failure avoidance',
     '- Page write tools reject truncated fragments. Before every write call, ensure your main layout containers are closed and the HTML does not end inside an unfinished tag.',
     '- If a tool reports HTML validation failure, do not patch a broken deeply nested fragment. Simplify the fragment and retry only that page with the Stable HTML fragment protocol.',
+    context.templatePageReadRequired
+      ? '- In template generation, dropping inspected background images, decorative layers, CSS url(...) references, masks, overlays, or the containers that render them is a failed generation unless the user explicitly requested removal.'
+      : '',
+    context.templatePageReadRequired
+      ? '- Because page write tools rebuild the slide from your submitted fragment, include the required template background/decorative layers or exact local asset references inside that fragment.'
+      : '',
     '- 动画选择要先匹配用户提示词和页面叙事；click 触发是低优先级方案。简单入场和展示节奏优先使用静态呈现、data-anim 的 load 触发或 stagger 自动错峰；只有用户表达点击/按键/逐步展示意图时才使用 click 触发。',
     '- 只有 data-anim 无法表达的复杂时间线或回调才使用 <script> + PPT.animate(...) / PPT.createTimeline(...)。',
     '- 不要在回复中贴大段 HTML；你的任务是通过工具把文件改好',
@@ -112,13 +120,25 @@ export function buildDeckAgentSystemPrompt(
     '',
     '## Execution Flow',
     isSinglePageTask
-      ? [
-          sourceDocumentPaths.length > 0
-            ? `1. If retrieved source-document snippets are insufficient, use read_file to confirm source documents (${sourceDocumentPaths.join(', ')}).`
-            : '1. Analyze the slide requirements from the context provided.',
-          step3Instruction,
-          '3. Send a short summary as your final response.'
-        ].join('\n')
+      ? context.templatePageReadRequired
+        ? [
+            `1. Mandatory first action: call read_file(path="${targetPagePath || '/<pageId>.html'}", offset=0, limit=260) to inspect the copied template page before writing.`,
+            '2. Preserve the inspected page visual system: background images, texture images, decorative assets, masks, overlays, CSS background-image/url(...) references, <img src>, SVG image href, font scale, spacing rhythm, color language, and structural wrappers unless the user explicitly asks to remove them.',
+            '   Background/decorative assets are template skeleton, not stale business content; replacing facts and text must not remove the visual shell.',
+            '   The content fragment you pass to update_single_page_file must explicitly carry those required layers or exact local asset references.',
+            sourceDocumentPaths.length > 0
+              ? `3. If retrieved source-document snippets are insufficient, use read_file to confirm source documents (${sourceDocumentPaths.join(', ')}).`
+              : '3. Analyze the new slide content requirements from the context provided.',
+            step3Instruction,
+            '4. Send a short summary as your final response.'
+          ].join('\n')
+        : [
+            sourceDocumentPaths.length > 0
+              ? `1. If retrieved source-document snippets are insufficient, use read_file to confirm source documents (${sourceDocumentPaths.join(', ')}).`
+              : '1. Analyze the slide requirements from the context provided.',
+            step3Instruction,
+            '3. Send a short summary as your final response.'
+          ].join('\n')
       : [
           '1. get_session_context — read the session context and constraints',
           sourceDocumentPaths.length > 0

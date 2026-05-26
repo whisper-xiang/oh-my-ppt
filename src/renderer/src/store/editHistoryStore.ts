@@ -49,6 +49,8 @@ export interface PropertyEditItem {
       muted?: boolean
       loop?: boolean
       autoplay?: boolean
+      playsInline?: boolean
+      preload?: string
     }
   }
 }

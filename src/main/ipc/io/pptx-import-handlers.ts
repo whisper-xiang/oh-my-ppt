@@ -11,6 +11,7 @@ import { resolveActiveModelConfig, resolveGlobalModelTimeouts } from '../config/
 import { buildDesignContractWithLLM } from '../engine/generate'
 import { customAlphabet } from 'nanoid'
 import { recordHistoryOperationStrict } from '../../history/git-history-service'
+import { createDefaultDesignContract } from '../../utils/design-contract'
 
 const nanoidLower = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 12)
 
@@ -92,6 +93,7 @@ export function registerPptxImportHandlers(ctx: IpcContext): void {
         provider: 'import',
         model: 'pptx-import'
       })
+      await db.updateSessionDesignContract(sessionId, createDefaultDesignContract())
       const projectId = await db.createProject({
         session_id: sessionId,
         title: imported.title,

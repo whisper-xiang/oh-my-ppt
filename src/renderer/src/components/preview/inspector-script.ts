@@ -423,8 +423,39 @@ export function buildInspectorInjectScript(options?: { mode?: 'inspect' | 'text-
   ensureStyle();
 
   const freezeAnimationsForInspect = () => {
-    if (window.PPT && typeof window.PPT.stopAnimations === "function") {
+    if (window.PPT && typeof window.PPT.finishAnimations === "function") {
+      try { window.PPT.finishAnimations(); } catch (_error) {}
+    } else if (window.PPT && typeof window.PPT.stopAnimations === "function") {
       try { window.PPT.stopAnimations(); } catch (_error) {}
+    }
+    try {
+      document.getAnimations?.().forEach((animation) => {
+        try {
+          if (typeof animation.finish === "function") animation.finish();
+          else if (typeof animation.cancel === "function") animation.cancel();
+        } catch (_error) {
+          try { animation.cancel(); } catch (_cancelError) {}
+        }
+      });
+    } catch (_error) {}
+    const forceVisibleIfMotionStopped = (el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const s = el.style;
+      const computed = getComputedStyle(el);
+      const inlineOpacity = s.opacity.trim();
+      const motionMarked =
+        el.matches("[data-anim], [data-anime], [data-animate], [data-ppt-anim-initialized='1'], .opacity-0") ||
+        Boolean(inlineOpacity);
+      if (motionMarked && Number(computed.opacity || "1") < 0.98) {
+        s.opacity = "1";
+      }
+      if (
+        motionMarked &&
+        inlineOpacity &&
+        /(translate|scale)\\(/i.test(s.transform || "")
+      ) {
+        s.transform = "";
+      }
     }
     const root = document.querySelector(".ppt-page-root, [data-ppt-guard-root='1']");
     if (!root) return;
@@ -434,6 +465,7 @@ export function buildInspectorInjectScript(options?: { mode?: 'inspect' | 'text-
       if (s.transition && (s.transition.includes("transform") || s.transition.includes("opacity"))) {
         s.transition = "";
       }
+      forceVisibleIfMotionStopped(el);
     });
     root.querySelectorAll("[data-ppt-anim-initialized='1']").forEach((el) => {
       if (!(el instanceof HTMLElement)) return;
@@ -445,6 +477,9 @@ export function buildInspectorInjectScript(options?: { mode?: 'inspect' | 'text-
       el.style.opacity = "";
       el.style.transform = "";
     });
+    root
+      .querySelectorAll("[data-anim], [data-anime], [data-animate], .opacity-0")
+      .forEach(forceVisibleIfMotionStopped);
   };
 
   const restoreFrozenAnimationStyles = () => {

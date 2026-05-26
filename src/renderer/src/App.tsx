@@ -7,10 +7,12 @@ import { ThinkingDetailPage } from './pages/thinking-detail'
 import { SessionsPage } from './pages/sessions'
 import { SessionDetailPage } from './pages/session-detail'
 import { SessionGeneratingPage } from './pages/session-generating'
+import { TemplateSessionsGeneratingPage } from './pages/template-sessions-generating'
 import { SettingsPage } from './pages/settings'
 import { StylesPage } from './pages/styles'
 import { FontsPage } from './pages/fonts'
 import { StyleEditorPage } from './pages/style-editor'
+import { TemplatesPage } from './pages/templates'
 import { AppToaster } from './components/AppToaster'
 import { ScrollArea } from './components/ui/ScrollArea'
 import { useT } from './i18n'
@@ -47,6 +49,7 @@ function App(): React.JSX.Element {
       <>
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
           <Routes>
+            <Route path="/sessions/:id/template-generating" element={<TemplateSessionsGeneratingPage />} />
             <Route path="/sessions/:id/generating" element={<SessionGeneratingPage />} />
             <Route path="/sessions/:id" element={<SessionDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -80,6 +83,7 @@ function App(): React.JSX.Element {
                   <Route path="/" element={<HomePage />} />
                   <Route path="/create/session" element={<SessionCreatePage />} />
                   <Route path="/sessions" element={<SessionsPage />} />
+                  <Route path="/templates" element={<TemplatesPage />} />
                   <Route path="/styles" element={<StylesPage />} />
                   <Route path="/fonts" element={<FontsPage />} />
                   <Route path="/styles/new" element={<StyleEditorPage />} />

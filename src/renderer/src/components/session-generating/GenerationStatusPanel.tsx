@@ -20,6 +20,7 @@ export function GenerationStatusPanel({
   cancelLabel,
   hasGeneratedPages,
   canEnterEditor,
+  showEditorShortcut,
   onEnterEditor,
   onContinueRemaining,
   onRegenerate,
@@ -40,6 +41,7 @@ export function GenerationStatusPanel({
   cancelLabel: string
   hasGeneratedPages: boolean
   canEnterEditor: boolean
+  showEditorShortcut: boolean
   onEnterEditor: () => void
   onContinueRemaining: () => void
   onRegenerate: () => void
@@ -114,7 +116,7 @@ export function GenerationStatusPanel({
             </span>
             <span className="ml-auto inline-flex shrink-0 items-center gap-2 font-medium">
               <span className="font-semibold">{progress}%</span>
-              {canEnterEditor && (
+              {showEditorShortcut && (
                 <Button
                   size="sm"
                   className="h-6 rounded-md px-2 text-[10px] shadow-none"

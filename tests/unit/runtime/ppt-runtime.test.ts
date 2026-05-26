@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  *
- * Unit tests for ppt-runtime.js v2.0.11:
+ * Unit tests for ppt-runtime.js v2.0.13:
  *   - PPT.stopAnimations() / PPT.resumeAnimations()
  *   - PPT.clicks state machine (advance returns boolean, _dispatch exact match)
  *   - PPT.scanDataAnim() / PPT.executeDataAnim() (routed through PPT.animate)
@@ -21,6 +21,7 @@ function createMockAnime() {
   const animations: Array<{
     pause: ReturnType<typeof vi.fn>
     play: ReturnType<typeof vi.fn>
+    complete: ReturnType<typeof vi.fn>
     finished: Promise<void>
   }> = []
 
@@ -31,6 +32,7 @@ function createMockAnime() {
       const anim = {
         pause: vi.fn(),
         play: vi.fn(),
+        complete: vi.fn(() => resolveFinished()),
         finished,
         _resolve: resolveFinished
       }
@@ -118,6 +120,15 @@ describe('PPT.stopAnimations / PPT.resumeAnimations', () => {
     animate('.card', { opacity: [0, 1] })
     ;(PPT.resumeAnimations as Function)()
     animations.forEach(a => { expect(a.play).toHaveBeenCalled() })
+  })
+
+  it('finishes active animations before pausing them', () => {
+    const animate = PPT.animate as Function
+    animate('.card', { opacity: [0, 1] })
+    ;(PPT.finishAnimations as Function)()
+    animations.forEach(a => {
+      expect(a.complete).toHaveBeenCalled()
+    })
   })
 
   it('handles empty active set gracefully', () => {
@@ -503,9 +514,139 @@ describe('PPT.animate tracks animations for stop/resume', () => {
   })
 })
 
+describe('PPT.createChart tick formatters', () => {
+  function installMockChart() {
+    const previousChart = (globalThis as Record<string, unknown>).Chart
+    const instances = new Map<HTMLCanvasElement, Record<string, any>>()
+    const ChartMock = vi.fn(function (this: Record<string, any>, target: HTMLCanvasElement, config: Record<string, any>) {
+      this.canvas = target
+      this.data = config.data
+      this.options = config.options
+      this.resize = vi.fn()
+      this.update = vi.fn()
+      this.destroy = vi.fn()
+      instances.set(target, this)
+    }) as unknown as ReturnType<typeof vi.fn> & {
+      getChart: ReturnType<typeof vi.fn>
+    }
+    ChartMock.getChart = vi.fn((target: HTMLCanvasElement) => instances.get(target) || null)
+    ;(globalThis as Record<string, unknown>).Chart = ChartMock
+    return {
+      ChartMock,
+      restore: () => {
+        if (previousChart === undefined) {
+          delete (globalThis as Record<string, unknown>).Chart
+        } else {
+          ;(globalThis as Record<string, unknown>).Chart = previousChart
+        }
+      }
+    }
+  }
+
+  it('keeps category axis labels instead of displaying numeric indexes', () => {
+    const { PPT } = setupRuntime()
+    document.body.innerHTML = '<canvas id="chart"></canvas>'
+
+    const { restore } = installMockChart()
+
+    try {
+      const chart = (PPT.createChart as Function)(document.getElementById('chart'), {
+        type: 'line',
+        data: {
+          labels: ['2000', '2005', '2010'],
+          datasets: [{ data: [21.5, 20.3, 19.2] }]
+        },
+        options: {
+          scales: {
+            x: { type: 'category', ticks: {} },
+            y: { ticks: {} }
+          }
+        }
+      })
+
+      const xCallback = chart.options.scales.x.ticks.callback
+      const yCallback = chart.options.scales.y.ticks.callback
+      const categoryScale = {
+        getLabelForValue: (value: number) => chart.data.labels[value]
+      }
+
+      expect(xCallback.call(categoryScale, 1)).toBe('2005')
+      expect(yCallback(20.300000000000004)).toBe('20.3')
+    } finally {
+      restore()
+    }
+  })
+
+  it('keeps category labels when updateChart replaces options', () => {
+    const { PPT } = setupRuntime()
+    document.body.innerHTML = '<canvas id="chart"></canvas>'
+
+    const { restore } = installMockChart()
+
+    try {
+      const canvas = document.getElementById('chart')
+      const chart = (PPT.createChart as Function)(canvas, {
+        type: 'bar',
+        data: {
+          labels: ['North', 'South'],
+          datasets: [{ data: [10, 20] }]
+        },
+        options: {}
+      })
+
+      ;(PPT.updateChart as Function)(canvas, {
+        options: {
+          scales: {
+            x: { ticks: {} }
+          }
+        }
+      })
+
+      const xCallback = chart.options.scales.x.ticks.callback
+      const categoryScale = {
+        getLabelForValue: (value: number) => chart.data.labels[value]
+      }
+
+      expect(xCallback.call(categoryScale, 1)).toBe('South')
+    } finally {
+      restore()
+    }
+  })
+
+  it('uses the value axis in horizontal bar tooltips', () => {
+    const { PPT } = setupRuntime()
+    document.body.innerHTML = '<canvas id="chart"></canvas>'
+
+    const { restore } = installMockChart()
+
+    try {
+      const chart = (PPT.createChart as Function)(document.getElementById('chart'), {
+        type: 'bar',
+        data: {
+          labels: ['North', 'South'],
+          datasets: [{ label: 'Revenue', data: [10, 20] }]
+        },
+        options: {
+          indexAxis: 'y'
+        }
+      })
+
+      const labelCallback = chart.options.plugins.tooltip.callbacks.label
+      expect(labelCallback({
+        chart,
+        dataset: { label: 'Revenue' },
+        parsed: { x: 20.300000000000004, y: 1 },
+        raw: 20.300000000000004
+      })).toBe('Revenue: 20.3')
+    } finally {
+      restore()
+    }
+  })
+})
+
 describe('Version guard', () => {
-  it('runtime version is 2.0.11', () => {
+  it('runtime version is 2.0.13', () => {
     const PPT = setupRuntime().PPT
-    expect(PPT.__runtimeVersion).toBe('2.0.11')
+    expect(PPT.__runtimeVersion).toBe('2.0.13')
   })
 })

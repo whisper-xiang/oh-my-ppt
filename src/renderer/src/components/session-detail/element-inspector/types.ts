@@ -22,6 +22,8 @@ export interface ElementEditDraft {
   muted: boolean
   loop: boolean
   autoplay: boolean
+  playsInline: boolean
+  preload: string
 }
 
 export interface ElementEditorProps {

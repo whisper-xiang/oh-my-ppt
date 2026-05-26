@@ -19,6 +19,8 @@ type LocationState = {
   rerunToken?: number
 }
 
+type GenerationKind = 'standard' | 'template'
+
 type SessionGeneratedPage = {
   id?: string
   pageNumber: number
@@ -232,8 +234,12 @@ const buildPreviewPagesFromGeneratedPages = (
       status:
         page.status === 'failed'
           ? 'failed'
-          : page.status === 'completed' || page.htmlPath || page.sourceUrl
+          : page.status === 'completed'
             ? 'completed'
+            : page.status
+              ? 'pending'
+              : page.htmlPath || page.sourceUrl
+                ? 'completed'
             : 'pending'
     }))
   )
@@ -274,7 +280,11 @@ const updatePreviewPageStatus = (
     .sort((a, b) => a.pageNumber - b.pageNumber)
 }
 
-export function SessionGeneratingPage(): React.JSX.Element {
+export function SessionGeneratingPage({
+  generationKind = 'standard'
+}: {
+  generationKind?: GenerationKind
+} = {}): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -302,6 +312,8 @@ export function SessionGeneratingPage(): React.JSX.Element {
     buildPagePlaceholders(1, lang)
   )
   const [presentationTitle, setPresentationTitle] = useState<string>('')
+  const generatingPath =
+    generationKind === 'template' && id ? `/sessions/${id}/template-generating` : `/sessions/${id}/generating`
 
   const appendEvent = (line: string, timestamp?: string): void => {
     const el = eventsContainerRef.current
@@ -531,7 +543,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
         return
       }
 
-      if (event.type === 'page_started' || event.type === 'page_failed') {
+      if (event.type === 'page_planned' || event.type === 'page_started' || event.type === 'page_failed') {
         applyProgress(event.payload.progress)
         applyTotalPages(Math.max(event.payload.totalPages ?? 0, event.payload.pageNumber))
         setPreviewPages((prev) =>
@@ -543,7 +555,12 @@ export function SessionGeneratingPage(): React.JSX.Element {
               title: event.payload.title,
               htmlPath: event.payload.htmlPath,
               pageId: event.payload.pageId || `page-${event.payload.pageNumber}`,
-              status: event.type === 'page_started' ? 'generating' : 'failed'
+              status:
+                event.type === 'page_planned'
+                  ? 'pending'
+                  : event.type === 'page_started'
+                    ? 'generating'
+                    : 'failed'
             },
             Math.max(prev.length, event.payload.totalPages || event.payload.pageNumber),
             lang
@@ -612,7 +629,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
     const unsubscribe = ipc.onGenerateChunk((event) => applyChunk(event))
 
     const startRun = (): void => {
-      const runKey = `${id}:${state?.retry ? 'retry' : 'generate'}:${state?.rerunToken ?? 'initial'}`
+      const runKey = `${id}:${generationKind}:${state?.retry ? 'retry' : 'generate'}:${state?.rerunToken ?? 'initial'}`
       if (startedSessionRef.current === runKey) return
       startedSessionRef.current = runKey
       setStatus('running')
@@ -621,20 +638,34 @@ export function SessionGeneratingPage(): React.JSX.Element {
       if (import.meta.env.DEV) {
         console.info('[generate:start] request', {
           sessionId: id,
+          generationKind,
           retry: Boolean(state?.retry),
           hasInitialPrompt: Boolean(initialPrompt)
         })
       }
       const request = state?.retry
-        ? ipc.retryFailedPages({
-            sessionId: id,
-            userMessage: state.initialPrompt?.trim() || undefined
-          })
-        : ipc.startGenerate({
-            sessionId: id,
-            userMessage: initialPrompt,
-            type: 'deck'
-          })
+        ? generationKind === 'template'
+          ? ipc.startTemplateGenerate({
+              sessionId: id,
+              userMessage: state.initialPrompt?.trim() || '',
+              type: 'deck',
+              retry: true
+            })
+          : ipc.retryFailedPages({
+              sessionId: id,
+              userMessage: state.initialPrompt?.trim() || undefined
+            })
+        : generationKind === 'template'
+          ? ipc.startTemplateGenerate({
+              sessionId: id,
+              userMessage: initialPrompt,
+              type: 'deck'
+            })
+          : ipc.startGenerate({
+              sessionId: id,
+              userMessage: initialPrompt,
+              type: 'deck'
+            })
       void request
         .then((result) => {
           if (result?.runId) {
@@ -824,7 +855,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
       active = false
       unsubscribe?.()
     }
-  }, [id, navigate, location.key, state?.initialPrompt, state?.retry, state?.rerunToken, lang, t])
+  }, [id, navigate, location.key, generationKind, state?.initialPrompt, state?.retry, state?.rerunToken, lang, t])
 
   const displayProgress = Math.max(0, Math.min(100, Math.round(progress)))
   const fullyGenerated = isSessionFullyGenerated(editorGate)
@@ -833,6 +864,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
     { page_count: editorGate.totalCount, generatedCount: editorGate.generatedCount },
     0.68
   ).canEdit
+  const showProgressEditorShortcut = canEnterEditor && !state?.retry
   const completedPreviewCount = previewPages.filter((page) => page.status === 'completed').length
   const failedPreviewLabels = previewPages
     .filter((page) => page.status === 'failed')
@@ -850,6 +882,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
     (error && /部分页面生成失败|some pages failed|pages failed/i.test(error)
       ? t('generating.failedRetry')
       : error || t('generating.failedRetry'))
+  const canContinueRemaining = hasGeneratedPages && !fullyGenerated
   const displayedTotalPages = Math.max(totalPages, previewPages.length)
   const generationStages = [
     'preflight',
@@ -865,7 +898,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
   }
   const handleContinueRemaining = (): void => {
     if (!id) return
-    navigate(`/sessions/${id}/generating`, {
+    navigate(generatingPath, {
       replace: true,
       state: {
         retry: true,
@@ -875,7 +908,7 @@ export function SessionGeneratingPage(): React.JSX.Element {
   }
   const handleRegenerate = (): void => {
     if (!id) return
-    navigate(`/sessions/${id}/generating`, {
+    navigate(generatingPath, {
       replace: true,
       state: {
         initialPrompt: state?.initialPrompt,
@@ -943,8 +976,9 @@ export function SessionGeneratingPage(): React.JSX.Element {
             continueRemainingLabel={t('generating.continueRemaining')}
             regenerateLabel={t('generating.regenerate')}
             cancelLabel={t('generating.cancelGeneration')}
-            hasGeneratedPages={hasGeneratedPages && !fullyGenerated}
+            hasGeneratedPages={canContinueRemaining}
             canEnterEditor={canEnterEditor}
+            showEditorShortcut={showProgressEditorShortcut}
             onEnterEditor={() => navigate(`/sessions/${id}`)}
             onContinueRemaining={handleContinueRemaining}
             onRegenerate={handleRegenerate}

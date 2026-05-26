@@ -1,5 +1,15 @@
 import { memo, useEffect, useMemo, useRef } from 'react'
-import { Home, Move, PanelLeft, PanelRight, Plus, Trash2 } from 'lucide-react'
+import {
+  FilePlus2,
+  Home,
+  Move,
+  PanelLeft,
+  PanelRight,
+  PencilLine,
+  Plus,
+  Sparkles,
+  Trash2
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useGenerateStore, useSessionStore } from '@renderer/store'
 import { useSessionDetailUiStore } from '@renderer/store/sessionDetailStore'
@@ -20,6 +30,12 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { ScrollArea } from '../ui/ScrollArea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/Tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '../ui/DropdownMenu'
 import { PageThumbnail } from './PageThumbnail'
 import type { SessionPreviewPage } from './types'
 import { useT } from '@renderer/i18n'
@@ -65,20 +81,24 @@ function SortablePageItem({
 export const PageSidebar = memo(function PageSidebar({
   pages,
   disabled = false,
+  onAddBlankPage,
   onAddPage,
   onRetryFailedPage,
   onReorderPages,
   onDeletePage,
+  onRenamePage,
   pageManagementDisabled = false,
   collapsed = false,
   onToggleCollapsed
 }: {
   pages: SessionPreviewPage[]
   disabled?: boolean
+  onAddBlankPage?: () => void
   onAddPage?: () => void
   onRetryFailedPage?: (page: SessionPreviewPage) => void
   onReorderPages?: (orderedPageIds: string[], selectedPageId?: string) => Promise<void> | void
   onDeletePage?: (page: SessionPreviewPage) => void
+  onRenamePage?: (page: SessionPreviewPage) => void
   pageManagementDisabled?: boolean
   collapsed?: boolean
   onToggleCollapsed?: () => void
@@ -183,20 +203,34 @@ export const PageSidebar = memo(function PageSidebar({
 
           {/* Bottom: add page + expand */}
           <div className="mt-2 space-y-1.5">
-            {onAddPage && (
-              <Tooltip>
-                <TooltipTrigger asChild>
+            {(onAddBlankPage || onAddPage) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <button
                     type="button"
                     disabled={disabled}
-                    onClick={onAddPage}
-                    className="flex h-8 w-full items-center justify-center rounded-xl bg-[#d4e4c1]/30 text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1]/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    title={t('sessionDetail.addPage')}
+                    aria-label={t('sessionDetail.addPage')}
+                    className="flex h-8 w-full items-center justify-center rounded-xl bg-[#d4e4c1]/30 text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1]/50 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">{t('sessionDetail.addPage')}</TooltipContent>
-              </Tooltip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start" className="w-max min-w-[9rem]">
+                  {onAddBlankPage ? (
+                    <DropdownMenuItem onSelect={onAddBlankPage}>
+                      <FilePlus2 className="h-3.5 w-3.5 shrink-0 text-[#5f6b50]" />
+                      <span className="whitespace-nowrap">{t('sessionDetail.addBlankPage')}</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onAddPage ? (
+                    <DropdownMenuItem onSelect={onAddPage}>
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#7c6a4c]" />
+                      <span className="whitespace-nowrap">{t('sessionDetail.addGeneratedPage')}</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {onToggleCollapsed && (
               <Tooltip>
@@ -275,21 +309,38 @@ export const PageSidebar = memo(function PageSidebar({
                                   >
                                     <Move className={`h-4 w-4 ${isDragging ? 'opacity-60' : ''}`} />
                                   </button>
-                                  {onDeletePage ? (
-                                    <button
-                                      type="button"
-                                      disabled={pageManagementDisabled || disabled || pages.length <= 1}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        onDeletePage(page)
-                                      }}
-                                      className="rounded bg-white/90 p-1 shadow-sm"
-                                      aria-label={t('pageManagement.deletePage')}
-                                      title={t('pageManagement.deletePage')}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  ) : null}
+                                  <div className="flex items-center gap-1">
+                                    {onRenamePage ? (
+                                      <button
+                                        type="button"
+                                        disabled={pageManagementDisabled || disabled}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          onRenamePage(page)
+                                        }}
+                                        className="rounded bg-white/90 p-1 text-[#5d6b4d] shadow-sm transition-colors hover:bg-[#f5f1e8] hover:text-[#3e4a32] disabled:cursor-not-allowed disabled:opacity-50"
+                                        aria-label={t('pageManagement.editPageTitle')}
+                                        title={t('pageManagement.editPageTitle')}
+                                      >
+                                        <PencilLine className="h-3.5 w-3.5" />
+                                      </button>
+                                    ) : null}
+                                    {onDeletePage ? (
+                                      <button
+                                        type="button"
+                                        disabled={pageManagementDisabled || disabled || pages.length <= 1}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          onDeletePage(page)
+                                        }}
+                                        className="rounded bg-white/90 p-1 shadow-sm"
+                                        aria-label={t('pageManagement.deletePage')}
+                                        title={t('pageManagement.deletePage')}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 </div>
                               }
                             />
@@ -325,16 +376,33 @@ export const PageSidebar = memo(function PageSidebar({
 
           {/* Bottom: add page + collapse */}
           <div className="mt-2 flex items-center gap-1.5">
-            {onAddPage && (
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={onAddPage}
-                className="flex flex-1 items-center justify-center gap-1 rounded-[1rem] border border-dashed border-[#b5c4a1]/60 bg-[#d4e4c1]/30 px-2 py-1.5 text-[11px] font-medium text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1]/50 hover:text-[#3e4a32] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <Plus className="h-3 w-3" />
-                {t('sessionDetail.addPage')}
-              </button>
+            {(onAddBlankPage || onAddPage) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-[1rem] border border-dashed border-[#b5c4a1]/60 bg-[#d4e4c1]/30 px-2 py-1.5 text-[11px] font-medium text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1]/50 hover:text-[#3e4a32] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {t('sessionDetail.addPage')}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start" className="w-max min-w-[9rem]">
+                  {onAddBlankPage ? (
+                    <DropdownMenuItem onSelect={onAddBlankPage}>
+                      <FilePlus2 className="h-3.5 w-3.5 shrink-0 text-[#5f6b50]" />
+                      <span className="whitespace-nowrap">{t('sessionDetail.addBlankPage')}</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onAddPage ? (
+                    <DropdownMenuItem onSelect={onAddPage}>
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#7c6a4c]" />
+                      <span className="whitespace-nowrap">{t('sessionDetail.addGeneratedPage')}</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {onToggleCollapsed && (
               <Tooltip>

@@ -203,40 +203,22 @@ export const FIT_SCRIPT = `<script id="ppt-page-fit">
 })();
 </script>`
 
-export const VIDEO_AUTOPLAY_SCRIPT = `<script id="ppt-video-autoplay">
+export const VIDEO_INTERACTION_SCRIPT = `<script id="ppt-video-interaction">
 (() => {
-  const playVideos = () => {
+  const prepareVideos = () => {
     document.querySelectorAll("video").forEach((video) => {
-      video.muted = true;
-      video.defaultMuted = true;
-      video.autoplay = true;
-      video.loop = true;
       video.playsInline = true;
-      video.preload = "auto";
-      video.removeAttribute("controls");
-      const attempt = () => {
-        const result = video.play();
-        if (result && typeof result.catch === "function") {
-          result.catch(() => {});
-        }
-      };
-      if (video.readyState >= 2) {
-        attempt();
-      } else {
-        video.addEventListener("canplay", attempt, { once: true });
-        video.load();
+      if (!video.hasAttribute("preload")) {
+        video.preload = "metadata";
       }
     });
   };
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", playVideos, { once: true });
+    document.addEventListener("DOMContentLoaded", prepareVideos, { once: true });
   } else {
-    playVideos();
+    prepareVideos();
   }
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) playVideos();
-  });
-  window.addEventListener("pageshow", playVideos);
+  window.addEventListener("pageshow", prepareVideos);
 })();
 </script>`
 
@@ -635,15 +617,14 @@ function preprocessPageHtml(html: string): string {
       parent.attr('class', Array.from(parentClassSet).join(' '))
     })
 
-    // 3. Normalize embedded videos for kiosk-style slide playback.
+    // 3. Normalize embedded videos for click-to-play slide playback.
     $('video').each((_, node) => {
       const video = $(node)
-      video.removeAttr('controls')
-      video.attr('autoplay', '')
-      video.attr('muted', '')
-      video.attr('loop', '')
+      video.attr('controls', '')
       video.attr('playsinline', '')
-      video.attr('preload', 'auto')
+      if (video.attr('preload') === undefined) {
+        video.attr('preload', 'metadata')
+      }
     })
 
     // 4. Strip unsafe hidden states (opacity-0, visibility:hidden)
@@ -814,7 +795,7 @@ async function buildScaffoldDocument(args: {
       </div>
     </main>
     ${FIT_SCRIPT}
-    ${VIDEO_AUTOPLAY_SCRIPT}
+    ${VIDEO_INTERACTION_SCRIPT}
     ${motionScript}
   </body>
 </html>`
@@ -972,12 +953,9 @@ export function createPageWriteTools(args: {
       agentName
     })
     const result = await serializedWrite(context.projectDir, async () => {
-      if (!context.designContract?.titleFont || !context.designContract?.bodyFont) {
-        throw new Error('design contract 缺少 titleFont/bodyFont，无法写入页面字体。')
-      }
       const designFonts = {
-        titleFont: context.designContract.titleFont,
-        bodyFont: context.designContract.bodyFont
+        titleFont: context.designContract?.titleFont || 'Inter',
+        bodyFont: context.designContract?.bodyFont || 'Inter'
       }
       const normalized = await normalizeAndInjectPageRuntime(
         preparedContent.content,

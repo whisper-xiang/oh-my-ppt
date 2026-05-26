@@ -70,6 +70,7 @@ Output is pure HTML slides: instant browser preview, no extra software, easy to 
 - 💬 **One-prompt generation** — Enter topic + requirements, AI plans outline + palette + layout, then generates a complete deck  
 - 📄 **Document-based creation** — Upload txt, md, csv, or docx files to prepare topic, page count, and description automatically, then keep using the source document during generation
 - 📥 **Import PPTX for editing** — Convert local PPTX files into in-app HTML pages, then continue previewing, adjusting positions, and chat-based editing
+- 🧱 **Template library and template creation** — Save generated or edited decks as templates, import PPTX files as templates, and reuse templates to create new PPT sessions
 - 🖼️ **Image-based style and outline generation** — Upload a screenshot or design mockup, then automatically extract a distinctive visual style and generate an outline
 - 🔒 **Local-first** — Runs on your machine, no signup, no upload anxiety  
 - 🔤 **Font management** — 14 curated Google Fonts built-in (including CJK), upload local fonts, pick title and body fonts separately or let AI auto-match
@@ -108,10 +109,13 @@ The home page supports several common entry points:
 - **One-prompt creation**: enter a topic and detailed description to quickly generate a complete deck.
 - **Chat to Create**: use a multi-turn conversation to clarify the topic, materials, audience, structure, and key points for each slide. This is useful when requirements are still unclear, the source material is complex, or you want to shape the outline together first.
 - **Upload document parsing**: upload txt, md, csv, docx, and other files so the app can prepare the topic, page count, and detailed description, then keep referencing the source file during generation.
+- **Create from template**: choose a saved template from the Templates page to copy it into an editable PPT session, or enter a new topic/outline or upload a document so the app regenerates content while preserving the template's layout, palette, and visual rhythm.
 
 Document parsing also checks whether the outline and page count match. For example, if the outline clearly contains five pages, the creation form will try to use five pages too. Your documents stay in the local workspace; the app only prepares them as AI-readable text.
 
 If you already have an existing PPTX file, click “Import PPTX” on the home page to convert it into editable in-app pages, then continue previewing, adjusting positions, chat-editing, and exporting.
+
+You can also save an existing session to the template library, or import a PPTX as a template from the Templates page, then reuse the same structure and visual style to create new PPT sessions.
 
 After generation, you can enter preview or presentation mode, keep editing by dragging elements, inserting images/videos, using chat edits, rolling back history, and generate speaker scripts for the full deck or the current slide.
 

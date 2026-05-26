@@ -4,6 +4,10 @@ import type { IpcContext } from '../context'
 import type { SessionStatus } from '../../db/schema'
 import { createEmitAssistantMessage } from '../generation/generation-utils'
 import { executeDeckGeneration, resolveDeckContext } from '../generation/deck-flow'
+import {
+  executeTemplateDeckGeneration,
+  resolveTemplateDeckContext
+} from '../generation/template-deck-flow'
 import { executeEditGeneration, resolveEditContext } from '../generation/edit-flow'
 import { executeDeckAllPageEditGeneration } from '../generation/edit-deck-allpage-flow'
 import { executeRetryFailedPages, resolveRetryContext } from '../generation/retry-flow'
@@ -189,6 +193,53 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         await finalizeGenerationFailure(ctx, context, error)
       } else {
         logPreContextFailure('generate:start', requestedSessionId, error)
+      }
+      throw error
+    } finally {
+      if (requestedSessionId) {
+        releaseStartingSessionRun(requestedSessionId, startingRun)
+      }
+      if (context) {
+        agentManager.removeSession(context.sessionId)
+      }
+    }
+  })
+
+  ipcMain.handle('generate:startTemplate', async (event, payload) => {
+    pruneFinishedSessionRunStates()
+    const requestedSessionId =
+      payload &&
+      typeof payload === 'object' &&
+      typeof (payload as { sessionId?: unknown }).sessionId === 'string'
+        ? String((payload as { sessionId?: string }).sessionId).trim()
+        : ''
+    const startingReservation = requestedSessionId
+      ? reserveStartingSessionRun('generate:startTemplate', requestedSessionId)
+      : null
+    if (startingReservation?.alreadyRunning) {
+      return { success: true, runId: startingReservation.runId, alreadyRunning: true }
+    }
+    const startingRun =
+      startingReservation?.alreadyRunning === false ? startingReservation.startingRun : null
+
+    let context: Awaited<ReturnType<typeof resolveTemplateDeckContext>> | null = null
+    try {
+      context = await resolveTemplateDeckContext(ctx, event, payload)
+      assertStartingRunNotCanceled(startingRun)
+      beginSessionRunState({
+        sessionId: context.sessionId,
+        runId: context.runId,
+        mode: context.effectiveMode,
+        totalPages: context.totalPages,
+        previousSessionStatus: context.previousSessionStatus
+      })
+      await executeTemplateDeckGeneration(ctx, emitAssistant, context)
+      return { success: true, runId: context.runId }
+    } catch (error) {
+      if (context) {
+        await finalizeGenerationFailure(ctx, context, error)
+      } else {
+        logPreContextFailure('generate:startTemplate', requestedSessionId, error)
       }
       throw error
     } finally {
