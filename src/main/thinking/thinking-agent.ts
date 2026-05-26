@@ -315,7 +315,6 @@ function getThinkingRepairTarget(args: {
   }
   if (
     args.rawRequestedStage &&
-    args.rawRequestedStage !== 'collect' &&
     isValidTransition(args.currentStage, args.rawRequestedStage)
   ) {
     return args.rawRequestedStage
@@ -409,7 +408,7 @@ function getOrCreateRuntime(
     ],
     systemPrompt: args.systemPrompt,
     tools: workflowTools.tools as any,
-    middleware: [createThinkingToolAllowlistMiddleware(allowedToolNames)]
+    middleware: [createThinkingToolAllowlistMiddleware(allowedToolNames) as any]
   })
 
   const runtime: ThinkingRuntime = { agent, workflowState: workflowTools.state }

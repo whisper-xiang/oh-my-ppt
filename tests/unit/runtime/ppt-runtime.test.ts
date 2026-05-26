@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  *
- * Unit tests for ppt-runtime.js v2.0.12:
+ * Unit tests for ppt-runtime.js v2.0.13:
  *   - PPT.stopAnimations() / PPT.resumeAnimations()
  *   - PPT.clicks state machine (advance returns boolean, _dispatch exact match)
  *   - PPT.scanDataAnim() / PPT.executeDataAnim() (routed through PPT.animate)
@@ -21,6 +21,7 @@ function createMockAnime() {
   const animations: Array<{
     pause: ReturnType<typeof vi.fn>
     play: ReturnType<typeof vi.fn>
+    complete: ReturnType<typeof vi.fn>
     finished: Promise<void>
   }> = []
 
@@ -31,6 +32,7 @@ function createMockAnime() {
       const anim = {
         pause: vi.fn(),
         play: vi.fn(),
+        complete: vi.fn(() => resolveFinished()),
         finished,
         _resolve: resolveFinished
       }
@@ -118,6 +120,15 @@ describe('PPT.stopAnimations / PPT.resumeAnimations', () => {
     animate('.card', { opacity: [0, 1] })
     ;(PPT.resumeAnimations as Function)()
     animations.forEach(a => { expect(a.play).toHaveBeenCalled() })
+  })
+
+  it('finishes active animations before pausing them', () => {
+    const animate = PPT.animate as Function
+    animate('.card', { opacity: [0, 1] })
+    ;(PPT.finishAnimations as Function)()
+    animations.forEach(a => {
+      expect(a.complete).toHaveBeenCalled()
+    })
   })
 
   it('handles empty active set gracefully', () => {
@@ -634,8 +645,8 @@ describe('PPT.createChart tick formatters', () => {
 })
 
 describe('Version guard', () => {
-  it('runtime version is 2.0.12', () => {
+  it('runtime version is 2.0.13', () => {
     const PPT = setupRuntime().PPT
-    expect(PPT.__runtimeVersion).toBe('2.0.12')
+    expect(PPT.__runtimeVersion).toBe('2.0.13')
   })
 })

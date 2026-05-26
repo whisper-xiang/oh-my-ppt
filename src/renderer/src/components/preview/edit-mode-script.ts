@@ -801,9 +801,40 @@ export function buildEditModeInjectScript(previewScale = 1): string {
 
   // Kill residual animations from ppt-default-motion (anime.js).
   (() => {
-    if (window.PPT && typeof window.PPT.stopAnimations === "function") {
+    if (window.PPT && typeof window.PPT.finishAnimations === "function") {
+      try { window.PPT.finishAnimations(); } catch (_e) {}
+    } else if (window.PPT && typeof window.PPT.stopAnimations === "function") {
       try { window.PPT.stopAnimations(); } catch (_e) {}
     }
+    try {
+      document.getAnimations?.().forEach((animation) => {
+        try {
+          if (typeof animation.finish === "function") animation.finish();
+          else if (typeof animation.cancel === "function") animation.cancel();
+        } catch (_e) {
+          try { animation.cancel(); } catch (_cancelError) {}
+        }
+      });
+    } catch (_e) {}
+    const forceVisibleIfMotionStopped = (el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const s = el.style;
+      const computed = getComputedStyle(el);
+      const inlineOpacity = s.opacity.trim();
+      const motionMarked =
+        el.matches("[data-anim], [data-anime], [data-animate], [data-ppt-anim-initialized='1'], .opacity-0") ||
+        Boolean(inlineOpacity);
+      if (motionMarked && Number(computed.opacity || "1") < 0.98) {
+        s.opacity = "1";
+      }
+      if (
+        motionMarked &&
+        inlineOpacity &&
+        /(translate|scale)\\(/i.test(s.transform || "")
+      ) {
+        s.transform = "";
+      }
+    };
     const root = document.querySelector(".ppt-page-root, [data-ppt-guard-root='1']");
     if (!root) return;
     root.querySelectorAll("[style]").forEach((el) => {
@@ -812,6 +843,7 @@ export function buildEditModeInjectScript(previewScale = 1): string {
       if (s.transition && (s.transition.includes("transform") || s.transition.includes("opacity"))) {
         s.transition = "";
       }
+      forceVisibleIfMotionStopped(el);
     });
     // Reset click-triggered data-anim initial hidden state so elements
     // are visible in edit mode (marked by ppt-runtime during scan).
@@ -821,6 +853,9 @@ export function buildEditModeInjectScript(previewScale = 1): string {
         el.style.transform = "";
       }
     });
+    root
+      .querySelectorAll("[data-anim], [data-anime], [data-animate], .opacity-0")
+      .forEach(forceVisibleIfMotionStopped);
   })();
 
   // --- Visual helpers ---

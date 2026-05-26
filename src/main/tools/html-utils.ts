@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import type { Element as CheerioElement } from 'domhandler'
 import {
   SHARED_PAGE_STYLES_END,
   SHARED_PAGE_STYLES_START,
@@ -108,7 +109,7 @@ const hasRiskyContentPositionClass = (classRaw: string): boolean => {
   )
 }
 
-const isTextBearingLayoutNode = ($: cheerio.CheerioAPI, node: cheerio.Element): boolean => {
+const isTextBearingLayoutNode = ($: cheerio.CheerioAPI, node: CheerioElement): boolean => {
   const el = $(node)
   if (el.is('svg, path, line, circle, rect, ellipse, polygon, polyline')) return false
   if (el.find('h1,h2,h3,h4,h5,h6,p,li,[data-role="title"]').length > 0) return true

@@ -1,10 +1,10 @@
 (function initPptRuntime(global) {
   if (!global || typeof global !== "object") return;
-  // @ohmyppt-ppt-runtime:arcsin1:v2.0.12
+  // @ohmyppt-ppt-runtime:arcsin1:v2.0.13
 
   var ppt = global.PPT && typeof global.PPT === "object" ? global.PPT : (global.PPT = {});
-  if (ppt.__runtimeVersion === "2.0.12") return;
-  ppt.__runtimeVersion = "2.0.12";
+  if (ppt.__runtimeVersion === "2.0.13") return;
+  ppt.__runtimeVersion = "2.0.13";
 
   function resolveSearchParams() {
     try {
@@ -521,6 +521,21 @@
   ppt.stopAnimations = function () {
     _activeAnimations.forEach(function (anim) {
       try { if (typeof anim.pause === "function") anim.pause(); } catch (_err) {}
+    });
+  };
+
+  ppt.finishAnimations = function () {
+    _activeAnimations.forEach(function (anim) {
+      try {
+        if (typeof anim.complete === "function") {
+          anim.complete();
+          return;
+        }
+        if (typeof anim.seek === "function" && Number.isFinite(Number(anim.duration))) {
+          anim.seek(Number(anim.duration));
+        }
+        if (typeof anim.pause === "function") anim.pause();
+      } catch (_err) {}
     });
   };
 
