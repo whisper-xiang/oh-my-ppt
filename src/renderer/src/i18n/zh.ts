@@ -270,6 +270,8 @@ export const zh = {
     modelTab: '模型接入',
     advancedTab: '高级',
     modelAccess: '模型接入',
+    builtInAvailable: '内置模型已就绪，无需配置即可使用',
+    builtInForced: '当前使用内置模型（强制模式，用户配置无效）',
     addModel: '添加模型',
     editModel: '编辑模型',
     modelName: '模型名称（别名）',

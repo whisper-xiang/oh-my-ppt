@@ -78,6 +78,7 @@ export function SettingsPage(): React.JSX.Element {
     verifyApiKey,
     chooseStoragePath
   } = useSettingsStore()
+  const builtInModel = useSettingsStore((s) => s.settings?.builtInModel ?? null)
   const { success, error, warning, info } = useToastStore()
   const { lang, setLang, t } = useLang()
   const [storagePath, setStoragePath] = useState(
@@ -405,6 +406,21 @@ export function SettingsPage(): React.JSX.Element {
         </TabsContent>
 
         <TabsContent value="model">
+          {builtInModel && (
+            <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${builtInModel.forced ? 'border-[#c7d9b4]/80 bg-[#f0f9e8]/80 text-[#3d5a2e]' : 'border-[#d8ccb5]/60 bg-[#fffaf1]/80 text-[#5a4a3a]'}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">{builtInModel.forced ? '🔒' : '⚡'}</span>
+                <div>
+                  <p className="font-medium">
+                    {builtInModel.forced ? t('settings.builtInForced') : t('settings.builtInAvailable')}
+                  </p>
+                  <p className="mt-0.5 text-xs opacity-70">
+                    {builtInModel.provider} · {builtInModel.model}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <Card className="mb-4">
             <CardHeader className="flex-row items-center justify-between p-5 pb-3">
               <div>

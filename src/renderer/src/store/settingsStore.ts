@@ -2,12 +2,21 @@ import { create } from 'zustand'
 import { ipc, type ModelConfig } from '@renderer/lib/ipc'
 import type { ConfigurableModelTimeoutProfile } from '@shared/model-timeout.js'
 
+interface BuiltInModelInfo {
+  provider: string
+  model: string
+  forced: boolean
+}
+
 interface Settings {
   theme: string
   locale: 'zh' | 'en'
   storagePath: string
   timeouts: Record<ConfigurableModelTimeoutProfile, number>
+  builtInModel: BuiltInModelInfo | null
 }
+
+export type { BuiltInModelInfo }
 
 interface SettingsStore {
   settings: Settings | null

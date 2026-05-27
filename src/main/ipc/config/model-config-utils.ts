@@ -5,6 +5,32 @@ import {
 } from '@shared/model-timeout'
 import type { IpcContext } from '../context'
 import { readAppLocale, uiText } from '../config/locale-utils'
+import log from 'electron-log/main.js'
+
+// ---------------------------------------------------------------------------
+// Built-in model (injected via electron-vite define from .env.local)
+// ---------------------------------------------------------------------------
+
+function resolveBuiltInModelConfig(): ActiveModelConfig | null {
+  const provider = process.env.BUILT_IN_PROVIDER?.trim() || ''
+  const model = process.env.BUILT_IN_MODEL?.trim() || ''
+  const apiKey = process.env.BUILT_IN_API_KEY?.trim() || ''
+  if (!provider || !model || !apiKey) return null
+  return {
+    id: '__built_in__',
+    name: 'Built-in Model',
+    provider,
+    model,
+    apiKey,
+    baseUrl: process.env.BUILT_IN_BASE_URL?.trim() || '',
+    maxTokens: Number(process.env.BUILT_IN_MAX_TOKENS) || 4096
+  }
+}
+
+/** Whether the built-in model forcibly overrides user configuration */
+export function isBuiltInModelForced(): boolean {
+  return process.env.BUILT_IN_FORCE === 'true'
+}
 
 export interface ActiveModelConfig {
   id: string
@@ -32,8 +58,24 @@ export async function resolveActiveModelConfig(
   ctx: Pick<IpcContext, 'db' | 'decryptApiKey'>
 ): Promise<ActiveModelConfig> {
   const locale = await readAppLocale(ctx)
+
+  // When BUILT_IN_FORCE=true, skip DB config entirely
+  if (isBuiltInModelForced()) {
+    const builtIn = resolveBuiltInModelConfig()
+    if (builtIn) {
+      log.info('[model] using forced built-in model', { provider: builtIn.provider, model: builtIn.model })
+      return builtIn
+    }
+  }
+
   const config = await ctx.db.getActiveModelConfig()
   if (!config) {
+    // Fall back to built-in model if available
+    const builtIn = resolveBuiltInModelConfig()
+    if (builtIn) {
+      log.info('[model] no active model in DB, using built-in model')
+      return builtIn
+    }
     throw new Error(
       uiText(
         locale,
@@ -64,6 +106,12 @@ export async function resolveActiveModelConfig(
     )
   }
   if (!apiKey) {
+    // Fall back to built-in model if available
+    const builtIn = resolveBuiltInModelConfig()
+    if (builtIn) {
+      log.info('[model] active model has no apiKey, falling back to built-in model')
+      return builtIn
+    }
     throw new Error(
       uiText(
         locale,

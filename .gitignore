@@ -5,6 +5,8 @@ out
 .eslintcache
 *.log*
 .claude/
+.env.local
+.env.*.local
 
 *.node.tsbuildinfo
 *.web.tsbuildinfo

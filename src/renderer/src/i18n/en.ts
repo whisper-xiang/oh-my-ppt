@@ -278,6 +278,8 @@ export const en = {
     modelTab: 'Model access',
     advancedTab: 'Advanced',
     modelAccess: 'Model access',
+    builtInAvailable: 'Built-in model is ready — no configuration needed',
+    builtInForced: 'Using built-in model (forced mode, user config ignored)',
     addModel: 'Add model',
     editModel: 'Edit model',
     modelName: 'Model name (alias)',

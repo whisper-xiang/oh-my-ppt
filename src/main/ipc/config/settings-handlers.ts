@@ -8,6 +8,7 @@ import {
   resolveModelTimeoutMs
 } from '@shared/model-timeout'
 import { readAppLocale, uiText } from '../config/locale-utils'
+import { isBuiltInModelForced } from './model-config-utils'
 
 const readGlobalTimeouts = (
   settings: Record<string, unknown>
@@ -38,11 +39,22 @@ export function registerSettingsHandlers(ctx: IpcContext): void {
       typeof settings.storage_path === 'string' && settings.storage_path.trim().length > 0
         ? settings.storage_path.trim()
         : ''
+    const builtInProvider = (process.env.BUILT_IN_PROVIDER || '').trim()
+    const builtInModel = (process.env.BUILT_IN_MODEL || '').trim()
+    const builtInApiKey = (process.env.BUILT_IN_API_KEY || '').trim()
+    const builtInAvailable = Boolean(builtInProvider && builtInModel && builtInApiKey)
     return {
       theme: settings.theme || 'light',
       locale: settings.locale === 'en' ? 'en' : 'zh',
       storagePath,
-      timeouts: readGlobalTimeouts(settings)
+      timeouts: readGlobalTimeouts(settings),
+      builtInModel: builtInAvailable
+        ? {
+            provider: builtInProvider,
+            model: builtInModel,
+            forced: isBuiltInModelForced()
+          }
+        : null
     }
   })
 
