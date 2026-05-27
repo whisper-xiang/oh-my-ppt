@@ -924,7 +924,17 @@ export const runDeepAgentDeckGeneration = async (args: {
   const totalPages = pageRefs.length
   const clampProgress = (value: number): number => Math.max(0, Math.min(100, Math.round(value)))
   const pageSummaryMap = new Map<number, string>()
-  const useDualWorkerQueue = totalPages >= 3
+  // Page generation concurrency:
+  // - 1 page: 1 worker (no benefit to parallelism)
+  // - 2 pages: 1 worker (avoid concurrent agent setup overhead)
+  // - 3-9 pages: 2 workers (current default)
+  // - 10+ pages: 4 workers (15-20 page decks are typical; 4-way cuts wall time
+  //   ~2x without overly increasing provider rate-limit risk)
+  const resolvePageWorkerCount = (): number => {
+    if (totalPages < 3) return 1
+    if (totalPages >= 10) return 4
+    return 2
+  }
   const pageProgressMap = new Map<string, number>()
   let renderingProgress = 0
   const toRenderingProgress = (target: number): number => {
@@ -1015,7 +1025,7 @@ export const runDeepAgentDeckGeneration = async (args: {
     projectDir: args.projectDir,
     indexPath: args.indexPath,
     totalPages,
-    fixedConcurrency: useDualWorkerQueue ? 2 : 1,
+    fixedConcurrency: resolvePageWorkerCount(),
     designContract: args.designContract
       ? {
           theme: args.designContract.theme,
@@ -1373,9 +1383,10 @@ export const runDeepAgentDeckGeneration = async (args: {
         )
   }
 
-  const workerCount = useDualWorkerQueue ? 2 : 1
+  const workerCount = resolvePageWorkerCount()
+  const useParallelWorkers = workerCount > 1
   const PAGE_GENERATION_STAGGER_MS = 500
-  if (useDualWorkerQueue) {
+  if (useParallelWorkers) {
     emitRenderingStatus({
       label: progressText(args.appLocale, 'generating'),
       progress: 14,
@@ -1388,8 +1399,8 @@ export const runDeepAgentDeckGeneration = async (args: {
       limit(async () => {
         if (args.signal?.aborted)
           throw new Error(uiText(args.appLocale, '生成已取消', 'Generation canceled'))
-        const workerLabel = useDualWorkerQueue ? 'limit-worker' : 'single-worker'
-        const launchDelayMs = useDualWorkerQueue
+        const workerLabel = useParallelWorkers ? 'limit-worker' : 'single-worker'
+        const launchDelayMs = useParallelWorkers
           ? (index % workerCount) * PAGE_GENERATION_STAGGER_MS
           : 0
         if (launchDelayMs > 0) {
