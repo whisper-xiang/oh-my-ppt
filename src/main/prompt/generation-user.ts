@@ -161,3 +161,101 @@ export function buildSinglePageGenerationPrompt(args: {
     '- Agent workspace root: /'
   ].join('\n')
 }
+
+/**
+ * Prompt for template-mode single-page generation.
+ * Task: edit template content in-place, NOT design a new slide.
+ * Intentionally omits expansion/design rules from buildSinglePageGenerationPrompt.
+ */
+export function buildTemplateSinglePagePrompt(args: {
+  topic: string
+  deckTitle: string
+  pageId: string
+  pageNumber: number
+  pageTitle: string
+  pageOutline: string
+  layoutIntent?: SessionDeckGenerationContext['outlineItems'][number]['layoutIntent']
+  sourceDocumentPaths?: string[]
+  referenceDocumentSnippets?: string
+  retryContext?: {
+    attempt: number
+    maxRetries: number
+    previousError: string
+  }
+}): string {
+  const previousError = args.retryContext?.previousError || ''
+  const shouldMentionWriteToolFix =
+    /页面未写入|没有成功调用|not written|update_single_page_file|占位|placeholder/i.test(previousError)
+  const retryInstructions = args.retryContext
+    ? [
+        '',
+        'Retry notes:',
+        `- This is retry ${args.retryContext.attempt}/${args.retryContext.maxRetries}.`,
+        `- Previous failure: ${previousError}`,
+        shouldMentionWriteToolFix
+          ? `- The previous attempt did not write the target page. You must call update_single_page_file(pageId="${args.pageId}", content=...) before any final response.`
+          : ''
+      ].filter(Boolean)
+    : []
+
+  const sourceDocumentInstructions =
+    args.sourceDocumentPaths && args.sourceDocumentPaths.length > 0
+      ? args.referenceDocumentSnippets && args.referenceDocumentSnippets.trim().length > 0
+        ? [
+            '',
+            args.referenceDocumentSnippets.trim(),
+            '',
+            "Source document: use the retrieved snippets above for this slide's text content. Do not invent facts not present in the snippets or source document.",
+            `- If snippets are insufficient, use read_file to confirm: ${args.sourceDocumentPaths.join(', ')}`
+          ]
+        : [
+            '',
+            `Source document: before writing, read the source for relevant facts: ${args.sourceDocumentPaths.join(', ')}`,
+            '- Extract only content relevant to this slide title and outline. Do not copy unrelated sections.'
+          ]
+      : []
+
+  return [
+    '## Template page update — edit in-place, do NOT redesign',
+    '',
+    `Topic: ${args.topic}`,
+    `Deck title: ${args.deckTitle}`,
+    `Target page: ${args.pageId} (slide ${args.pageNumber})`,
+    `Slide title to use: ${args.pageTitle}`,
+    `Content outline: ${args.pageOutline || 'Derive content from the topic and slide title.'}`,
+    args.layoutIntent ? formatLayoutIntentPrompt(args.layoutIntent) : '',
+    ...sourceDocumentInstructions,
+    '',
+    '### Steps',
+    `1. Read the full template page: call read_file(path="/${args.pageId}.html")`,
+    '2. Identify in the template:',
+    '   a. Chrome elements — ALL absolutely-positioned layers: background images, texture images, decorative images, masks, colored bands, corner logos, footer decorations, SVG shapes, any element with class "absolute"/"fixed" or style "position:absolute/fixed". Also any <img> used purely for decoration.',
+    '   b. Title element — where the slide title text lives in the template.',
+    '   c. Content zone — the area where body text, bullet points, and content modules sit.',
+    `3. Call update_single_page_file(pageId="${args.pageId}", content=...) where content is:`,
+    `   • The COMPLETE section[data-page-scaffold] block from the template (all children — chrome AND content zone), with ONLY these text changes:`,
+    `   • Replace the title element's text with the slide title above.`,
+    '   • Replace body text, list items, and data values in the content zone to match the content outline.',
+    '   • Everything else — HTML structure, CSS classes, inline styles, src/href/url() values, all attributes — must be copied verbatim from the template.',
+    '',
+    '### Strict rules — must not be violated',
+    '- Output the ENTIRE template section block. Do NOT output only the new content portion — chrome elements must be in your output or all template styling is lost.',
+    '- Do NOT add HTML elements that are not in the template.',
+    '- Do NOT remove any element from the template (no removing background layers, logo images, bands, or decorations).',
+    '- Do NOT change CSS classes, inline styles, or any HTML attributes except text content nodes.',
+    '- Do NOT add a new standalone h1/h2 title if the template does not place the title at the top-left.',
+    '- Your output section block must look identical to the template visually, with only text updated.',
+    '',
+    CONTENT_LANGUAGE_RULES,
+    '',
+    'Tool constraint:',
+    `- Required: call update_single_page_file(pageId="${args.pageId}", content=...).`,
+    '- content must be the inner section block only — NOT <!doctype>, <html>, <head>, <body>, .ppt-page-root, .ppt-page-content, .ppt-page-fit-scope, or data-ppt-guard-root.',
+    '- After the tool call, respond with a one-line summary only.',
+    '',
+    'Tool context:',
+    `- Target file: ${args.pageId}.html (virtual path: /${args.pageId}.html)`,
+    '- Agent workspace root: /',
+    ...retryInstructions
+  ].filter(Boolean).join('\n')
+}

@@ -11,6 +11,7 @@ import {
   buildPlanningSystemPrompt,
   buildPlanningUserPrompt,
   buildSinglePageGenerationPrompt,
+  buildTemplateSinglePagePrompt,
   CONTENT_LANGUAGE_RULES
 } from '../../prompt'
 import type { FontSelection, GenerateChunkEvent } from '@shared/generation'
@@ -1153,32 +1154,34 @@ export const runDeepAgentDeckGeneration = async (args: {
               content: [
                 args.singlePagePromptAddendum?.trim() || '',
                 args.requireTemplatePageRead
-                  ? [
-                      '## Template mode — edit in-place, preserve visual structure',
-                      `Step 1 — Read the FULL template page (no limit): call read_file(path="/${page.pageId}.html")`,
-                      'Step 2 — Inventory every visual chrome element in the template: background images, texture images, decorative images, masks, overlays, corner/footer logos, CSS background-image/url(...) references, <img src="...">, SVG shapes, colored bands, border decorations, and all absolutely-positioned layout containers. These are template skeleton — they are NOT old content.',
-                      'Step 3 — Write the updated page by calling update_single_page_file with a content fragment that is the COMPLETE inner content of the template page (everything inside the ppt-page-content or ppt-page-root, i.e. the scaffold section and everything in it), with ONLY the following changed for this slide:',
-                      '  • Slide title text: find the existing heading (h1/h2/h3) or title element in the template and update its text. Do NOT add a new standalone title heading at a different position.',
-                      '  • Body text, bullet points, list items, data values, and content-area text.',
-                      '  • Content-specific images if the slide brief requires new imagery.',
-                      'CRITICAL — must preserve unchanged: every background image layer, every decorative/logo image, every colored band or border, every absolutely-positioned chrome element, every layout container with background-image CSS, all SVG decorations. If these elements are absent from your output, the slide will lose all template styling.',
-                      'Do NOT redesign the page structure. Do NOT add a new h1/h2 title at the top-left corner if the template does not already place the title there. Your output must look like the template page with new text content, not a freshly designed slide.'
-                    ].join('\n')
-                  : '',
-                buildSinglePageGenerationPrompt({
-                  topic: args.topic,
-                  deckTitle: args.deckTitle,
-                  pageId: page.pageId,
-                  pageNumber: page.pageNumber,
-                  pageTitle: page.title,
-                  pageOutline: page.outline,
-                  layoutIntent: page.layoutIntent,
-                  sourceDocumentPaths: args.sourceDocumentPaths,
-                  referenceDocumentSnippets,
-                  isRetryMode: args.generationMode === 'retry',
-                  designContract: args.designContract,
-                  retryContext
-                })
+                  // Template mode: use a dedicated "edit in-place" prompt that suppresses
+                  // generation / expansion rules which would otherwise override template preservation.
+                  ? buildTemplateSinglePagePrompt({
+                      topic: args.topic,
+                      deckTitle: args.deckTitle,
+                      pageId: page.pageId,
+                      pageNumber: page.pageNumber,
+                      pageTitle: page.title,
+                      pageOutline: page.outline,
+                      layoutIntent: page.layoutIntent,
+                      sourceDocumentPaths: args.sourceDocumentPaths,
+                      referenceDocumentSnippets,
+                      retryContext
+                    })
+                  : buildSinglePageGenerationPrompt({
+                      topic: args.topic,
+                      deckTitle: args.deckTitle,
+                      pageId: page.pageId,
+                      pageNumber: page.pageNumber,
+                      pageTitle: page.title,
+                      pageOutline: page.outline,
+                      layoutIntent: page.layoutIntent,
+                      sourceDocumentPaths: args.sourceDocumentPaths,
+                      referenceDocumentSnippets,
+                      isRetryMode: args.generationMode === 'retry',
+                      designContract: args.designContract,
+                      retryContext
+                    })
               ].filter(Boolean).join('\n\n')
             }
           ]

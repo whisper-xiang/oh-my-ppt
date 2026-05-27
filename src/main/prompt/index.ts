@@ -4,6 +4,7 @@ export { buildEditAgentSystemPrompt } from "./edit-system";
 export {
   buildDeckGenerationPrompt,
   buildSinglePageGenerationPrompt,
+  buildTemplateSinglePagePrompt,
 } from "./generation-user";
 export {
   buildDesignContractUserPrompt,
