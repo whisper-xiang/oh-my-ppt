@@ -495,14 +495,21 @@ function applyTemplateChrome(
     const contentMain = $('main[data-role="content"]').first()
     if (!contentMain.length) return $.html()
 
-    // Remove any AI-generated title heading (h1/h2/h3 at the very start of content)
-    // since the template's title box will be injected at the correct position
+    // Remove any AI-generated title elements before injecting the template title box.
+    // normalizeCreativePageFragment assigns data-block-id="title" and data-role="title"
+    // to the first heading it finds. The template title box also has data-block-id="title",
+    // causing a duplicate that fails validatePersistedPageHtml. Strip them first.
     if (chrome.titleBoxHtml) {
-      const firstChild = contentMain.children().first()
-      const tag = firstChild.get(0)?.type === 'tag' ? (firstChild.get(0) as { name?: string }).name?.toLowerCase() : ''
-      if (tag && /^h[1-6]$/.test(tag)) {
-        firstChild.remove()
-      }
+      contentMain.find('[data-role="title"], [data-block-id="title"]').each((_, node) => {
+        if (node.type !== 'tag') return
+        const tag = (node as { name?: string }).name?.toLowerCase() || ''
+        // Remove heading elements entirely; for non-headings just strip the attributes
+        if (/^h[1-6]$/.test(tag)) {
+          $(node).remove()
+        } else {
+          $(node).removeAttr('data-role').removeAttr('data-block-id')
+        }
+      })
     }
 
     // Add top padding so the AI's body content starts below the title area
