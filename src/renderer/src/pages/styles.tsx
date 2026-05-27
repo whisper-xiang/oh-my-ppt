@@ -58,7 +58,7 @@ export function StylesPage(): React.JSX.Element {
         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t('styles.eyebrow')}</p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#3e4a32]">{t('styles.title')}</h1>
+            <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#2d2560]">{t('styles.title')}</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             <Button size="sm" className="min-w-[112px]" onClick={() => navigate('/styles/new')}>
@@ -104,7 +104,7 @@ export function StylesPage(): React.JSX.Element {
               </CardHeader>
               <CardContent>
                 {style.styleCase && (
-                  <span className="mb-2 inline-block rounded-md border border-[#d6c08d]/80 bg-[#fff7e8] px-1.5 py-0.5 text-xs font-medium text-[#7c6a4c]">
+                  <span className="mb-2 inline-block rounded-md border border-[#d4cef0]/80 bg-[#f8f7ff] px-1.5 py-0.5 text-xs font-medium text-[#4a4570]">
                     {style.styleCase}
                   </span>
                 )}
@@ -121,9 +121,9 @@ export function StylesPage(): React.JSX.Element {
                 side="right"
                 align="start"
                 sideOffset={12}
-                className="w-auto overflow-hidden rounded-lg border border-[#d8cfbc]/80 bg-[#fffaf0] p-2 shadow-[0_18px_44px_rgba(64,52,38,0.22)] data-[state=closed]:animate-none data-[state=open]:animate-none"
+                className="w-auto overflow-hidden rounded-lg border border-[#d4cef0]/80 bg-[#faf9fe] p-2 shadow-[0_18px_44px_rgba(70,55,140,0.22)] data-[state=closed]:animate-none data-[state=open]:animate-none"
               >
-                <div className="relative aspect-video w-[380px] overflow-hidden rounded-md border border-[#e3dac8] bg-white">
+                <div className="relative aspect-video w-[380px] overflow-hidden rounded-md border border-[#d4cef0] bg-white">
                   <iframe
                     src={localAssetUrl(style.previewPath)}
                     className="absolute left-0 top-0 h-[900px] w-[1600px] origin-top-left border-0 bg-white"

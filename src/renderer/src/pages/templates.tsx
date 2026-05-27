@@ -367,7 +367,7 @@ export function TemplatesPage(): React.JSX.Element {
   return (
     <div className="mx-auto w-full max-w-7xl p-6">
       <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.22em] text-[#8a7e6c]">{t('templates.eyebrow')}</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-[#7a75a0]">{t('templates.eyebrow')}</p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#3e4a32]">{t('templates.title')}</h1>
@@ -376,7 +376,7 @@ export function TemplatesPage(): React.JSX.Element {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-md border border-[#d6c08d]/70 bg-[#fff7e8] px-2.5 py-1.5 text-xs font-medium text-[#7c6a4c]">
+            <span className="rounded-md border border-[#d4cef0]/70 bg-[#f8f7ff] px-2.5 py-1.5 text-xs font-medium text-[#4c3fa8]">
               {t('templates.count', { count: templates.length })}
             </span>
             <Button
@@ -428,9 +428,9 @@ export function TemplatesPage(): React.JSX.Element {
 
       {directCreatingTemplateName ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2d261f]/28 backdrop-blur-[2px]">
-          <div className="w-[min(360px,calc(100vw-32px))] rounded-xl border border-[#ded2bd]/80 bg-[#fffdf8] px-5 py-4 shadow-[0_18px_45px_rgba(57,47,36,0.22)]">
+          <div className="w-[min(360px,calc(100vw-32px))] rounded-xl border border-[#d4cef0]/80 bg-[#faf9fe] px-5 py-4 shadow-[0_18px_45px_rgba(57,47,36,0.22)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef3e7] text-[#5f6b50]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eeedf8] text-[#4a4570]">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
               <div className="min-w-0">
@@ -444,9 +444,9 @@ export function TemplatesPage(): React.JSX.Element {
 
       {importingPptxTemplate ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2d261f]/28 backdrop-blur-[2px]">
-          <div className="w-[min(380px,calc(100vw-32px))] rounded-xl border border-[#ded2bd]/80 bg-[#fffdf8] px-5 py-4 shadow-[0_18px_45px_rgba(57,47,36,0.22)]">
+          <div className="w-[min(380px,calc(100vw-32px))] rounded-xl border border-[#d4cef0]/80 bg-[#faf9fe] px-5 py-4 shadow-[0_18px_45px_rgba(57,47,36,0.22)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef3e7] text-[#5f6b50]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eeedf8] text-[#4a4570]">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
               <div className="min-w-0">
@@ -486,7 +486,7 @@ export function TemplatesPage(): React.JSX.Element {
                 ).map((page) => (
                   <div
                     key={`${previewTarget.id}-${page.pageId}-${page.pageNumber}`}
-                    className="overflow-hidden rounded-lg border border-[#ded2bd]/80 bg-[#fffdf8] shadow-[0_8px_18px_rgba(74,59,42,0.09)]"
+                    className="overflow-hidden rounded-lg border border-[#d4cef0]/80 bg-[#faf9fe] shadow-[0_8px_18px_rgba(74,59,42,0.09)]"
                   >
                     <div className="relative aspect-video overflow-hidden bg-white">
                       <iframe
@@ -497,10 +497,10 @@ export function TemplatesPage(): React.JSX.Element {
                       />
                     </div>
                     <div className="flex min-w-0 items-center gap-2 border-t border-[#eee4d2]/80 px-2.5 py-2">
-                      <span className="shrink-0 rounded-md bg-[#e8f0df] px-1.5 py-0.5 text-[11px] font-semibold text-[#4f6340]">
+                      <span className="shrink-0 rounded-md bg-[#ebe8f8] px-1.5 py-0.5 text-[11px] font-semibold text-[#4c3fa8]">
                         P{page.pageNumber}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-xs text-[#5f6b50]">
+                      <span className="min-w-0 flex-1 truncate text-xs text-[#4a4570]">
                         {page.title || t('templates.pageFallback', { pageNumber: page.pageNumber })}
                       </span>
                     </div>
@@ -526,11 +526,11 @@ export function TemplatesPage(): React.JSX.Element {
           <div className="space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="min-w-0 flex-1">
-                <label className="mb-1 block text-xs font-medium text-[#5f6b50]">{t('templates.sessionTitleLabel')}</label>
+                <label className="mb-1 block text-xs font-medium text-[#4a4570]">{t('templates.sessionTitleLabel')}</label>
                 <Input value={title} onChange={(event) => setTitle(event.target.value)} />
               </div>
               <div className="w-full sm:w-28">
-                <label className="mb-1 block text-xs font-medium text-[#5f6b50]">{t('templates.pageCountLabel')}</label>
+                <label className="mb-1 block text-xs font-medium text-[#4a4570]">{t('templates.pageCountLabel')}</label>
                 <Input
                   value={pageCount}
                   inputMode="numeric"
@@ -540,9 +540,9 @@ export function TemplatesPage(): React.JSX.Element {
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="block text-xs font-medium text-[#5f6b50]">{t('templates.briefLabel')}</label>
+                <label className="block text-xs font-medium text-[#4a4570]">{t('templates.briefLabel')}</label>
                 {hasParsedSource && !parsingDocument ? (
-                  <span className="rounded-full bg-[#e8f0df] px-2 py-0.5 text-[11px] text-[#4f6340]">
+                  <span className="rounded-full bg-[#ebe8f8] px-2 py-0.5 text-[11px] text-[#4c3fa8]">
                     {t('templates.parsed')}
                   </span>
                 ) : null}

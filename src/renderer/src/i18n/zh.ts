@@ -104,7 +104,7 @@ export const zh = {
     settings: '设置',
     backToSessions: '返回会话',
     newPresentation: '新建演示',
-    tagline: 'AI presentation workbench',
+    tagline: 'AI 演示文稿生成工具',
     logout: '退出登录',
     profile: '个人资料'
   },
@@ -221,7 +221,7 @@ export const zh = {
     newSession: '新建会话',
     importSessionFile: '导入会话文件',
     importSessionFileTooltip:
-      '支持导入二次编辑：\n1. OhMyPPT 打包导出的 slide-pack 文件\n2. 标准会话目录 ZIP（压缩完整 session 会话文件夹）\n（注：编辑页面打包导出的文件）',
+      '支持导入二次编辑：\n1. Easy PPT 打包导出的 slide-pack 文件\n2. 标准会话目录 ZIP（压缩完整 session 会话文件夹）\n（注：编辑页面打包导出的文件）',
     importing: '导入中...',
     importDone: '会话导入完成',
     importedFallbackTitle: '导入的会话',

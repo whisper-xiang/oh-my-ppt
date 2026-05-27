@@ -1908,15 +1908,15 @@ export function SessionDetailPage(): React.JSX.Element {
             <div className="flex max-h-[78vh] w-[560px] flex-col rounded-2xl bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-[#e8e0d0] px-5 py-4">
                 <div>
-                  <h3 className="text-base font-semibold text-[#2f3a2a]">
+                  <h3 className="text-base font-semibold text-[#2d2560]">
                     {t('sessionDetail.historyTitle')}
                   </h3>
-                  <p className="mt-1 text-xs text-[#8a9a7b]">{t('sessionDetail.historyRecent')}</p>
+                  <p className="mt-1 text-xs text-[#7a75a0]">{t('sessionDetail.historyRecent')}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setHistoryOpen(false)}
-                  className="rounded-lg px-2 py-1 text-sm text-[#6f7d62] hover:bg-[#f2efe7]"
+                  className="rounded-lg px-2 py-1 text-sm text-[#4a4570] hover:bg-[#f0eefb]"
                   disabled={Boolean(historyRollbackId)}
                 >
                   {t('common.cancel')}
@@ -1924,7 +1924,7 @@ export function SessionDetailPage(): React.JSX.Element {
               </div>
               <div className="min-h-[220px] overflow-y-auto px-5 py-4">
                 {historyLoading ? (
-                  <div className="flex h-40 items-center justify-center text-sm text-[#8a9a7b]">
+                  <div className="flex h-40 items-center justify-center text-sm text-[#7a75a0]">
                     {t('sessionDetail.historyLoading')}
                   </div>
                 ) : historyVersions.length === 0 ? (
@@ -1932,7 +1932,7 @@ export function SessionDetailPage(): React.JSX.Element {
                     <p className="text-sm font-medium text-[#3e4a32]">
                       {t('sessionDetail.historyEmptyTitle')}
                     </p>
-                    <p className="mt-2 text-xs text-[#8a9a7b]">
+                    <p className="mt-2 text-xs text-[#7a75a0]">
                       {t('sessionDetail.historyEmptyDescription')}
                     </p>
                   </div>
@@ -1952,7 +1952,7 @@ export function SessionDetailPage(): React.JSX.Element {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-sm font-semibold text-[#2f3a2a]">
+                                <p className="truncate text-sm font-semibold text-[#2d2560]">
                                   {version.title}
                                 </p>
                                 {version.isCurrent && (
@@ -1961,14 +1961,14 @@ export function SessionDetailPage(): React.JSX.Element {
                                   </span>
                                 )}
                               </div>
-                              <p className="mt-1 text-xs text-[#8a9a7b]">
+                              <p className="mt-1 text-xs text-[#7a75a0]">
                                 {formatHistoryTime(version.createdAt)}
                               </p>
-                              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#5d6b4d]">
+                              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#6b5fbd]">
                                 {version.description}
                               </p>
                               {version.changedPages.length > 0 && (
-                                <p className="mt-2 text-[11px] text-[#7b6d55]">
+                                <p className="mt-2 text-[11px] text-[#7a75a0]">
                                   {t('sessionDetail.historyChangedPages', {
                                     pages: version.changedPages.join('、')
                                   })}
@@ -1980,7 +1980,7 @@ export function SessionDetailPage(): React.JSX.Element {
                                 type="button"
                                 disabled={rollbackDisabled}
                                 onClick={() => requestRollbackHistory(version)}
-                                className="shrink-0 rounded-lg bg-[#3e4a32] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#2f3a2a] disabled:cursor-not-allowed disabled:bg-[#c8c0b3]"
+                                className="shrink-0 rounded-lg bg-[#3e4a32] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#2d2560] disabled:cursor-not-allowed disabled:bg-[#c8c0b3]"
                               >
                                 {historyRollbackId === version.id
                                   ? t('sessionDetail.historyRollingBack')
@@ -2002,10 +2002,10 @@ export function SessionDetailPage(): React.JSX.Element {
         {blankPageDialogOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <div className="w-[520px] rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="mb-2 text-base font-semibold text-[#2f3a2a]">
+              <h3 className="mb-2 text-base font-semibold text-[#2d2560]">
                 {t('sessionDetail.addBlankPage')}
               </h3>
-              <p className="mb-4 text-xs leading-5 text-[#8a9a7b]">
+              <p className="mb-4 text-xs leading-5 text-[#7a75a0]">
                 {t('sessionDetail.addBlankPageHint')}
               </p>
               <div className="mb-4 max-h-[320px] space-y-2 overflow-y-auto pr-1">
@@ -2016,8 +2016,8 @@ export function SessionDetailPage(): React.JSX.Element {
                     onClick={() => setBlankPageSourceId(page.id)}
                     className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
                       blankPageSourceId === page.id
-                        ? 'border-[#8eaa70] bg-[#eef6e7] text-[#2f3a2a]'
-                        : 'border-[#d4e4c1]/60 bg-[#f8f6f0] text-[#5d6b4d] hover:bg-[#f0ece3]'
+                        ? 'border-[#9d90e0] bg-[#eeedf8] text-[#2d2560]'
+                        : 'border-[#d4e4c1]/60 bg-[#f8f6f0] text-[#6b5fbd] hover:bg-[#f0ece3]'
                     }`}
                   >
                     <span className="shrink-0 rounded-md bg-[#d4e4c1]/70 px-2 py-1 text-[11px] font-semibold text-[#3e4a32]">
@@ -2033,7 +2033,7 @@ export function SessionDetailPage(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => setBlankPageDialogOpen(false)}
-                  className="rounded-xl px-4 py-2 text-sm font-medium text-[#5d6b4d] transition-colors hover:bg-[#f0ece3] cursor-pointer"
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-[#6b5fbd] transition-colors hover:bg-[#f0ece3] cursor-pointer"
                 >
                   {t('sessionDetail.addPageCancel')}
                 </button>
@@ -2041,7 +2041,7 @@ export function SessionDetailPage(): React.JSX.Element {
                   type="button"
                   disabled={!blankPageSourceId}
                   onClick={() => void handleCreateBlankPage()}
-                  className="rounded-xl bg-[#5d6b4d] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3e4a32] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                  className="rounded-xl bg-[#6b5fbd] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3e4a32] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                 >
                   {t('sessionDetail.addBlankPageCreate')}
                 </button>
@@ -2054,15 +2054,15 @@ export function SessionDetailPage(): React.JSX.Element {
         {addPageDialogOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <div className="w-[520px] rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="mb-3 text-base font-semibold text-[#2f3a2a]">
+              <h3 className="mb-3 text-base font-semibold text-[#2d2560]">
                 {t('sessionDetail.addPage')}
               </h3>
-              <p className="mb-3 text-xs text-[#8a9a7b]">{t('sessionDetail.addPageHint')}</p>
+              <p className="mb-3 text-xs text-[#7a75a0]">{t('sessionDetail.addPageHint')}</p>
               <textarea
                 value={addPageInput}
                 onChange={(e) => setAddPageInput(e.target.value)}
                 placeholder={t('sessionDetail.addPageDescription')}
-                className="mb-4 h-40 w-full resize-none rounded-xl border border-[#d4e4c1]/60 bg-[#f8f6f0] px-4 py-3 text-sm leading-relaxed text-[#2f3a2a] placeholder:text-[#8a9a7b] focus:border-[#5d6b4d] focus:outline-none"
+                className="mb-4 h-40 w-full resize-none rounded-xl border border-[#d4e4c1]/60 bg-[#f8f6f0] px-4 py-3 text-sm leading-relaxed text-[#2d2560] placeholder:text-[#7a75a0] focus:border-[#6b5fbd] focus:outline-none"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && addPageInput.trim()) {
@@ -2078,7 +2078,7 @@ export function SessionDetailPage(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => setAddPageDialogOpen(false)}
-                  className="rounded-xl px-4 py-2 text-sm font-medium text-[#5d6b4d] transition-colors hover:bg-[#f0ece3] cursor-pointer"
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-[#6b5fbd] transition-colors hover:bg-[#f0ece3] cursor-pointer"
                 >
                   {t('sessionDetail.addPageCancel')}
                 </button>
@@ -2086,7 +2086,7 @@ export function SessionDetailPage(): React.JSX.Element {
                   type="button"
                   disabled={!addPageInput.trim()}
                   onClick={() => void handleAddPage()}
-                  className="rounded-xl bg-[#5d6b4d] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3e4a32] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="rounded-xl bg-[#6b5fbd] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3e4a32] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {t('sessionDetail.addPageGenerate')}
                 </button>
@@ -2099,14 +2099,14 @@ export function SessionDetailPage(): React.JSX.Element {
         {isAddingPage && (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
             <div className="flex w-[360px] flex-col items-center gap-4 rounded-2xl bg-white/95 px-8 py-6 shadow-2xl">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#d4e4c1] border-t-[#5d6b4d]" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#d4e4c1] border-t-[#6b5fbd]" />
               <div className="flex w-full flex-col items-center gap-2">
                 <p className="text-sm font-medium text-[#3e4a32]">
                   {progress?.label || t('sessionDetail.addPageGenerating')}
                 </p>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e8e0d0]">
                   <div
-                    className="h-full rounded-full bg-[#5d6b4d] transition-all duration-300 ease-out"
+                    className="h-full rounded-full bg-[#6b5fbd] transition-all duration-300 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, progress?.progress ?? 0))}%` }}
                   />
                 </div>
@@ -2119,14 +2119,14 @@ export function SessionDetailPage(): React.JSX.Element {
         {isRetryingSinglePage && (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
             <div className="flex w-[360px] flex-col items-center gap-4 rounded-2xl bg-white/95 px-8 py-6 shadow-2xl">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#f3e4df] border-t-[#93564f]" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#f3f2f9] border-t-[#9b4040]" />
               <div className="flex w-full flex-col items-center gap-2">
-                <p className="text-sm font-medium text-[#93564f]">
+                <p className="text-sm font-medium text-[#9b4040]">
                   {progress?.label || t('sessionDetail.retryPageGenerating')}
                 </p>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e8e0d0]">
                   <div
-                    className="h-full rounded-full bg-[#93564f] transition-all duration-300 ease-out"
+                    className="h-full rounded-full bg-[#9b4040] transition-all duration-300 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, progress?.progress ?? 0))}%` }}
                   />
                 </div>
@@ -2146,7 +2146,7 @@ export function SessionDetailPage(): React.JSX.Element {
               <DialogDescription>{t('pageManagement.editPageTitleDescription')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-[#5d6b4d]" htmlFor="page-title-input">
+              <label className="text-xs font-medium text-[#6b5fbd]" htmlFor="page-title-input">
                 {t('pageManagement.pageTitleLabel')}
               </label>
               <Input

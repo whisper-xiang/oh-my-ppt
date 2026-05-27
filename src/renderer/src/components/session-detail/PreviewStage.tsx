@@ -73,7 +73,7 @@ export const PreviewStage = forwardRef<
           <div className="relative h-full overflow-hidden rounded-[1.55rem] bg-[#f5f1e8] p-2 shadow-[0_10px_24px_rgba(93,107,77,0.11)]">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] truncate border-l-2 border-[#7f9468] bg-[#fffaf1]/68 px-3 py-1.5 text-sm font-medium leading-5 text-[#3e4a32] shadow-[0_6px_16px_rgba(74,59,42,0.08)] backdrop-blur-md sm:max-w-[460px]">
+                <div className="absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] truncate border-l-2 border-[#7f9468] bg-[#faf9fe]/68 px-3 py-1.5 text-sm font-medium leading-5 text-[#3e4a32] shadow-[0_6px_16px_rgba(74,59,42,0.08)] backdrop-blur-md sm:max-w-[460px]">
                   {displayTitle}
                 </div>
               </TooltipTrigger>
@@ -110,18 +110,18 @@ export const PreviewStage = forwardRef<
             {isGenerating && (
               <div className="absolute inset-0 flex items-center justify-center rounded-[1.55rem] bg-[#f5f1e8]/68 backdrop-blur-sm transition-opacity">
                 <div className="flex flex-col items-center gap-3 rounded-[1.5rem] bg-[#e8e0d0]/88 px-8 py-5 shadow-[0_14px_30px_rgba(74,59,42,0.12)]">
-                  <Loader2 className="h-6 w-6 animate-spin text-[#6f8159]" />
+                  <Loader2 className="h-6 w-6 animate-spin text-[#7c6fd4]" />
                   {progressLabel ? <p className="text-sm text-[#5a674b]">{progressLabel}</p> : null}
                 </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="relative flex h-full min-h-[420px] flex-col items-center justify-center gap-4 rounded-[1.55rem] bg-[#f5f1e8]/84 text-center text-[#5d6b4d] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32)]">
+          <div className="relative flex h-full min-h-[420px] flex-col items-center justify-center gap-4 rounded-[1.55rem] bg-[#f5f1e8]/84 text-center text-[#6b5fbd] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32)]">
             {isGenerating ? (
-              <Loader2 className="h-7 w-7 animate-spin text-[#5d6b4d]" />
+              <Loader2 className="h-7 w-7 animate-spin text-[#6b5fbd]" />
             ) : (
-              <Sparkles className="h-7 w-7 text-[#8fbc8f]" />
+              <Sparkles className="h-7 w-7 text-[#9d90e0]" />
             )}
             <div className="space-y-1">
               <p className="text-base font-medium text-[#3e4a32]">

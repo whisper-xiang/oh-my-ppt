@@ -1,5 +1,5 @@
 appId: com.ohmyppt.app
-productName: OhMyPPT
+productName: EasyPPT
 directories:
   buildResources: build
 files:

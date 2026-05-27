@@ -46,17 +46,17 @@ export function Sidebar(): React.JSX.Element {
     <aside className="flex h-full w-full flex-col bg-transparent">
       <div className="px-2 pt-1">
         <div className="mt-1 flex items-center gap-1">
-          <img src={logoUrl} alt="Oh My PPT" className="h-14 w-14 select-none" draggable={false} />
-          <h1 className="organic-serif text-[22px] font-semibold leading-none text-[#3e4a32]">Oh My PPT</h1>
+          <img src={logoUrl} alt="Easy PPT" className="h-14 w-14 select-none" draggable={false} />
+          <h1 className="organic-serif text-[22px] font-semibold leading-none text-[#2d2560]">Easy PPT</h1>
         </div>
-        <p className="mt-1 text-[14px] text-[#7f876e] px-4">{t('nav.tagline')}</p>
+        <p className="mt-1 text-[14px] text-[#7a75a0] px-4">{t('nav.tagline')}</p>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 pb-4 pt-5">
         {isDetailPage && (
           <Link
             to="/sessions"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#4a5a3d] transition-colors hover:bg-[#efe5d3]/75"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#5a5280] transition-colors hover:bg-[#ebe8f8]/75"
           >
             <ArrowLeft className="w-4 h-4" />
             {t('nav.backToSessions')}
@@ -71,8 +71,8 @@ export function Sidebar(): React.JSX.Element {
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
                 isActive
-                  ? 'bg-[#dbe7ca]/80 text-[#2f3b28]'
-                  : 'text-[#58664a] hover:bg-[#efe5d3]/75 hover:text-[#38452f]'
+                  ? 'bg-[#ddd8f5]/80 text-[#2d2560]'
+                  : 'text-[#5a5280] hover:bg-[#ebe8f8]/75 hover:text-[#2d2560]'
               )}
             >
               <item.icon className="w-4 h-4" />
@@ -85,7 +85,7 @@ export function Sidebar(): React.JSX.Element {
       <div className="px-4 pb-4 flex flex-col gap-2">
         <Link
           to="/"
-          className="flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-[#6f8159] to-[#4f613f] px-3 py-2.5 text-[12px] font-medium text-white shadow-lg shadow-[#5d6b4d]/30 transition-all hover:translate-y-[-1px]"
+          className="flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-[#7c6fd4] to-[#4c3fa8] px-3 py-2.5 text-[12px] font-medium text-white shadow-lg shadow-[#6b5fbd]/30 transition-all hover:translate-y-[-1px]"
         >
           <span className="flex min-w-0 items-center gap-2 truncate">
             <Plus className="h-3.5 w-3.5 shrink-0" />
@@ -95,19 +95,19 @@ export function Sidebar(): React.JSX.Element {
         </Link>
 
         {currentUser && (
-          <div className="flex items-center gap-2 rounded-xl border border-[#e1d6c4]/60 bg-[#f5efe3]/60 px-3 py-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#8faa72] to-[#5a7845] text-sm font-bold text-white">
+          <div className="flex items-center gap-2 rounded-xl border border-[#d4cef0]/60 bg-[#f0eefb]/60 px-3 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#9d90e0] to-[#6b5fbd] text-sm font-bold text-white">
               {currentUser.avatar.slice(0, 2)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-medium text-[#2f3b28]">{currentUser.nickname}</p>
-              <p className="truncate text-[10px] text-[#9a8f80]">@{currentUser.username}</p>
+              <p className="truncate text-[12px] font-medium text-[#2d2560]">{currentUser.nickname}</p>
+              <p className="truncate text-[10px] text-[#9a95b8]">@{currentUser.username}</p>
             </div>
             <button
               type="button"
               title={t('nav.profile')}
               onClick={() => setProfileOpen(true)}
-              className="shrink-0 rounded-md p-1 text-[#7a875f] transition-colors hover:bg-[#e0d8c8]/80 hover:text-[#3e4a32]"
+              className="shrink-0 rounded-md p-1 text-[#7a75a0] transition-colors hover:bg-[#ddd8f5]/80 hover:text-[#2d2560]"
             >
               <User className="h-3.5 w-3.5" />
             </button>
@@ -115,7 +115,7 @@ export function Sidebar(): React.JSX.Element {
               type="button"
               title={t('nav.logout')}
               onClick={logout}
-              className="shrink-0 rounded-md p-1 text-[#9a8f80] transition-colors hover:bg-[#ffe8e8]/80 hover:text-[#9b4040]"
+              className="shrink-0 rounded-md p-1 text-[#9a95b8] transition-colors hover:bg-[#ffe8e8]/80 hover:text-[#9b4040]"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>

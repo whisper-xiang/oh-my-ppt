@@ -13,7 +13,7 @@ export function GenerationThumbnail({
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-xl border bg-[#fffaf1]/78 p-2 shadow-[0_16px_34px_rgba(70,82,58,0.12)] transition-all duration-500',
+        'group relative overflow-hidden rounded-xl border bg-[#faf9fe]/78 p-2 shadow-[0_16px_34px_rgba(70,82,58,0.12)] transition-all duration-500',
         page.status === 'completed' && 'border-[#b8d3a6] translate-y-0 opacity-100',
         page.status === 'generating' &&
           'border-[#8fb873] bg-[#f6fbef]/88 shadow-[0_18px_40px_rgba(95,132,72,0.22)]',
@@ -37,7 +37,7 @@ export function GenerationThumbnail({
             className={cn(
               'flex h-full w-full flex-col justify-between p-3',
               page.status === 'generating'
-                ? 'bg-[linear-gradient(135deg,#eef6e7_0%,#fff8ec_100%)]'
+                ? 'bg-[linear-gradient(135deg,#eeedf8_0%,#fff8ec_100%)]'
                 : page.status === 'failed'
                   ? 'bg-[#f7e7e2]'
                   : 'bg-[linear-gradient(135deg,#f5efe4_0%,#e9decb_100%)]'
@@ -62,7 +62,7 @@ export function GenerationThumbnail({
 
         {page.status === 'generating' && (
           <div className="absolute inset-0 border-2 border-[#83ad67]/70">
-            <div className="absolute right-2 top-2 rounded-full bg-[#fffaf1]/90 p-1 shadow-sm">
+            <div className="absolute right-2 top-2 rounded-full bg-[#faf9fe]/90 p-1 shadow-sm">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-[#5f8a43]" />
             </div>
           </div>
@@ -76,7 +76,7 @@ export function GenerationThumbnail({
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="shrink-0 rounded-md bg-[#5d6b4d]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#4f613f]">
+        <span className="shrink-0 rounded-md bg-[#6b5fbd]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#4c3fa8]">
           P{page.pageNumber}
         </span>
         {page.status !== 'failed' && (

@@ -67,11 +67,11 @@ function parsePageCards(thinkingMd: string): PageCard[] {
 }
 
 const STAGE_COLORS: Record<ThinkingStage, { bg: string; text: string; border: string }> = {
-  collect: { bg: 'bg-[#e8e0d0]', text: 'text-[#5d6b4d]', border: 'border-[#c8b89e]' },
-  outline: { bg: 'bg-[#f5f1e8]', text: 'text-[#5d6b4d]', border: 'border-[#e0d8c8]' },
-  draft: { bg: 'bg-[#e8e0d0]', text: 'text-[#5d6b4d]', border: 'border-[#c8b89e]' },
-  refine: { bg: 'bg-[#f5f1e8]', text: 'text-[#5d6b4d]', border: 'border-[#e0d8c8]' },
-  ready: { bg: 'bg-[#8fbc8f]', text: 'text-[#3e4a32]', border: 'border-[#8fbc8f]' }
+  collect: { bg: 'bg-[#e8e0d0]', text: 'text-[#6b5fbd]', border: 'border-[#c8b89e]' },
+  outline: { bg: 'bg-[#f5f1e8]', text: 'text-[#6b5fbd]', border: 'border-[#e0d8c8]' },
+  draft: { bg: 'bg-[#e8e0d0]', text: 'text-[#6b5fbd]', border: 'border-[#c8b89e]' },
+  refine: { bg: 'bg-[#f5f1e8]', text: 'text-[#6b5fbd]', border: 'border-[#e0d8c8]' },
+  ready: { bg: 'bg-[#9d90e0]', text: 'text-[#3e4a32]', border: 'border-[#9d90e0]' }
 }
 
 const STAGE_I18N_KEYS: Record<ThinkingStage, string> = {
@@ -103,7 +103,7 @@ export function ThinkingPageCards({
             <h3 className="organic-serif text-[22px] font-semibold leading-none text-[#3e4a32]">
               {t('thinking.pageCardsTitle')}
             </h3>
-            <p className="mt-1 text-[11px] text-[#5d6b4d]">
+            <p className="mt-1 text-[11px] text-[#6b5fbd]">
               {cards.length > 0 ? t('thinking.pageCountLabel', { count: cards.length }) : t('thinking.noPagesYet')}
             </p>
           </div>
@@ -117,8 +117,8 @@ export function ThinkingPageCards({
             onClick={() => setViewMode('outline')}
             className={`flex h-8 items-center justify-center gap-1.5 rounded-full text-[11px] font-semibold transition-colors ${
               viewMode === 'outline'
-                ? 'bg-[#fffdf8] text-[#3e4a32] shadow-sm'
-                : 'text-[#5d6b4d] hover:bg-[#fffdf8]/60'
+                ? 'bg-[#faf9fe] text-[#3e4a32] shadow-sm'
+                : 'text-[#6b5fbd] hover:bg-[#faf9fe]/60'
             }`}
           >
             <LayoutList className="h-3.5 w-3.5" />
@@ -129,8 +129,8 @@ export function ThinkingPageCards({
             onClick={() => setViewMode('document')}
             className={`flex h-8 items-center justify-center gap-1.5 rounded-full text-[11px] font-semibold transition-colors ${
               viewMode === 'document'
-                ? 'bg-[#fffdf8] text-[#3e4a32] shadow-sm'
-                : 'text-[#5d6b4d] hover:bg-[#fffdf8]/60'
+                ? 'bg-[#faf9fe] text-[#3e4a32] shadow-sm'
+                : 'text-[#6b5fbd] hover:bg-[#faf9fe]/60'
             }`}
           >
             <FileText className="h-3.5 w-3.5" />
@@ -142,8 +142,8 @@ export function ThinkingPageCards({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
         {viewMode === 'document' ? (
           hasDocument ? (
-            <div className="rounded-[2rem] border border-[#e0d8c8] bg-[#fffdf8] px-4 py-4 shadow-sm">
-              <div className="mb-3 flex items-center gap-2 border-b border-[#e8e0d0] pb-2 text-[11px] font-semibold text-[#5d6b4d]">
+            <div className="rounded-[2rem] border border-[#e0d8c8] bg-[#faf9fe] px-4 py-4 shadow-sm">
+              <div className="mb-3 flex items-center gap-2 border-b border-[#e8e0d0] pb-2 text-[11px] font-semibold text-[#6b5fbd]">
                 <FileText className="h-3.5 w-3.5" />
                 <span>thinking.md</span>
               </div>
@@ -204,7 +204,7 @@ export function ThinkingPageCards({
             </div>
           ) : (
             <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#c8d6ba] bg-[#f5f1e8]/72 px-6 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#8fbc8f] text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#9d90e0] text-white">
                 <FileText className="h-5 w-5" />
               </div>
               <p className="mt-3 text-xs leading-relaxed text-[#7a806c]">{t('thinking.noDocumentYet')}</p>
@@ -212,7 +212,7 @@ export function ThinkingPageCards({
           )
         ) : cards.length === 0 ? (
           <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#c8d6ba] bg-[#f5f1e8]/72 px-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#8fbc8f] text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#9d90e0] text-white">
               <FileText className="h-5 w-5" />
             </div>
             <p className="mt-3 text-xs leading-relaxed text-[#7a806c]">{t('thinking.noPagesYet')}</p>
@@ -222,10 +222,10 @@ export function ThinkingPageCards({
             {cards.map((card) => (
               <div
                 key={card.pageNumber}
-                className="group rounded-[1.5rem] border border-[#c8d6ba] bg-[#f5f1e8] px-3 py-3 shadow-sm transition-colors hover:border-[#8fbc8f]"
+                className="group rounded-[1.5rem] border border-[#c8d6ba] bg-[#f5f1e8] px-3 py-3 shadow-sm transition-colors hover:border-[#9d90e0]"
               >
                 <div className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#8fbc8f] text-[11px] font-bold text-[#3e4a32]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#9d90e0] text-[11px] font-bold text-[#3e4a32]">
                     {card.pageNumber}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -233,11 +233,11 @@ export function ThinkingPageCards({
                       <div className="line-clamp-2 min-w-0 text-[13px] font-semibold leading-snug text-[#2f3329]">
                         {card.title}
                       </div>
-                      <span className="shrink-0 rounded-full border border-[#c8d6ba] bg-[#fffdf8] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.04em] text-[#5d6b4d]">
+                      <span className="shrink-0 rounded-full border border-[#c8d6ba] bg-[#faf9fe] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.04em] text-[#6b5fbd]">
                         {card.role}
                       </span>
                     </div>
-                    <p className="mt-1.5 text-[11px] font-medium leading-relaxed text-[#4f6340]">
+                    <p className="mt-1.5 text-[11px] font-medium leading-relaxed text-[#4c3fa8]">
                       {card.objective}
                     </p>
                     {card.summary ? (
@@ -249,7 +249,7 @@ export function ThinkingPageCards({
                       <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-[#747968]">
                         {card.keyPoints.slice(0, 3).map((point, pointIndex) => (
                           <li key={pointIndex} className="flex gap-1.5">
-                            <span className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-[#8fbc8f]" />
+                            <span className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-[#9d90e0]" />
                             <span className="line-clamp-2">{point}</span>
                           </li>
                         ))}
@@ -268,7 +268,7 @@ export function ThinkingPageCards({
           type="button"
           onClick={onConfirmGenerate}
           disabled={loading || !canGenerate}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#3e4a32] text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5d6b4d] disabled:opacity-40 disabled:hover:bg-[#3e4a32]"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#3e4a32] text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#6b5fbd] disabled:opacity-40 disabled:hover:bg-[#3e4a32]"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

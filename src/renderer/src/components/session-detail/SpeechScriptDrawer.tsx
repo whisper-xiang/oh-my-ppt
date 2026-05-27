@@ -147,9 +147,9 @@ export function SpeechScriptDrawer({
   }
 
   return (
-    <aside className="mr-3 mb-3 mt-1 flex min-h-0 w-[300px] shrink-0 flex-col overflow-hidden rounded-[2rem] border border-[#ded2bd]/60 bg-[#f3ecdf]/76 shadow-[0_20px_44px_rgba(74,59,42,0.13)] backdrop-blur-xl">
+    <aside className="mr-3 mb-3 mt-1 flex min-h-0 w-[300px] shrink-0 flex-col overflow-hidden rounded-[2rem] border border-[#d4cef0]/60 bg-[#f3ecdf]/76 shadow-[0_20px_44px_rgba(74,59,42,0.13)] backdrop-blur-xl">
       {/* Header card */}
-      <div className="relative mx-2.5 mt-2.5 overflow-hidden rounded-[1.35rem] border border-[#e1d6c4]/72 bg-[#fffaf1]/78 px-3 pb-2.5 pt-3 shadow-[0_6px_16px_rgba(77,61,43,0.08)]">
+      <div className="relative mx-2.5 mt-2.5 overflow-hidden rounded-[1.35rem] border border-[#e1d6c4]/72 bg-[#faf9fe]/78 px-3 pb-2.5 pt-3 shadow-[0_6px_16px_rgba(77,61,43,0.08)]">
         <div className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-[30%_70%_70%_30%/30%_30%_70%_70%] bg-[#c7d9b4]/12" />
         <div className="relative flex items-center justify-between">
           <h3 className="text-sm font-semibold tracking-[0.04em] text-[#34402c]">
@@ -159,7 +159,7 @@ export function SpeechScriptDrawer({
             type="button"
             aria-label={t('sessionDetail.closeSpeechDrawer')}
             onClick={onClose}
-            className="rounded-md p-1 text-[#9a8f80] transition-colors hover:bg-[#ebe4d6]/80 hover:text-[#3e4a32]"
+            className="rounded-md p-1 text-[#9a95b8] transition-colors hover:bg-[#ebe4d6]/80 hover:text-[#3e4a32]"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -175,8 +175,8 @@ export function SpeechScriptDrawer({
               className={cn(
                 'flex-1 rounded-[0.6rem] py-1.5 text-xs font-medium transition-all',
                 speechConfig.scope === s
-                  ? 'bg-[#fffaf1] text-[#3e4a32] shadow-[0_1px_3px_rgba(74,59,42,0.08)]'
-                  : 'text-[#9a8f80] hover:text-[#5a6b4a]'
+                  ? 'bg-[#faf9fe] text-[#3e4a32] shadow-[0_1px_3px_rgba(74,59,42,0.08)]'
+                  : 'text-[#9a95b8] hover:text-[#5a6b4a]'
               )}
             >
               {s === 'all'
@@ -188,24 +188,24 @@ export function SpeechScriptDrawer({
       </div>
 
       {/* Scope description */}
-      <p className="shrink-0 px-3 pt-2.5 text-[11px] text-[#9a8f80]">
+      <p className="shrink-0 px-3 pt-2.5 text-[11px] text-[#9a95b8]">
         {speechConfig.scope === 'all'
           ? t('sessionDetail.speechScriptScopeAllDesc')
           : (currentPageTitle || t('sessionDetail.speechScriptScopeSingleDesc'))}
       </p>
 
       {/* Config card (fixed, no scroll) */}
-      <div className="mx-2.5 mt-2 shrink-0 overflow-hidden rounded-[1.15rem] border border-[#e1d6c4]/72 bg-[#fffaf1]/78 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
+      <div className="mx-2.5 mt-2 shrink-0 overflow-hidden rounded-[1.15rem] border border-[#e1d6c4]/72 bg-[#faf9fe]/78 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
         {/* Style row */}
         <div className="flex items-center gap-2.5 border-b border-[#ede5d6]/60 px-3 py-2">
-          <span className="shrink-0 text-[11px] font-semibold tracking-[0.06em] text-[#7a875f]">
+          <span className="shrink-0 text-[11px] font-semibold tracking-[0.06em] text-[#7a75a0]">
             {t('sessionDetail.speechScriptStyle')}
           </span>
           <Select
             value={speechConfig.style}
             onValueChange={(v) => onConfigChange({ ...speechConfig, style: v as SpeechStyle })}
           >
-            <SelectTrigger className="h-8 flex-1 border-[#d8ccb5]/60 bg-[#fffdf8]/60 text-xs">
+            <SelectTrigger className="h-8 flex-1 border-[#d4cef0]/60 bg-[#faf9fe]/60 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -229,7 +229,7 @@ export function SpeechScriptDrawer({
         {speechConfig.style === 'custom' && (
           <div className="border-b border-[#ede5d6]/60 px-3 py-2">
             <textarea
-              className="w-full resize-none rounded-lg border border-[#d8ccb5]/80 bg-[#fffdf8]/88 px-2.5 py-1.5 text-xs text-[#3f4b35] placeholder:text-[#b0a898] focus:border-[#9bb98a] focus:outline-none"
+              className="w-full resize-none rounded-lg border border-[#d4cef0]/80 bg-[#faf9fe]/88 px-2.5 py-1.5 text-xs text-[#2d2560] placeholder:text-[#a09ab8] focus:border-[#9d90e0] focus:outline-none"
               rows={2}
               placeholder={t('sessionDetail.speechScriptStyleCustomPlaceholder')}
               value={speechConfig.customStyle ?? ''}
@@ -240,14 +240,14 @@ export function SpeechScriptDrawer({
 
         {/* Length row */}
         <div className="flex items-center gap-2.5 px-3 py-2">
-          <span className="shrink-0 text-[11px] font-semibold tracking-[0.06em] text-[#7a875f]">
+          <span className="shrink-0 text-[11px] font-semibold tracking-[0.06em] text-[#7a75a0]">
             {t('sessionDetail.speechScriptLength')}
           </span>
           <Select
             value={speechConfig.length}
             onValueChange={(v) => onConfigChange({ ...speechConfig, length: v as SpeechLength })}
           >
-            <SelectTrigger className="h-8 flex-1 border-[#d8ccb5]/60 bg-[#fffdf8]/60 text-xs">
+            <SelectTrigger className="h-8 flex-1 border-[#d4cef0]/60 bg-[#faf9fe]/60 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -284,15 +284,15 @@ export function SpeechScriptDrawer({
       {/* Result area (only this section scrolls) */}
       {isGenerating ? (
         <div className="flex flex-col items-center gap-2 py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-[#6f8159]" />
+          <Loader2 className="h-5 w-5 animate-spin text-[#7c6fd4]" />
           <p className="text-center text-xs text-[#7a6b56]">
             {generationLabel}
           </p>
         </div>
       ) : visibleScript ? (
         <div className="flex min-h-0 flex-1 flex-col gap-2 px-2.5 pb-3">
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-[1.15rem] border border-[#e1d6c4]/72 bg-[#fffaf1]/78 px-3 py-3 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
-            <pre className="whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[#3f4b35]">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-[1.15rem] border border-[#e1d6c4]/72 bg-[#faf9fe]/78 px-3 py-3 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
+            <pre className="whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[#2d2560]">
               {visibleScript}
             </pre>
           </div>
@@ -320,7 +320,7 @@ export function SpeechScriptDrawer({
           </div>
         </div>
       ) : (
-        <p className="py-6 text-center text-[11px] text-[#b0a898]">
+        <p className="py-6 text-center text-[11px] text-[#a09ab8]">
           {t('sessionDetail.speechScriptEmptyHint')}
         </p>
       )}

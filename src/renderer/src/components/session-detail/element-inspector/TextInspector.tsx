@@ -15,7 +15,7 @@ export function TextInspector({
     <>
       <InspectorSection
         title={t('sessionDetail.textContent')}
-        icon={<Type className="h-3.5 w-3.5 text-[#7a875f]" />}
+        icon={<Type className="h-3.5 w-3.5 text-[#7a75a0]" />}
       >
         <Textarea
           value={draft.text}
@@ -24,7 +24,7 @@ export function TextInspector({
             onDraftChange({ ...draft, text: event.target.value }, { commit: true, fields: ['text'] })
           }
           rows={5}
-          className="min-h-[120px] resize-none rounded-[1rem] border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-3 py-2 text-[13px] leading-5 text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-[120px] resize-none rounded-[1rem] border border-[#d4cef0]/72 bg-[#faf9fe]/88 px-3 py-2 text-[13px] leading-5 text-[#2d2560] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9d90e0] focus-visible:ring-0 focus-visible:ring-offset-0"
         />
       </InspectorSection>
 
@@ -32,7 +32,7 @@ export function TextInspector({
         <div className="space-y-2.5">
           <div className="grid grid-cols-[1fr_88px] gap-2.5">
             <label className="block space-y-1.5">
-              <span className="text-[11px] font-medium text-[#7a875f]">
+              <span className="text-[11px] font-medium text-[#7a75a0]">
                 {t('sessionDetail.textColor')}
               </span>
               <div className="flex items-center gap-2">
@@ -52,12 +52,12 @@ export function TextInspector({
                       { commit: true, fields: ['color'] }
                     )
                   }
-                  className="h-8 rounded-full border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="h-8 rounded-full border border-[#d4cef0]/72 bg-[#faf9fe]/88 px-2.5 text-xs text-[#2d2560] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9d90e0] focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               </div>
             </label>
             <label className="block space-y-1.5">
-              <span className="text-[11px] font-medium text-[#7a875f]">
+              <span className="text-[11px] font-medium text-[#7a75a0]">
                 {t('sessionDetail.fontSize')}
               </span>
               <Input
@@ -72,13 +72,13 @@ export function TextInspector({
                     { commit: true, fields: ['fontSize'] }
                   )
                 }
-                className="h-8 rounded-full border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="h-8 rounded-full border border-[#d4cef0]/72 bg-[#faf9fe]/88 px-2.5 text-xs text-[#2d2560] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9d90e0] focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </label>
           </div>
 
           <label className="block space-y-1.5">
-            <span className="text-[11px] font-medium text-[#7a875f]">
+            <span className="text-[11px] font-medium text-[#7a75a0]">
               {t('sessionDetail.fontWeight')}
             </span>
             <Select
@@ -90,7 +90,7 @@ export function TextInspector({
                 )
               }
             >
-              <SelectTrigger className="h-8 rounded-full border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a]">
+              <SelectTrigger className="h-8 rounded-full border-[#d4cef0]/72 bg-[#faf9fe]/88 px-2.5 text-xs text-[#2d2560] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9d90e0]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

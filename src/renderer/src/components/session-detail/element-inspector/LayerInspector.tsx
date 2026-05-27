@@ -12,7 +12,7 @@ export function LayerInspector({
   return (
     <InspectorSection
       title={t('sessionDetail.zIndex')}
-      icon={<Layers className="h-3.5 w-3.5 text-[#7a875f]" />}
+      icon={<Layers className="h-3.5 w-3.5 text-[#7a75a0]" />}
     >
       <div className="flex items-center gap-2">
         <button
@@ -41,7 +41,7 @@ export function LayerInspector({
               { commit: true, fields: ['layoutZIndex'] }
             )
           }
-          className="h-8 flex-1 rounded-full border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-2.5 text-center text-xs text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-8 flex-1 rounded-full border border-[#d4cef0]/72 bg-[#faf9fe]/88 px-2.5 text-center text-xs text-[#2d2560] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9d90e0] focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         <button
           type="button"

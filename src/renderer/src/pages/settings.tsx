@@ -393,7 +393,7 @@ export function SettingsPage(): React.JSX.Element {
                   <Button
                     variant="secondary"
                     onClick={handleChoosePath}
-                    className="h-10 min-w-[96px] shrink-0 rounded-lg border border-[#7ea06f]/45 px-4"
+                    className="h-10 min-w-[96px] shrink-0 rounded-lg border border-[#9d90e0]/45 px-4"
                   >
                     <FolderSearch className="mr-1.5 h-4 w-4" />
                     {t('settings.choose')}
@@ -407,7 +407,7 @@ export function SettingsPage(): React.JSX.Element {
 
         <TabsContent value="model">
           {builtInModel && (
-            <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${builtInModel.forced ? 'border-[#c7d9b4]/80 bg-[#f0f9e8]/80 text-[#3d5a2e]' : 'border-[#d8ccb5]/60 bg-[#fffaf1]/80 text-[#5a4a3a]'}`}>
+            <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${builtInModel.forced ? 'border-[#c7d9b4]/80 bg-[#f0f9e8]/80 text-[#3d5a2e]' : 'border-[#d4cef0]/60 bg-[#faf9fe]/80 text-[#5a4a3a]'}`}>
               <div className="flex items-center gap-2">
                 <span className="text-base">{builtInModel.forced ? '🔒' : '⚡'}</span>
                 <div>
@@ -438,7 +438,7 @@ export function SettingsPage(): React.JSX.Element {
             </CardHeader>
             <CardContent className="space-y-2.5 p-5 pt-0">
               {modelConfigs.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[#d8ccb5]/85 bg-[#fff9ef]/70 p-6 text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed border-[#d4cef0]/85 bg-[#fff9ef]/70 p-6 text-sm text-muted-foreground">
                   {t('settings.noModels')}
                 </div>
               ) : (
@@ -447,15 +447,15 @@ export function SettingsPage(): React.JSX.Element {
                     key={config.id}
                     className={
                       config.active
-                        ? 'flex flex-col gap-3 rounded-lg border border-[#96b77f]/80 bg-[#eef6e8] p-3 shadow-[inset_3px_0_0_#6f8f64] sm:flex-row sm:items-center sm:justify-between'
-                        : 'flex flex-col gap-3 rounded-lg border border-[#d8ccb5]/80 bg-[#fffdf8]/78 p-3 sm:flex-row sm:items-center sm:justify-between'
+                        ? 'flex flex-col gap-3 rounded-lg border border-[#9d90e0]/80 bg-[#eeedf8] p-3 shadow-[inset_3px_0_0_#7c6fd4] sm:flex-row sm:items-center sm:justify-between'
+                        : 'flex flex-col gap-3 rounded-lg border border-[#d4cef0]/80 bg-[#faf9fe]/78 p-3 sm:flex-row sm:items-center sm:justify-between'
                     }
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        {config.active && <CheckCircle2 className="h-4 w-4 text-[#5d7b4d]" />}
+                        {config.active && <CheckCircle2 className="h-4 w-4 text-[#6b5fbd]" />}
                         <p className="font-medium text-[#33402a]">{config.name}</p>
-                        <span className="rounded-full bg-[#e9efde] px-2 py-0.5 text-[11px] uppercase text-[#506141]">
+                        <span className="rounded-full bg-[#ebe8f8] px-2 py-0.5 text-[11px] uppercase text-[#4c3fa8]">
                           {config.provider}
                         </span>
                       </div>
@@ -543,7 +543,7 @@ export function SettingsPage(): React.JSX.Element {
             }
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[#d8ccb5]/85 bg-[#fffaf1] shadow-[0_24px_70px_rgba(53,44,32,0.28)]">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[#d4cef0]/85 bg-[#faf9fe] shadow-[0_24px_70px_rgba(53,44,32,0.28)]">
             <div className="flex items-center justify-between border-b border-[#e3d8c5] px-5 py-4">
               <h2 className="text-base font-semibold text-[#33402a]">
                 {modelForm.id ? t('settings.editModel') : t('settings.addModel')}
@@ -656,7 +656,7 @@ export function SettingsPage(): React.JSX.Element {
                     variant="secondary"
                     onClick={handleVerify}
                     disabled={verifying}
-                    className="h-8 min-w-[80px] shrink-0 rounded-lg border border-[#7ea06f]/45 px-3 text-xs"
+                    className="h-8 min-w-[80px] shrink-0 rounded-lg border border-[#9d90e0]/45 px-3 text-xs"
                   >
                     <ShieldCheck className="mr-1 h-3.5 w-3.5" />
                     {verifying ? t('settings.verifying') : t('settings.verify')}

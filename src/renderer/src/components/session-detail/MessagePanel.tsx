@@ -104,8 +104,8 @@ export function MessagePanel({
     : undefined
 
   return (
-    <aside className="mr-3 mb-3 mt-1 flex min-h-0 w-[300px] shrink-0 flex-col overflow-hidden rounded-[2rem] border border-[#ded2bd]/60 bg-[#f3ecdf]/76 shadow-[0_14px_32px_rgba(74,59,42,0.11)] backdrop-blur-xl">
-      <div className="relative mx-2.5 mt-2.5 overflow-hidden rounded-[1.35rem] border border-[#e1d6c4]/72 bg-[#fffaf1]/78 px-3 pb-2.5 pt-3 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
+    <aside className="mr-3 mb-3 mt-1 flex min-h-0 w-[300px] shrink-0 flex-col overflow-hidden rounded-[2rem] border border-[#d4cef0]/60 bg-[#f3ecdf]/76 shadow-[0_14px_32px_rgba(74,59,42,0.11)] backdrop-blur-xl">
+      <div className="relative mx-2.5 mt-2.5 overflow-hidden rounded-[1.35rem] border border-[#e1d6c4]/72 bg-[#faf9fe]/78 px-3 pb-2.5 pt-3 shadow-[0_4px_12px_rgba(77,61,43,0.06)]">
         <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-[30%_70%_70%_30%/30%_30%_70%_70%] bg-[#c7d9b4]/12" />
         <div className="relative flex flex-col gap-2">
           <h3 className="text-sm font-semibold tracking-[0.04em] text-[#34402c]">{t('sessionDetail.messageTitle')}</h3>
@@ -115,7 +115,7 @@ export function MessagePanel({
               value={chatType}
               onValueChange={(value) => setChatType(value === 'page' ? 'page' : 'main')}
             >
-              <SelectTrigger className="h-8 w-[132px] rounded-full border-[#ded2bd]/70 bg-[#fffdf8]/82 px-3 py-1 text-xs text-[#3e4a32] shadow-none">
+              <SelectTrigger className="h-8 w-[132px] rounded-full border-[#d4cef0]/70 bg-[#faf9fe]/82 px-3 py-1 text-xs text-[#3e4a32] shadow-none">
                 <SelectValue placeholder={t('sessionDetail.contextPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -145,7 +145,7 @@ export function MessagePanel({
             ))}
 
             {isGenerating && progress && (
-              <div className="rounded-[1.15rem] border border-[#ded2bd]/72 bg-[#fffaf1]/82 px-3 py-2 shadow-[0_6px_14px_rgba(74,59,42,0.08)]">
+              <div className="rounded-[1.15rem] border border-[#d4cef0]/72 bg-[#faf9fe]/82 px-3 py-2 shadow-[0_6px_14px_rgba(74,59,42,0.08)]">
                 <p className="mb-2 text-sm text-[#655843]">{progress.label || t('sessionDetail.modelProcessing')}</p>
                 <Progress value={progress.progress} />
               </div>
@@ -163,7 +163,7 @@ export function MessagePanel({
 
       <div
         className={cn(
-          'mx-2.5 mb-2.5 rounded-[1.4rem] border border-[#ded2bd]/72 bg-[#fffaf1]/84 px-2.5 pb-3 pt-2 shadow-[0_12px_24px_rgba(74,59,42,0.11)] transition-colors',
+          'mx-2.5 mb-2.5 rounded-[1.4rem] border border-[#d4cef0]/72 bg-[#faf9fe]/84 px-2.5 pb-3 pt-2 shadow-[0_12px_24px_rgba(74,59,42,0.11)] transition-colors',
           assetDragActive && 'border-[#afc79a]/75 bg-[#f3f8ec]/88'
         )}
         onDragEnter={(event) => {
@@ -185,8 +185,8 @@ export function MessagePanel({
         }}
       >
         {selectedSelector && (
-          <div className="mb-2 flex items-center gap-2 rounded-[1rem] border border-[#ded2bd]/65 bg-[#f4ebdc]/70 px-2 py-1.5">
-            <span className="shrink-0 rounded-full bg-[#dcebcf]/82 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-[#4f6340]">
+          <div className="mb-2 flex items-center gap-2 rounded-[1rem] border border-[#d4cef0]/65 bg-[#f4ebdc]/70 px-2 py-1.5">
+            <span className="shrink-0 rounded-full bg-[#dcebcf]/82 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-[#4c3fa8]">
               {t('sessionDetail.selectorBadge')}
             </span>
             <Tooltip>
@@ -211,7 +211,7 @@ export function MessagePanel({
           </div>
         )}
         {chatType === 'main' && (
-          <div className="mb-2 rounded-[1rem] border border-[#ded2bd]/65 bg-[#f4ebdc]/70 px-2.5 py-2 text-xs text-[#6a5c48]">
+          <div className="mb-2 rounded-[1rem] border border-[#d4cef0]/65 bg-[#f4ebdc]/70 px-2.5 py-2 text-xs text-[#6a5c48]">
             {t('sessionDetail.mainDeckHint')}
           </div>
         )}
@@ -262,7 +262,7 @@ export function MessagePanel({
           }}
           disabled={isGenerating}
           rows={4}
-          className="min-h-[96px] resize-none rounded-[1.15rem] border border-[#ded2bd]/72 bg-[#fffdf8]/88 px-3 py-2 text-[13px] leading-5 text-[#3f4b35] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9bb98a] focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-[96px] resize-none rounded-[1.15rem] border border-[#d4cef0]/72 bg-[#faf9fe]/88 px-3 py-2 text-[13px] leading-5 text-[#2d2560] shadow-[inset_0_1px_2px_rgba(74,59,42,0.05)] focus-visible:border-[#9d90e0] focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -320,7 +320,7 @@ export function MessagePanel({
                 ((selectedSelector ? 'page' : chatType) === 'page' && !selectedPageExists)
               }
               size="sm"
-              className="shrink-0 whitespace-nowrap rounded-full bg-[#5d6b4d] px-3 text-xs text-white shadow-[0_8px_18px_rgba(93,107,77,0.24)] hover:bg-[#3e4a32]"
+              className="shrink-0 whitespace-nowrap rounded-full bg-[#6b5fbd] px-3 text-xs text-white shadow-[0_8px_18px_rgba(93,107,77,0.24)] hover:bg-[#3e4a32]"
             >
               <Send className="mr-1 h-4 w-4" />
               {t('sessionDetail.send')}

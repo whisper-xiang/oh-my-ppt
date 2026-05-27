@@ -49,7 +49,7 @@ export function GenerationStatusPanel({
 }): React.JSX.Element {
   if (status === 'failed') {
     return (
-      <div className="mb-4 shrink-0 rounded-lg border border-[#d7b5ae]/80 bg-[#fbf1ee]/86 px-4 py-2.5 text-[#93564f] shadow-[0_8px_20px_rgba(120,73,65,0.08)]">
+      <div className="mb-4 shrink-0 rounded-lg border border-[#d7b5ae]/80 bg-[#fbf1ee]/86 px-4 py-2.5 text-[#9b4040] shadow-[0_8px_20px_rgba(120,73,65,0.08)]">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-2.5">
             <CircleAlert className="h-4 w-4 shrink-0" />
@@ -61,7 +61,7 @@ export function GenerationStatusPanel({
               <button
                 type="button"
                 onClick={onEnterEditor}
-                className="shrink-0 text-xs font-medium text-[#6f8159] underline-offset-2 hover:underline"
+                className="shrink-0 text-xs font-medium text-[#7c6fd4] underline-offset-2 hover:underline"
               >
                 {enterEditorLabel}
               </button>
@@ -85,7 +85,7 @@ export function GenerationStatusPanel({
   const activeStageIndex = stages.indexOf(currentStage as GenerationStageKey)
 
   return (
-    <div className="mb-4 shrink-0 rounded-lg border border-[#d8ccb5] bg-[#fff9ef] px-4 py-2 text-[#435138] shadow-[0_12px_28px_rgba(78,91,63,0.13)]">
+    <div className="mb-4 shrink-0 rounded-lg border border-[#d4cef0] bg-[#fff9ef] px-4 py-2 text-[#435138] shadow-[0_12px_28px_rgba(78,91,63,0.13)]">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:gap-4">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#617350]">
@@ -137,7 +137,7 @@ export function GenerationStatusPanel({
               )}
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full border border-[#d8ccb5]/80 bg-[#fffaf1] shadow-[inset_0_1px_2px_rgba(74,58,40,0.12)]">
+          <div className="h-1.5 overflow-hidden rounded-full border border-[#d4cef0]/80 bg-[#faf9fe] shadow-[inset_0_1px_2px_rgba(74,58,40,0.12)]">
             <div
               className="h-full rounded-full bg-[linear-gradient(90deg,#9ecf8a_0%,#6f9f59_52%,#4f7b3f_100%)] bg-[length:200%_100%] transition-[width] duration-500"
               style={{

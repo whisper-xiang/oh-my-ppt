@@ -18,7 +18,7 @@ let agentManager: AgentManager | null = null
 let isShuttingDown = false
 let isTrayEnabled = false
 
-const APP_NAME = 'OhMyPPT'
+const APP_NAME = 'EasyPPT'
 const DEFAULT_WINDOW_WIDTH = 1200
 const DEFAULT_WINDOW_HEIGHT = 780
 const BASE_MIN_WIDTH = 880

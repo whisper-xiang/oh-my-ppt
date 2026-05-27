@@ -24,10 +24,10 @@ export function GenerationLogPanel({
   onViewportScroll?: React.UIEventHandler<HTMLDivElement>
 }): React.JSX.Element {
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-[#d8ccb5]/72 bg-[#fff9ef]/82 p-2.5 shadow-[0_14px_30px_rgba(78,91,63,0.1)]">
+    <section className="relative flex min-h-0 flex-1 flex-col rounded-lg border border-[#d4cef0]/72 bg-[#fff9ef]/82 p-2.5 shadow-[0_14px_30px_rgba(78,91,63,0.1)]">
       <div className="mb-2 flex min-h-8 items-center pr-14">
         <div className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#495a3b]">
-          <Sparkles className="h-4 w-4 text-[#6f8159]" />
+          <Sparkles className="h-4 w-4 text-[#7c6fd4]" />
           <span className="min-w-0 truncate">{logTitle}</span>
         </div>
         <span
@@ -39,7 +39,7 @@ export function GenerationLogPanel({
       </div>
 
       <ScrollArea
-        className="min-h-0 flex-1 rounded-lg border border-[#e4d9c3]/55 bg-[#fffaf1]/38"
+        className="min-h-0 flex-1 rounded-lg border border-[#e4d9c3]/55 bg-[#faf9fe]/38"
         viewportRef={viewportRef}
         onViewportScroll={onViewportScroll}
         viewportClassName="px-2 py-2"
@@ -65,7 +65,7 @@ export function GenerationLogPanel({
               <span className="min-w-0 truncate">{growingLabel}</span>
             </div>
           ) : status === 'failed' ? (
-            <div className="flex items-center gap-2 rounded-lg border border-[#d7b5ae]/70 bg-[#fff8f4]/72 px-2.5 py-1.5 text-xs text-[#93564f] shadow-[0_6px_14px_rgba(93,107,77,0.06)]">
+            <div className="flex items-center gap-2 rounded-lg border border-[#d7b5ae]/70 bg-[#fff8f4]/72 px-2.5 py-1.5 text-xs text-[#9b4040] shadow-[0_6px_14px_rgba(93,107,77,0.06)]">
               <CircleAlert className="h-3.5 w-3.5 shrink-0" />
               <span className="min-w-0 truncate">{failedLabel}</span>
             </div>

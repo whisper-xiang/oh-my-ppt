@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/Tooltip'
 import { useT } from '@renderer/i18n'
 
 const toolbarButtonClass =
-  'h-7 rounded-[8px] border-transparent bg-[#e8e0d0]/72 px-2.5 text-[11px] text-[#3e4a32] shadow-[0_4px_10px_rgba(86,72,53,0.08)] hover:bg-[#d4e4c1]/78'
+  'h-7 rounded-[8px] border-transparent bg-[#ddd8f5]/72 px-2.5 text-[11px] text-[#2d2560] shadow-[0_4px_10px_rgba(70,55,140,0.08)] hover:bg-[#c8c0f0]/78'
 const toolbarIconClass = 'mr-1.5 h-3.5 w-3.5'
 const dropdownItemIconClass = 'mr-2 h-3.5 w-3.5 text-[#6b7280]'
 
@@ -181,7 +181,7 @@ export function SessionToolbar({
               <Package className={cn(dropdownItemIconClass, 'mt-0.5')} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-normal">
                 <span>{t('sessionDetail.exportSlidePack')}</span>
-                <span className="text-[11px] leading-snug text-[#9a8f80]">
+                <span className="text-[11px] leading-snug text-[#9a95b8]">
                   {t('sessionDetail.exportSlidePackDescription')}
                 </span>
               </span>
@@ -190,7 +190,7 @@ export function SessionToolbar({
               <Archive className={cn(dropdownItemIconClass, 'mt-0.5')} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-normal">
                 <span>{t('sessionDetail.exportSessionZip')}</span>
-                <span className="text-[11px] leading-snug text-[#9a8f80]">
+                <span className="text-[11px] leading-snug text-[#9a95b8]">
                   {t('sessionDetail.exportSessionZipDescription')}
                 </span>
               </span>

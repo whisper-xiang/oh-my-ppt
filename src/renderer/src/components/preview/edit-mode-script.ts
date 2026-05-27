@@ -677,7 +677,7 @@ export function buildEditModeInjectScript(previewScale = 1): string {
         height: 16px !important;
         border: 2px solid #ffffff !important;
         border-radius: 999px !important;
-        background: #5d6b4d !important;
+        background: #6b5fbd !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.18) !important;
         pointer-events: auto !important;
         box-sizing: border-box !important;

@@ -29,7 +29,7 @@ export function TemplateCard({
   const t = useT()
 
   return (
-    <Card className="group !rounded-lg border-[#ded2bd]/55 bg-[#fffdf8]/68 shadow-none transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[#cfc4b1]/85 hover:bg-[#fffaf1]/82 hover:shadow-[0_10px_22px_rgba(88,75,56,0.10)]">
+    <Card className="group !rounded-lg border-[#d4cef0]/55 bg-[#faf9fe]/68 shadow-none transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[#cfc4b1]/85 hover:bg-[#faf9fe]/82 hover:shadow-[0_10px_22px_rgba(88,75,56,0.10)]">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-start justify-between gap-3 text-base">
           <span className="min-w-0 truncate text-[#3e4a32]">{template.name}</span>
@@ -64,7 +64,7 @@ export function TemplateCard({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 w-7 rounded-[6px] p-0 text-[#5f6b50]"
+                  className="h-7 w-7 rounded-[6px] p-0 text-[#4a4570]"
                   onClick={() => onPreview(template)}
                   title={t('common.preview')}
                   aria-label={t('common.preview')}
@@ -75,7 +75,7 @@ export function TemplateCard({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 rounded-[6px] p-0 text-[#5f6b50]"
+                className="h-7 w-7 rounded-[6px] p-0 text-[#4a4570]"
                 onClick={() => onEdit(template)}
                 title={t('common.edit')}
                 aria-label={t('common.edit')}
@@ -103,7 +103,7 @@ export function TemplateCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-max min-w-[10rem] max-w-[calc(100vw-2rem)]">
                 <DropdownMenuItem onSelect={() => onUseDirect(template)}>
-                  <PencilLine className="h-3.5 w-3.5 shrink-0 text-[#5f6b50]" />
+                  <PencilLine className="h-3.5 w-3.5 shrink-0 text-[#4a4570]" />
                   <span className="whitespace-nowrap">{t('templates.createEditable')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onUseGenerate(template)}>
@@ -124,8 +124,8 @@ export function TemplateEmptyState(): React.JSX.Element {
 
   return (
     <div className="flex min-h-[360px] items-center justify-center px-4 py-12">
-      <div className="flex w-full max-w-[680px] flex-col items-center rounded-xl border border-[#ded2bd]/45 bg-[#fffdf8]/54 px-10 py-10 text-center shadow-[0_8px_20px_rgba(74,59,42,0.045)]">
-        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-[#ede4d4]/82 text-[#6f7d62]">
+      <div className="flex w-full max-w-[680px] flex-col items-center rounded-xl border border-[#d4cef0]/45 bg-[#faf9fe]/54 px-10 py-10 text-center shadow-[0_8px_20px_rgba(74,59,42,0.045)]">
+        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-[#ede4d4]/82 text-[#4a4570]">
           <LayoutTemplate className="h-7 w-7" />
         </div>
         <h3 className="text-lg font-semibold text-[#34402c]">{t('templates.emptyTitle')}</h3>
@@ -133,7 +133,7 @@ export function TemplateEmptyState(): React.JSX.Element {
           {t('templates.emptyDescription')}
         </p>
         <div className="mt-5 flex items-center gap-2 rounded-md bg-[#f3ecdf]/78 px-3 py-2 text-xs text-[#7c6a4c]">
-          <Plus className="h-3.5 w-3.5 text-[#5d6b4d]" />
+          <Plus className="h-3.5 w-3.5 text-[#6b5fbd]" />
           {t('templates.emptyHint')}
         </div>
       </div>

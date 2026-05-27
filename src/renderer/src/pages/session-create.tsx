@@ -425,7 +425,7 @@ export function SessionCreatePage(): ReactElement {
         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
           {t('home.eyebrow')}
         </p>
-        <h1 className="organic-serif mt-2 text-[32px] font-semibold leading-none text-[#3e4a32]">
+        <h1 className="organic-serif mt-2 text-[32px] font-semibold leading-none text-[#2d2560]">
           {t('home.title')}
         </h1>
         <p className="mt-2 text-[12px] text-muted-foreground">{t('home.description')}</p>
@@ -467,7 +467,7 @@ export function SessionCreatePage(): ReactElement {
                 </Tooltip>
 
                 {hasParsedSource && !parsingDocument ? (
-                  <span className="rounded-full bg-[#e8f0df] px-2.5 py-1 text-xs text-[#4f6340]">
+                  <span className="rounded-full bg-[#ebe8f8] px-2.5 py-1 text-xs text-[#4c3fa8]">
                     {t('home.parsed')}
                   </span>
                 ) : null}
@@ -484,7 +484,7 @@ export function SessionCreatePage(): ReactElement {
           />
         </div>
         {documentParseError && (
-          <div className="flex items-start gap-2 rounded-md border border-[#d58b7f]/45 bg-[#fff2ef] px-3 py-2 text-xs text-[#8a3d33]">
+          <div className="flex items-start gap-2 rounded-md border border-[#d4cef0]/45 bg-[#f8f7ff] px-3 py-2 text-xs text-[#9b4040]">
             <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{documentParseError}</span>
           </div>
@@ -515,7 +515,7 @@ export function SessionCreatePage(): ReactElement {
                         <span className="flex items-center gap-1.5">
                           {option.label}
                           {(option.styleCase || option.description) && (
-                            <span className="rounded-md border border-[#d6c08d]/80 bg-[#fff7e8] px-1.5 py-px text-[10px] font-medium text-[#7c6a4c]">
+                            <span className="rounded-md border border-[#d4cef0]/80 bg-[#f8f7ff] px-1.5 py-px text-[10px] font-medium text-[#4a4570]">
                               {option.styleCase || option.description}
                             </span>
                           )}
@@ -574,8 +574,8 @@ export function SessionCreatePage(): ReactElement {
                             <span
                               className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-medium ${
                                 isUploaded
-                                  ? 'bg-[#eef9ec] text-[#4a7a46]'
-                                  : 'bg-[#eef6ff] text-[#3e6685]'
+                                  ? 'bg-[#eeedf8] text-[#4c3fa8]'
+                                  : 'bg-[#eeedf8] text-[#4c3fa8]'
                               }`}
                             >
                               {sourceLabel}
@@ -609,8 +609,8 @@ export function SessionCreatePage(): ReactElement {
                             <span
                               className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-medium ${
                                 isUploaded
-                                  ? 'bg-[#eef9ec] text-[#4a7a46]'
-                                  : 'bg-[#eef6ff] text-[#3e6685]'
+                                  ? 'bg-[#eeedf8] text-[#4c3fa8]'
+                                  : 'bg-[#eeedf8] text-[#4c3fa8]'
                               }`}
                             >
                               {sourceLabel}

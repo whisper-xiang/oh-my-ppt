@@ -276,7 +276,7 @@ export function ThinkingChat({
       >
         {sources.length > 0 && (
           <div className="mb-4 flex justify-end">
-            <div className="rounded-full bg-[#d4e4c1] px-3 py-1 text-[11px] font-semibold text-[#5d6b4d]">
+            <div className="rounded-full bg-[#d4e4c1] px-3 py-1 text-[11px] font-semibold text-[#6b5fbd]">
               {t('thinking.sourceCount', { count: sources.length })}
             </div>
           </div>
@@ -289,15 +289,15 @@ export function ThinkingChat({
           >
             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] ${
               msg.role === 'user'
-                ? 'bg-[#5d6b4d] text-white'
-                : 'bg-[#8fbc8f] text-white'
+                ? 'bg-[#6b5fbd] text-white'
+                : 'bg-[#9d90e0] text-white'
             }`}>
               {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
             </div>
             <div
               className={`max-w-[78%] rounded-[1.5rem] px-4 py-3 text-[13px] leading-relaxed shadow-sm ${
                 msg.role === 'user'
-                  ? 'bg-[#5d6b4d] text-white'
+                  ? 'bg-[#6b5fbd] text-white'
                   : 'border border-[#e0d8c8] bg-[#f5f1e8] text-[#2f3329]'
               }`}
             >
@@ -310,7 +310,7 @@ export function ThinkingChat({
                       className={`inline-flex max-w-[200px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
                         msg.role === 'user'
                           ? 'border border-white/20 bg-white/15 text-white/90'
-                          : 'border border-[#c8d6ba] bg-[#d4e4c1] text-[#4f6340]'
+                          : 'border border-[#c8d6ba] bg-[#d4e4c1] text-[#4c3fa8]'
                       }`}
                     >
                       {sourceIcon(att.kind)}
@@ -324,7 +324,7 @@ export function ThinkingChat({
         ))}
         {loading && (
           <div className="flex gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#8fbc8f] text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[5%_95%_10%_90%/85%_15%_85%_15%] bg-[#9d90e0] text-white">
               <Bot className="h-4 w-4" />
             </div>
             <div className="max-w-[78%] space-y-2">
@@ -333,7 +333,7 @@ export function ThinkingChat({
                 <button
                   type="button"
                   onClick={() => setThinkingExpanded(!thinkingExpanded)}
-                  className="flex w-[180px] items-center gap-1.5 rounded-full border border-[#e0d8c8] bg-[#e8e0d0] px-3 py-2 text-left text-[11px] text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1]"
+                  className="flex w-[180px] items-center gap-1.5 rounded-full border border-[#e0d8c8] bg-[#e8e0d0] px-3 py-2 text-left text-[11px] text-[#6b5fbd] transition-colors hover:bg-[#d4e4c1]"
                 >
                   {thinkingExpanded ? (
                     <ChevronDown className="h-3 w-3 shrink-0" />
@@ -362,7 +362,7 @@ export function ThinkingChat({
                   <MessageMarkdown content={animatingText} role="assistant" />
                 </div>
               ) : visibleThinkingSteps.length === 0 ? (
-                <div className="w-[180px] rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-4 py-3 text-[13px] text-[#5d6b4d] shadow-sm">
+                <div className="w-[180px] rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-4 py-3 text-[13px] text-[#6b5fbd] shadow-sm">
                   <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin align-[-2px]" />
                   {t('thinking.thinking')}
                 </div>
@@ -373,14 +373,14 @@ export function ThinkingChat({
         </div>
       </ScrollArea>
 
-      <div className="border-t border-[#e0d8c8] bg-[#fffdf8] px-4 py-3">
-        <div className="rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-2 py-2 shadow-sm focus-within:border-[#8fbc8f] focus-within:ring-2 focus-within:ring-[#d4e4c1]">
+      <div className="border-t border-[#e0d8c8] bg-[#faf9fe] px-4 py-3">
+        <div className="rounded-[1.5rem] border border-[#e0d8c8] bg-[#f5f1e8] px-2 py-2 shadow-sm focus-within:border-[#9d90e0] focus-within:ring-2 focus-within:ring-[#d4e4c1]">
           {pendingSources.length > 0 && (
             <div className="flex max-h-16 flex-wrap gap-1.5 overflow-y-auto px-2 pb-1.5">
               {pendingSources.map((source) => (
                 <span
                   key={source.id}
-                  className="inline-flex max-w-[240px] items-center gap-1.5 rounded-full border border-[#b8cca5] bg-[#d4e4c1] px-2.5 py-1 text-[10px] font-medium text-[#4f6340]"
+                  className="inline-flex max-w-[240px] items-center gap-1.5 rounded-full border border-[#b8cca5] bg-[#d4e4c1] px-2.5 py-1 text-[10px] font-medium text-[#4c3fa8]"
                 >
                   {sourceIcon(source.kind)}
                   <span className="truncate">{source.name}</span>
@@ -409,7 +409,7 @@ export function ThinkingChat({
                     type="button"
                     onClick={handleAttachClick}
                     disabled={loading || uploading}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#5d6b4d] transition-colors hover:bg-[#d4e4c1] hover:text-[#3e4a32] disabled:opacity-40"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6b5fbd] transition-colors hover:bg-[#d4e4c1] hover:text-[#3e4a32] disabled:opacity-40"
                   >
                     {uploading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -445,7 +445,7 @@ export function ThinkingChat({
               type="button"
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3e4a32] text-white transition-colors hover:bg-[#5d6b4d] disabled:opacity-40 disabled:hover:bg-[#3e4a32]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3e4a32] text-white transition-colors hover:bg-[#6b5fbd] disabled:opacity-40 disabled:hover:bg-[#3e4a32]"
             >
               <Send className="h-4 w-4" />
             </button>

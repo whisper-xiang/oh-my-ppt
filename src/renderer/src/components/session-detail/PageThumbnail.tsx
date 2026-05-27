@@ -40,7 +40,7 @@ export const PageThumbnail = memo(function PageThumbnail({
             className={cn(
               'pointer-events-none absolute -right-7 -top-8 h-20 w-20 rounded-[30%_70%_70%_30%/30%_30%_70%_70%] transition-opacity',
               isSelected
-                ? 'bg-[#8fbc8f]/24 opacity-100'
+                ? 'bg-[#9d90e0]/24 opacity-100'
                 : 'bg-[#d4e4c1]/28 opacity-0 group-hover:opacity-100'
             )}
           />
@@ -68,7 +68,7 @@ export const PageThumbnail = memo(function PageThumbnail({
               P{page.pageNumber}
             </span>
             {isSelected ? (
-              <span className="rounded-full bg-[#5d6b4d] px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-[0_3px_8px_rgba(62,74,50,0.18)]">
+              <span className="rounded-full bg-[#6b5fbd] px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-[0_3px_8px_rgba(62,74,50,0.18)]">
                 {t('sessionDetail.current')}
               </span>
             ) : null}
@@ -88,7 +88,7 @@ export const PageThumbnail = memo(function PageThumbnail({
       </TooltipTrigger>
       <TooltipContent side="right" align="start">
         <div className="max-w-[240px]">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a875f]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7a75a0]">
             {t('sessionDetail.pageNumber', { pageNumber: page.pageNumber })}
           </div>
           <div className="mt-0.5 text-sm font-medium text-[#3e4a32]">{page.title}</div>

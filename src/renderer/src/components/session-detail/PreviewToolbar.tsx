@@ -92,14 +92,14 @@ export function PreviewToolbar({
       )}
     >
       {/* Left: Mode switcher pill */}
-      <div className="flex shrink-0 items-center gap-0.5 rounded-[9px] border border-[#d9cfbd]/72 bg-[#fffaf1]/90 p-0.5 shadow-[0_8px_20px_rgba(74,59,42,0.10)] backdrop-blur-xl">
+      <div className="flex shrink-0 items-center gap-0.5 rounded-[9px] border border-[#d9cfbd]/72 bg-[#faf9fe]/90 p-0.5 shadow-[0_8px_20px_rgba(74,59,42,0.10)] backdrop-blur-xl">
         <button
           type="button"
           className={cn(
             'inline-flex h-7 min-w-[52px] shrink-0 items-center justify-center rounded-[7px] px-2 text-[10px] font-semibold leading-none transition-colors',
             interactionMode === 'preview' && !speechScriptDialogOpen
-              ? 'bg-[#5d6b4d] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
-              : 'text-[#5d6b4d] hover:bg-[#d4e4c1]/72'
+              ? 'bg-[#6b5fbd] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
+              : 'text-[#6b5fbd] hover:bg-[#d4e4c1]/72'
           )}
           onClick={() => {
             if (interactionMode !== 'preview') {
@@ -117,8 +117,8 @@ export function PreviewToolbar({
           className={cn(
             'inline-flex h-7 min-w-[52px] shrink-0 items-center justify-center rounded-[7px] px-2 text-[10px] font-semibold leading-none transition-colors',
             speechScriptDialogOpen
-              ? 'bg-[#5d6b4d] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
-              : 'text-[#5d6b4d] hover:bg-[#d4e4c1]/72'
+              ? 'bg-[#6b5fbd] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
+              : 'text-[#6b5fbd] hover:bg-[#d4e4c1]/72'
           )}
           onClick={() => {
             if (isEditing) onDiscardAllEdits()
@@ -136,8 +136,8 @@ export function PreviewToolbar({
           className={cn(
             'inline-flex h-7 min-w-[52px] shrink-0 items-center justify-center rounded-[7px] px-2 text-[10px] font-semibold leading-none transition-colors',
             interactionMode === 'edit'
-              ? 'bg-[#5d6b4d] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
-              : 'text-[#5d6b4d] hover:bg-[#d4e4c1]/72'
+              ? 'bg-[#6b5fbd] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
+              : 'text-[#6b5fbd] hover:bg-[#d4e4c1]/72'
           )}
           onClick={() => {
             if (interactionMode !== 'edit') {
@@ -156,8 +156,8 @@ export function PreviewToolbar({
           className={cn(
             'inline-flex h-7 min-w-[52px] shrink-0 items-center justify-center rounded-[7px] px-2 text-[10px] font-semibold leading-none transition-colors',
             interactionMode === 'ai-inspect'
-              ? 'bg-[#5d6b4d] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
-              : 'text-[#5d6b4d] hover:bg-[#d4e4c1]/72'
+              ? 'bg-[#6b5fbd] text-white shadow-[0_7px_16px_rgba(93,107,77,0.2)]'
+              : 'text-[#6b5fbd] hover:bg-[#d4e4c1]/72'
           )}
           onClick={() => {
             if (interactionMode !== 'ai-inspect') {
@@ -182,7 +182,7 @@ export function PreviewToolbar({
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 shrink-0 rounded-[7px] border border-[#d9cfbd]/62 bg-[#fffaf1]/90 px-2 text-[10px] leading-none text-[#5d6b4d] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72 disabled:opacity-40"
+              className="h-7 shrink-0 rounded-[7px] border border-[#d9cfbd]/62 bg-[#faf9fe]/90 px-2 text-[10px] leading-none text-[#6b5fbd] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72 disabled:opacity-40"
               onClick={onUndo}
               disabled={toolbarDisabled || !canUndo}
             >
@@ -193,7 +193,7 @@ export function PreviewToolbar({
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 shrink-0 rounded-[7px] border border-[#d9cfbd]/62 bg-[#fffaf1]/90 px-2 text-[10px] leading-none text-[#5d6b4d] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72 disabled:opacity-40"
+              className="h-7 shrink-0 rounded-[7px] border border-[#d9cfbd]/62 bg-[#faf9fe]/90 px-2 text-[10px] leading-none text-[#6b5fbd] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72 disabled:opacity-40"
               onClick={onRedo}
               disabled={toolbarDisabled || !canRedo}
             >
@@ -204,7 +204,7 @@ export function PreviewToolbar({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-[7px] border border-[#d9cfbd]/62 bg-[#fffaf1]/90 px-2 text-[10px] font-semibold leading-none text-[#5d6b4d] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72"
+                  className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-[7px] border border-[#d9cfbd]/62 bg-[#faf9fe]/90 px-2 text-[10px] font-semibold leading-none text-[#6b5fbd] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72"
                 >
                   <ImagePlus className="mr-0.5 h-2.5 w-2.5" />
                   {t('editMode.addImage')}
@@ -224,7 +224,7 @@ export function PreviewToolbar({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-[7px] border border-[#d9cfbd]/62 bg-[#fffaf1]/90 px-2 text-[10px] font-semibold leading-none text-[#5d6b4d] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72"
+                  className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-[7px] border border-[#d9cfbd]/62 bg-[#faf9fe]/90 px-2 text-[10px] font-semibold leading-none text-[#6b5fbd] shadow-[0_4px_12px_rgba(74,59,42,0.06)] hover:bg-[#d4e4c1]/72"
                 >
                   <Video className="mr-0.5 h-2.5 w-2.5" />
                   {t('editMode.addVideo')}
@@ -247,7 +247,7 @@ export function PreviewToolbar({
             type="button"
             variant="default"
             size="sm"
-            className="h-7 shrink-0 rounded-[7px] bg-[#5d6b4d] px-2 text-[10px] leading-none text-white shadow-[0_6px_14px_rgba(93,107,77,0.16)]"
+            className="h-7 shrink-0 rounded-[7px] bg-[#6b5fbd] px-2 text-[10px] leading-none text-white shadow-[0_6px_14px_rgba(93,107,77,0.16)]"
             onClick={onSaveAllEdits}
             disabled={toolbarDisabled}
           >

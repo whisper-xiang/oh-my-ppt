@@ -23,7 +23,7 @@ export function InspectorActions({
       {onCopy && (
         <button
           type="button"
-          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-[#d7cbb7]/40 bg-[#fffdf8]/60 text-xs font-medium text-[#59664b] transition-colors hover:bg-[#d4e4c1]/60"
+          className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-[#d7cbb7]/40 bg-[#faf9fe]/60 text-xs font-medium text-[#59664b] transition-colors hover:bg-[#d4e4c1]/60"
           onClick={onCopy}
         >
           <Copy className="h-3.5 w-3.5" />
@@ -35,7 +35,7 @@ export function InspectorActions({
           <AlertDialogTrigger asChild>
             <button
               type="button"
-              className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-[#e8c8c6]/80 bg-[#fffdf8]/60 text-xs font-medium text-[#8e5a53] transition-colors hover:border-[#c0392b]/40 hover:bg-[#fdf0ef] hover:shadow-[0_4px_12px_rgba(192,57,43,0.1)]"
+              className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-[#e8c8c6]/80 bg-[#faf9fe]/60 text-xs font-medium text-[#8e5a53] transition-colors hover:border-[#c0392b]/40 hover:bg-[#fdf0ef] hover:shadow-[0_4px_12px_rgba(192,57,43,0.1)]"
             >
               <Trash2 className="h-3.5 w-3.5" />
               {t('sessionDetail.deleteElement')}

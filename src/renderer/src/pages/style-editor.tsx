@@ -293,7 +293,7 @@ export function StyleEditorPage(): React.JSX.Element {
         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t('styleEditor.eyebrow')}</p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#3e4a32]">{currentStyleName}</h1>
+            <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#2d2560]">{currentStyleName}</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             <Button size="sm" variant="secondary" className="min-w-[112px]" onClick={() => navigate('/styles')}>
@@ -373,9 +373,9 @@ export function StyleEditorPage(): React.JSX.Element {
                 />
               </div>
             </div>
-            <div className="rounded-lg border border-[#d9ccb4]/70 bg-[#f8f0e2]/72 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#5d6f4d]">{t('styleEditor.writingTips')}</p>
-              <ul className="list-disc space-y-1 pl-5 text-xs leading-5 text-[#5b6b4d]">
+            <div className="rounded-lg border border-[#d4cef0]/70 bg-[#f8f7ff]/72 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#4a4570]">{t('styleEditor.writingTips')}</p>
+              <ul className="list-disc space-y-1 pl-5 text-xs leading-5 text-[#4a4570]">
                 <li>{t('styleEditor.tipStructure')}</li>
                 <li>{t('styleEditor.tipAnimation')}</li>
                 <li>{t('styleEditor.tipNatural')}</li>

@@ -102,7 +102,7 @@ export function ColorPicker({ value, onChange, onCommit, className }: ColorPicke
           </button>
         </PopoverTrigger>
         <PopoverContent
-          className="color-picker-popover w-[208px] rounded-lg border border-[#d7cbb7]/60 bg-[#fffdf8] p-3 shadow-[0_8px_30px_-6px_rgba(74,59,42,0.18)]"
+          className="color-picker-popover w-[208px] rounded-lg border border-[#d7cbb7]/60 bg-[#faf9fe] p-3 shadow-[0_8px_30px_-6px_rgba(74,59,42,0.18)]"
           align="start"
           sideOffset={8}
         >
@@ -134,7 +134,7 @@ export function ColorPicker({ value, onChange, onCommit, className }: ColorPicke
                   setTempHex(newHex)
                   commitColor(newHex, tempAlpha)
                 }}
-                className="color-picker-input h-7 w-full rounded-lg border border-[#ded2bd]/60 bg-[#faf6ee] pl-4 pr-2 text-[11px] tracking-wide text-[#3f4b35] outline-none transition-colors focus:border-[#9bb98a]"
+                className="color-picker-input h-7 w-full rounded-lg border border-[#d4cef0]/60 bg-[#faf6ee] pl-4 pr-2 text-[11px] tracking-wide text-[#2d2560] outline-none transition-colors focus:border-[#9d90e0]"
               />
             </div>
             {/* alpha input */}
@@ -151,7 +151,7 @@ export function ColorPicker({ value, onChange, onCommit, className }: ColorPicke
                   setTempAlpha(newAlpha)
                   commitColor(tempHex, newAlpha)
                 }}
-                className="color-picker-input h-7 w-[42px] rounded-lg border border-[#ded2bd]/60 bg-[#faf6ee] px-1.5 text-right text-[11px] text-[#3f4b35] outline-none transition-colors focus:border-[#9bb98a]"
+                className="color-picker-input h-7 w-[42px] rounded-lg border border-[#d4cef0]/60 bg-[#faf6ee] px-1.5 text-right text-[11px] text-[#2d2560] outline-none transition-colors focus:border-[#9d90e0]"
               />
               <span className="text-[10px] text-[#a0967e]">%</span>
             </div>

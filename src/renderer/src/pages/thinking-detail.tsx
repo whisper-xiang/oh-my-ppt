@@ -241,7 +241,7 @@ export function ThinkingDetailPage(): ReactElement {
           showOutlinePanel ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : 'grid-cols-1'
         }`}
       >
-        <section className="min-h-0 overflow-hidden rounded-[2rem] border border-[#e0d8c8] bg-[#fffdf8] shadow-[0_14px_34px_rgba(86,73,54,0.12)]">
+        <section className="min-h-0 overflow-hidden rounded-[2rem] border border-[#e0d8c8] bg-[#faf9fe] shadow-[0_14px_34px_rgba(86,73,54,0.12)]">
           <ThinkingChat
             thinkingId={thinkingId || ''}
             messages={displayMessages}

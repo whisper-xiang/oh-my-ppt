@@ -26,41 +26,41 @@ const getSourceTag = (
     return {
       label: labels.template,
       Icon: LayoutTemplate,
-      className: 'border-[#e5bec7]/80 bg-[#fff1f4] text-[#80505c]'
+      className: 'border-[#d4cef0]/80 bg-[#f8f7ff] text-[#6b5fbd]'
     }
   }
   if (source === 'session-file-import' || session.model === 'session-file-import') {
     return {
       label: labels.sessionFile,
       Icon: FileArchive,
-      className: 'border-[#c7c2df]/80 bg-[#f3f0ff] text-[#5d5684]'
+      className: 'border-[#d4cef0]/80 bg-[#f0eefb] text-[#4c3fa8]'
     }
   }
   if (source === 'pptx-import' || session.provider === 'import' || session.model === 'pptx-import') {
     return {
       label: labels.pptx,
       Icon: FileUp,
-      className: 'border-[#bdd2e6]/80 bg-[#eef6ff] text-[#3e6685]'
+      className: 'border-[#d4cef0]/80 bg-[#eeedf8] text-[#4c3fa8]'
     }
   }
   if (source === 'thinking') {
     return {
       label: labels.thinking,
       Icon: MessagesSquare,
-      className: 'border-[#c7d9b7]/80 bg-[#f0f9e4] text-[#4a6b2e]'
+      className: 'border-[#d4cef0]/80 bg-[#eeedf8] text-[#4c3fa8]'
     }
   }
   if (session.referenceDocumentPath || session.reference_document_path) {
     return {
       label: labels.document,
       Icon: FileText,
-      className: 'border-[#cbd9b7]/80 bg-[#f3fae9] text-[#526f35]'
+      className: 'border-[#d4cef0]/80 bg-[#eeedf8] text-[#4c3fa8]'
     }
   }
   return {
     label: labels.ai,
     Icon: Sparkles,
-    className: 'border-[#e1d1b7]/80 bg-[#fff7e8] text-[#7c6a4c]'
+    className: 'border-[#d4cef0]/80 bg-[#f8f7ff] text-[#4a4570]'
   }
 }
 
@@ -211,7 +211,7 @@ export function SessionsPage(): React.JSX.Element {
         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t('sessions.eyebrow')}</p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#3e4a32]">{t('sessions.title')}</h1>
+            <h1 className="organic-serif text-[32px] font-semibold leading-none text-[#2d2560]">{t('sessions.title')}</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             <TooltipProvider delayDuration={180}>
@@ -274,12 +274,12 @@ export function SessionsPage(): React.JSX.Element {
             })
             const SourceIcon = sourceTag.Icon
             const statusClassName = isFullyComplete
-              ? 'border-[#bad8b7]/80 bg-[#eef9ec] text-[#4a7a46]'
+              ? 'border-[#d4cef0]/80 bg-[#eeedf8] text-[#4c3fa8]'
               : isPartialComplete
-                ? 'border-[#b5c9a8]/80 bg-[#eef5e8] text-[#4f7b3f]'
+                ? 'border-[#d4cef0]/80 bg-[#eeedf8] text-[#4c3fa8]'
                 : isContinuable
-                  ? 'border-[#d6c08d]/80 bg-[#fff3cf] text-[#7a5a19] shadow-[0_0_0_1px_rgba(214,192,141,0.14)]'
-                  : 'border-[#d7b5ae]/70 bg-[#fbf1ee] text-[#93564f]'
+                  ? 'border-[#d4cef0]/80 bg-[#f8f7ff] text-[#4a4570] shadow-[0_0_0_1px_rgba(214,192,141,0.14)]'
+                  : 'border-[#d4cef0]/70 bg-[#f8f7ff] text-[#93564f]'
             return (
               <Card
                 key={session.id}
@@ -355,11 +355,11 @@ export function SessionsPage(): React.JSX.Element {
                     <SourceIcon className="h-3 w-3" />
                     {sourceTag.label}
                   </span>
-                  <span className="rounded-lg border border-[#e1d1b7]/80 bg-[#fff7e8]/75 px-2 py-1 text-[#7c6a4c]">
+                  <span className="rounded-lg border border-[#d4cef0]/80 bg-[#f8f7ff]/75 px-2 py-1 text-[#4a4570]">
                     {t('sessions.pagesCount', { generated: editorGate.generatedCount, total: editorGate.totalCount })}
                   </span>
                   {session.generation_duration_sec ? (
-                    <span className="rounded-lg border border-[#d5cfc5]/60 bg-[#f9f6f1] px-2 py-1 text-[#6b6560]">
+                    <span className="rounded-lg border border-[#d4cef0]/60 bg-[#faf9fe] px-2 py-1 text-[#7a75a0]">
                       {(() => {
                         const d = dayjs.duration(session.generation_duration_sec!, 'second')
                         const m = Math.floor(d.asMinutes())
@@ -368,11 +368,11 @@ export function SessionsPage(): React.JSX.Element {
                       })()}
                     </span>
                   ) : null}
-                  <span className="rounded-lg border border-[#d5cfc5]/60 bg-[#f9f6f1] px-2 py-1 text-[#6b6560]">
+                  <span className="rounded-lg border border-[#d4cef0]/60 bg-[#faf9fe] px-2 py-1 text-[#7a75a0]">
                     {dayjs.unix(session.updated_at).format('YYYY/MM/DD HH:mm')}
                   </span>
                   {!isFullyComplete && editorGate.failedCount > 0 && (
-                    <span className="rounded-lg border border-[#d7b5ae]/70 bg-[#fff7f2]/80 px-2 py-1 text-[#93564f]">
+                    <span className="rounded-lg border border-[#d4cef0]/70 bg-[#f8f7ff]/80 px-2 py-1 text-[#93564f]">
                       {t('sessions.failedCount', { count: editorGate.failedCount })}
                     </span>
                   )}
@@ -385,16 +385,16 @@ export function SessionsPage(): React.JSX.Element {
       )}
       {renameSession ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f261d]/35 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#2d2560]/35 p-4 backdrop-blur-sm"
           onClick={closeRenameDialog}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-[#d8cfbc]/80 bg-[#fffaf0] p-5 shadow-[0_24px_60px_rgba(64,52,38,0.28)]"
+            className="w-full max-w-md rounded-xl border border-[#d4cef0]/80 bg-[#faf9fe] p-5 shadow-[0_24px_60px_rgba(70,55,140,0.28)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-[#3e4a32]">{t('sessions.editTitle')}</h2>
+                <h2 className="text-base font-semibold text-[#2d2560]">{t('sessions.editTitle')}</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {t('sessions.renameDescription')}
                 </p>
