@@ -331,6 +331,8 @@ export const planDeckWithLLM = async (args: {
   modelTimeoutMs?: number
   topic: string
   userMessage: string
+  /** Optional structural hint forwarded to the planner prompt (e.g. TOC page requirement). */
+  planningHint?: string
   emit?: (chunk: GenerateChunkEvent) => void
   runId?: string
   signal?: AbortSignal
@@ -347,7 +349,8 @@ export const planDeckWithLLM = async (args: {
   const userPrompt = buildPlanningUserPrompt({
     topic: args.topic,
     totalPages: args.totalPages,
-    userMessage: args.userMessage
+    userMessage: args.userMessage,
+    planningHint: args.planningHint
   })
   const parsePlanningItems = (responseText: string): OutlineItem[] => {
     const parsed = parseModelJson(responseText, args.appLocale)

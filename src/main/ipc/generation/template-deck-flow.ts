@@ -12,6 +12,7 @@ import type { DeckContext, EmitAssistantFn } from './types'
 import { resolveDeckContext } from './deck-flow'
 import { parseJsonObject } from '../utils'
 import { resolveTemplateDesignContract } from '../templates/template-design-contract'
+import { getTemplate } from '../templates/template-service'
 
 type TemplateSeedPage = {
   id: string
@@ -107,6 +108,21 @@ export async function executeTemplateDeckGeneration(
     templateMetadata
   )
   await db.updateSessionDesignContract(context.sessionId, templateDesignContract)
+
+  // Load manifest to get page roles (cover / toc / content / back-cover)
+  const templateId = typeof templateMetadata.templateId === 'string' ? templateMetadata.templateId : ''
+  let hasTocPage = false
+  let hasBackCoverPage = false
+  try {
+    if (templateId) {
+      const { manifest } = await getTemplate(templateId)
+      hasTocPage = manifest.pages.some((p) => p.role === 'toc')
+      hasBackCoverPage = manifest.pages.some((p) => p.role === 'back-cover')
+    }
+  } catch {
+    // non-fatal — fall back to no TOC awareness
+  }
+
   const allSessionPages = await db.listSessionPages(context.sessionId)
   const allPageRefs = allSessionPages
     .filter((page) => page.html_path && page.file_slug)
@@ -128,6 +144,31 @@ export async function executeTemplateDeckGeneration(
   const fullDeckPageCount = Math.max(allPageRefs.length, pageRefs.length)
   const pageFileMap = Object.fromEntries(pageRefs.map((page) => [page.pageId, page.htmlPath]))
   const indexPath = path.join(context.entry.projectDir, 'index.html')
+
+  // Build role-aware addendums
+  const tocInstruction = hasTocPage
+    ? [
+        '## 页面角色说明',
+        '- 第 1 页（封面）：填入演示标题、副标题、演讲者信息和日期，保持封面视觉结构不变。',
+        '- 第 2 页（目录）：列出本次演讲的所有章节标题，逐条列出，不添加章节内容。目录项数量应与正文章节数一致。',
+        hasBackCoverPage
+          ? '- 最后一页（结束页）：保持结束页视觉结构，更新结束语或致谢词。'
+          : '',
+        '- 其余各页（正文内容页）：每页聚焦一个知识点，复用模板背景（logo、装饰、色带等）填充新内容。正文页背景结构必须与模板内容页完全一致，不得重新设计。'
+      ]
+      .filter(Boolean)
+      .join('\n')
+    : [
+        '## 页面角色说明',
+        '- 第 1 页（封面）：填入演示标题、副标题、演讲者信息和日期，保持封面视觉结构不变。',
+        hasBackCoverPage
+          ? '- 最后一页（结束页）：保持结束页视觉结构，更新结束语或致谢词。'
+          : '',
+        '- 其余各页（正文内容页）：每页聚焦一个知识点，复用模板背景（logo、装饰、色带等）填充新内容。正文页背景结构必须与模板内容页完全一致，不得重新设计。'
+      ]
+      .filter(Boolean)
+      .join('\n')
+
   const templateSystemPromptAddendum = [
     '## 模板设计系统模式',
     '- 当前页面文件来自用户模板复制并清洗后的页面基底；它定义本会话的当前设计系统。',
@@ -139,8 +180,11 @@ export async function executeTemplateDeckGeneration(
     '- 写回页面时要使用模板里读到的本地资源路径，不要因为替换文字/数据而删除背景层、装饰层或承载它们的结构容器。',
     '- 可以为了适配新内容做必要的局部调整：信息密度、模块数量、图表类型、局部排列、文字层级和避免遮挡的尺寸变化。',
     '- 旧模板里的业务文字、数字、公司名、日期和结论不是事实来源，必须用用户 brief/source document 替换。',
-    '- 新增/复用的中间页应沿着模板设计系统延展，而不是机械复制旧内容。'
+    '- 新增/复用的中间页应沿着模板设计系统延展，而不是机械复制旧内容。',
+    '',
+    tocInstruction
   ].join('\n')
+
   const templateSinglePagePromptAddendum = [
     'Template design system for this slide:',
     '- The existing target page file is a copied template page base. Preserve its visual system and layout language.',
@@ -150,8 +194,13 @@ export async function executeTemplateDeckGeneration(
     '- Keep color language, typography scale, spacing rhythm, component shapes, and chart/table styling unless a local adjustment is needed to avoid overlap.',
     '- Do not infer or invent a separate deck-wide design contract for this template run.',
     '- If a design contract is present, treat it as inherited font/runtime metadata only; the page base remains the visual source of truth.',
-    '- Do not treat old template business text, numbers, company names, dates, or conclusions as facts.'
-  ].join('\n')
+    '- Do not treat old template business text, numbers, company names, dates, or conclusions as facts.',
+    hasTocPage
+      ? '- This deck has a dedicated table-of-contents page (slide 2). If the current slide IS the TOC page, list all section titles without page-level detail. If it is a content page, do NOT duplicate the TOC — focus on its specific topic.'
+      : ''
+  ]
+    .filter(Boolean)
+    .join('\n')
 
   emitDeckChunk({
     type: 'stage_started',
@@ -229,6 +278,19 @@ export async function executeTemplateDeckGeneration(
         appLocale: context.appLocale,
         topic: context.topic,
         userMessage: context.userMessage,
+        planningHint: hasTocPage
+          ? [
+              '## Template structure constraints',
+              '- Slide 1 must be the cover (layoutIntent: "cover").',
+              '- Slide 2 must be a table-of-contents (layoutIntent: "toc") listing all section titles. Its keyPoints should be the section titles only, with no sub-details.',
+              `- Slides 3 to ${pageRefs.length - 1} are content slides. Group them into 3-5 thematic sections; each section may start with a section-divider slide if it helps clarity.`,
+              hasBackCoverPage
+                ? `- Slide ${pageRefs.length} is the closing/thank-you slide (layoutIntent: "summary").`
+                : ''
+            ]
+            .filter(Boolean)
+            .join('\n')
+          : undefined,
         emit: (chunk) => emitDeckChunk(chunk),
         runId: context.runId,
         signal: context.entry.abortController.signal

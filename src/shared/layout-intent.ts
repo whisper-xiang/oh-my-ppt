@@ -1,5 +1,7 @@
 export type LayoutIntent =
   | 'cover'
+  | 'toc'
+  | 'section-divider'
   | 'data-focus'
   | 'comparison'
   | 'timeline'
@@ -11,6 +13,8 @@ export type LayoutIntent =
 
 export const LAYOUT_INTENTS = [
   'cover',
+  'toc',
+  'section-divider',
   'data-focus',
   'comparison',
   'timeline',
@@ -25,6 +29,8 @@ const LAYOUT_INTENT_SET = new Set<string>(LAYOUT_INTENTS)
 
 const LAYOUT_GUIDANCE: Record<LayoutIntent, string> = {
   cover: 'Make the title or core message the visual focus.',
+  toc: 'List all section titles clearly. Keep it clean and scannable — no sub-details, no decorative clutter.',
+  'section-divider': 'Display the section title prominently. Minimise body text to signal a chapter transition.',
   'data-focus': 'Let metrics, charts, or quantitative evidence dominate the page.',
   comparison: 'Use a structure that makes differences easy to compare.',
   timeline: 'Use a phase, stage, roadmap, or progression structure.',

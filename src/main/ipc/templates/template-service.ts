@@ -2,6 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import crypto from 'crypto'
+import * as cheerio from 'cheerio'
 import { LRUCache } from 'lru-cache'
 import type { IpcContext } from '../context'
 import { resolveActiveModelConfig, resolveGlobalModelTimeouts } from '../config/model-config-utils'
@@ -15,6 +16,7 @@ import { recordHistoryOperationStrict } from '../../history/git-history-service'
 import { copyDirExcluding } from './template-copy'
 import { resolveTemplateDesignContract } from './template-design-contract'
 import {
+  inferPageRole,
   manifestToListItem,
   parseTemplateManifest,
   type TemplateListItem,
@@ -151,24 +153,57 @@ async function copyReferenceDocumentToSession(args: {
   return `/docs/${fileName}`
 }
 
+/**
+ * Decide which template page to use as the base for a given output page.
+ *
+ * Strategy (role-aware):
+ *  - output page 0            → cover page
+ *  - output page 1 (if total≥3 and template has a toc page) → toc page
+ *  - output last page         → back-cover page (or last template page)
+ *  - all other output pages   → content page (the repeatable body template)
+ *
+ * This guarantees that every generated content slide inherits the same
+ * background chrome (e.g. university logo, footer, decorative elements).
+ */
 function pickTemplateSourcePage(
   pages: TemplateManifest['pages'],
   outputIndex: number,
   totalPages: number
 ): TemplateManifest['pages'][number] {
   if (pages.length === 1 || totalPages === 1) return pages[0]
-  if (outputIndex === 0) return pages[0]
-  if (outputIndex === totalPages - 1) return pages[pages.length - 1]
 
-  const middlePages = pages.slice(1, -1)
-  if (middlePages.length === 0) return pages[0]
-  const middleOutputCount = Math.max(1, totalPages - 2)
-  const middleOutputIndex = outputIndex - 1
-  const sourceIndex =
-    middleOutputCount === 1
-      ? 0
-      : Math.round((middleOutputIndex * (middlePages.length - 1)) / (middleOutputCount - 1))
-  return middlePages[Math.max(0, Math.min(middlePages.length - 1, sourceIndex))]
+  // Resolve role-tagged pages (or fall back to positional defaults)
+  const coverPage =
+    pages.find((p) => p.role === 'cover') ?? pages[0]
+  const backCoverPage =
+    pages.find((p) => p.role === 'back-cover') ?? pages[pages.length - 1]
+  const tocPage =
+    pages.find((p) => p.role === 'toc') ?? null
+  // Content page: first explicitly tagged, then first non-cover non-toc page
+  const contentPage =
+    pages.find((p) => p.role === 'content') ??
+    pages.find((p) => p !== coverPage && p !== tocPage && p !== backCoverPage) ??
+    pages[Math.min(1, pages.length - 1)]
+
+  if (outputIndex === 0) return coverPage
+  if (outputIndex === totalPages - 1) return backCoverPage
+  // Use the toc page only for the second output slide, and only when the
+  // template explicitly has one and there is room for it.
+  if (outputIndex === 1 && tocPage !== null && totalPages >= 3) return tocPage
+  // All remaining (content) pages use the same content template so that
+  // background elements are applied consistently to every slide.
+  return contentPage
+}
+
+/** Extract visible plain text from an HTML page for role detection. */
+function extractPageText(html: string): string {
+  try {
+    const $ = cheerio.load(html, { scriptingEnabled: false })
+    $('script, style').remove()
+    return $.text().replace(/\s+/g, ' ').trim()
+  } catch {
+    return ''
+  }
 }
 
 function replacePageIdentity(html: string, oldPageId: string, nextPageId: string): string {
@@ -381,14 +416,29 @@ export async function createTemplateFromSession(
     tags: normalizeTags(record.tags),
     styleId,
     designContract,
-    pages: templatePages.map(({ page, htmlPath }, index) => {
-      return {
-        pageNumber: page.page_number || index + 1,
-        pageId: page.file_slug,
-        title: page.title || `第 ${index + 1} 页`,
-        htmlPath
-      }
-    })
+    pages: await Promise.all(
+      templatePages.map(async ({ page, htmlPath }, index) => {
+        let textContent = ''
+        try {
+          const absPath = path.isAbsolute(htmlPath)
+            ? htmlPath
+            : path.resolve(templateDir, htmlPath)
+          if (fs.existsSync(absPath)) {
+            const html = await fs.promises.readFile(absPath, 'utf-8')
+            textContent = extractPageText(html)
+          }
+        } catch {
+          // role detection is best-effort
+        }
+        return {
+          pageNumber: page.page_number || index + 1,
+          pageId: page.file_slug,
+          title: page.title || `第 ${index + 1} 页`,
+          htmlPath,
+          role: inferPageRole({ index, total: templatePages.length, textContent })
+        }
+      })
+    )
   }
 
   await writeManifest(templateDir, manifest)
@@ -505,18 +555,31 @@ export async function importPptxAsTemplate(
       tags: [],
       styleId,
       designContract,
-      pages: imported.pages.map((page, index) => {
-        const relativeHtmlPath = path.relative(tempDir, page.htmlPath).split(path.sep).join('/')
-        return {
-          pageNumber: page.pageNumber || index + 1,
-          pageId: page.pageId,
-          title: page.title || `第 ${index + 1} 页`,
-          htmlPath:
+      pages: await Promise.all(
+        imported.pages.map(async (page, index) => {
+          const relativeHtmlPath = path.relative(tempDir, page.htmlPath).split(path.sep).join('/')
+          const resolvedHtmlPath =
             relativeHtmlPath && !relativeHtmlPath.startsWith('..') && !path.isAbsolute(relativeHtmlPath)
               ? relativeHtmlPath
               : `${page.pageId}.html`
-        }
-      })
+          let textContent = ''
+          try {
+            if (fs.existsSync(page.htmlPath)) {
+              const html = await fs.promises.readFile(page.htmlPath, 'utf-8')
+              textContent = extractPageText(html)
+            }
+          } catch {
+            // role detection is best-effort
+          }
+          return {
+            pageNumber: page.pageNumber || index + 1,
+            pageId: page.pageId,
+            title: page.title || `第 ${index + 1} 页`,
+            htmlPath: resolvedHtmlPath,
+            role: inferPageRole({ index, total: imported.pages.length, textContent })
+          }
+        })
+      )
     }
 
     await writeManifest(templateDir, manifest)

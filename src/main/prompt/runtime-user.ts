@@ -5,6 +5,8 @@ export function buildPlanningUserPrompt(args: {
   topic: string;
   totalPages: number;
   userMessage: string;
+  /** Optional structural hints prepended to the planner (e.g. TOC page requirement). */
+  planningHint?: string;
 }): string {
   const hasExplicitPageHint = /第\s*\d+\s*页|(?:page|slide)\s*\d+/i.test(args.userMessage);
   return [
@@ -12,6 +14,7 @@ export function buildPlanningUserPrompt(args: {
     `Target slide count: ${args.totalPages}`,
     `Return exactly ${args.totalPages} slides, no more and no fewer.`,
     hasExplicitPageHint ? "The user provided page/slide hints. Preserve that pagination intent when possible." : "",
+    args.planningHint ? `\n${args.planningHint}` : "",
     "",
     "Plan each slide title, key points, and layout intent. Use short phrases, not long paragraphs.",
     "Output must be a JSON array. Each item must be exactly { title, keyPoints, layoutIntent }; keyPoints must contain 1-6 strings.",

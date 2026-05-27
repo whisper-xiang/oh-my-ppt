@@ -1,10 +1,22 @@
 export type TemplateSource = 'user'
 
+/**
+ * Semantic role of a template page.
+ * - cover:           Opening/title page (page 1)
+ * - toc:             Table-of-contents page (lists section headers)
+ * - section-divider: Section transition slide
+ * - content:         The repeatable body/content page (carries background chrome: logo, footer, etc.)
+ * - back-cover:      Closing page (last page)
+ */
+export type TemplatePageRole = 'cover' | 'toc' | 'section-divider' | 'content' | 'back-cover'
+
 export interface TemplateManifestPage {
   pageNumber: number
   pageId: string
   title: string
   htmlPath: string
+  /** Semantic role, used to drive which template page is used for each output page. */
+  role?: TemplatePageRole
 }
 
 export interface TemplateManifest {
@@ -35,6 +47,7 @@ export interface TemplateListItem {
     pageId: string
     title: string
     htmlPath: string
+    role?: TemplatePageRole
   }>
   createdAt: number
   updatedAt: number
@@ -44,6 +57,36 @@ const asString = (value: unknown): string => (typeof value === 'string' ? value.
 
 const asNumber = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0
+
+const VALID_ROLES: TemplatePageRole[] = ['cover', 'toc', 'section-divider', 'content', 'back-cover']
+
+function parseRole(value: unknown): TemplatePageRole | undefined {
+  if (typeof value === 'string' && (VALID_ROLES as string[]).includes(value)) {
+    return value as TemplatePageRole
+  }
+  return undefined
+}
+
+/**
+ * Infer a page role from its position and plain-text content.
+ * Used during template creation/import when explicit roles are not yet set.
+ */
+export function inferPageRole(args: {
+  index: number
+  total: number
+  textContent?: string
+}): TemplatePageRole {
+  const { index, total, textContent = '' } = args
+  if (index === 0) return 'cover'
+  if (total >= 2 && index === total - 1) return 'back-cover'
+  // Detect table-of-contents pages by common title keywords
+  const lower = textContent.toLowerCase()
+  const isToc =
+    index === 1 &&
+    /目\s*录|contents?|agenda|outline|纲要|table\s+of\s+contents/.test(lower)
+  if (isToc) return 'toc'
+  return 'content'
+}
 
 export function parseTemplateManifest(raw: unknown): TemplateManifest {
   const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
@@ -62,7 +105,8 @@ export function parseTemplateManifest(raw: unknown): TemplateManifest {
         pageNumber,
         pageId,
         title: asString(page.title) || `第 ${pageNumber} 页`,
-        htmlPath: asString(page.htmlPath) || `pages/${pageId}.html`
+        htmlPath: asString(page.htmlPath) || `pages/${pageId}.html`,
+        role: parseRole(page.role)
       }
     })
     .sort((a, b) => a.pageNumber - b.pageNumber)
