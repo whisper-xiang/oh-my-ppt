@@ -1154,12 +1154,15 @@ export const runDeepAgentDeckGeneration = async (args: {
                 args.singlePagePromptAddendum?.trim() || '',
                 args.requireTemplatePageRead
                   ? [
-                      'Template inspection is mandatory before writing.',
-                      `1. First call read_file(path="/${page.pageId}.html", offset=0, limit=260) to inspect the copied template page.`,
-                      '2. Identify every template-skeleton asset and wrapper: background images, texture images, decorative images, masks, overlays, CSS background-image/url(...) references, <img src>, SVG image href, font scale, spacing rhythm, color language, and reusable structural wrappers from that file.',
-                      '3. These background/decorative assets are not old business content. Do not delete them when replacing text, metrics, logos, or content images.',
-                      '4. update_single_page_file rebuilds the page from your content fragment, so the fragment you write must explicitly include the required background/decorative layers or exact local asset references from the template page.',
-                      '5. Only after reading the file, call update_single_page_file with the new content while preserving the template visual system unless the user explicitly asks for a redesign.'
+                      '## Template mode — edit in-place, preserve visual structure',
+                      `Step 1 — Read the FULL template page (no limit): call read_file(path="/${page.pageId}.html")`,
+                      'Step 2 — Inventory every visual chrome element in the template: background images, texture images, decorative images, masks, overlays, corner/footer logos, CSS background-image/url(...) references, <img src="...">, SVG shapes, colored bands, border decorations, and all absolutely-positioned layout containers. These are template skeleton — they are NOT old content.',
+                      'Step 3 — Write the updated page by calling update_single_page_file with a content fragment that is the COMPLETE inner content of the template page (everything inside the ppt-page-content or ppt-page-root, i.e. the scaffold section and everything in it), with ONLY the following changed for this slide:',
+                      '  • Slide title text: find the existing heading (h1/h2/h3) or title element in the template and update its text. Do NOT add a new standalone title heading at a different position.',
+                      '  • Body text, bullet points, list items, data values, and content-area text.',
+                      '  • Content-specific images if the slide brief requires new imagery.',
+                      'CRITICAL — must preserve unchanged: every background image layer, every decorative/logo image, every colored band or border, every absolutely-positioned chrome element, every layout container with background-image CSS, all SVG decorations. If these elements are absent from your output, the slide will lose all template styling.',
+                      'Do NOT redesign the page structure. Do NOT add a new h1/h2 title at the top-left corner if the template does not already place the title there. Your output must look like the template page with new text content, not a freshly designed slide.'
                     ].join('\n')
                   : '',
                 buildSinglePageGenerationPrompt({

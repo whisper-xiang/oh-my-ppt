@@ -170,30 +170,31 @@ export async function executeTemplateDeckGeneration(
       .join('\n')
 
   const templateSystemPromptAddendum = [
-    '## 模板设计系统模式',
-    '- 当前页面文件来自用户模板复制并清洗后的页面基底；它定义本会话的当前设计系统。',
-    '- 以模板页面和 styleId 共同作为设计依据，优先保持视觉连续性。',
-    '- 本链路不抽象、不重算 designContract；直接从页面基底继承背景、配色、字体尺度、组件语言、留白节奏和首尾页角色。',
-    '- 如果上下文里存在 designContract，它只代表模板继承的字体与历史元数据；页面基底才是视觉事实来源。',
-    '- 不要无故换成一套全新的风格、背景、配色、字体尺度、组件语言或首尾页角色。',
-    '- 背景图、纹理图、装饰图片、蒙版、叠加层、CSS background-image/url(...)、SVG image href 属于模板骨架，不属于旧业务内容；生成时必须保留或等价复现。',
-    '- 写回页面时要使用模板里读到的本地资源路径，不要因为替换文字/数据而删除背景层、装饰层或承载它们的结构容器。',
-    '- 可以为了适配新内容做必要的局部调整：信息密度、模块数量、图表类型、局部排列、文字层级和避免遮挡的尺寸变化。',
+    '## 模板设计系统模式（就地编辑，保留视觉结构）',
+    '- 当前页面文件是用户模板复制后的页面基底。每页输出必须是对该基底的就地更新，而非重新设计。',
+    '- 输出的内容片段必须包含模板页面的完整内部结构：所有背景图层、装饰图片、角标 logo、脚注、色带、SVG 装饰元素和绝对定位的样式容器，一个都不能少。',
+    '- 只允许更改：幻灯片标题文本（在模板已有的标题元素处就地修改）、正文文字、列表项、数据值。',
+    '- 严禁在左上角或页面顶部额外添加独立的标题 h1/h2。如果模板有标题元素，就更新该元素的文本；如果模板没有在顶部放置标题，就不要增加。',
+    '- 背景图、纹理图、装饰图片、蒙版、叠加层、CSS background-image/url(...)、SVG 图形、角标 logo、脚注装饰等属于模板骨架，不是旧业务内容；必须原封不动地保留在输出片段中，且使用模板中读到的本地资源路径。',
+    '- 不要因为替换文字/数据而删除任何背景层、装饰层或承载它们的结构容器。',
+    '- 不重算 designContract；页面基底是视觉事实来源。如上下文存在 designContract，仅视为字体/运行时元数据参考。',
+    '- 可以为适配新内容做局部调整：信息密度、模块数量、图表类型、局部排列、文字层级和避免遮挡的尺寸变化。',
     '- 旧模板里的业务文字、数字、公司名、日期和结论不是事实来源，必须用用户 brief/source document 替换。',
-    '- 新增/复用的中间页应沿着模板设计系统延展，而不是机械复制旧内容。',
     '',
     tocInstruction
   ].join('\n')
 
   const templateSinglePagePromptAddendum = [
     'Template design system for this slide:',
-    '- The existing target page file is a copied template page base. Preserve its visual system and layout language.',
-    '- Replace old text/data/media meaning with the new slide content, but do not redesign the whole page.',
-    '- Treat background images, texture images, decorative images, masks, overlay layers, CSS background-image/url(...) references, and SVG image hrefs as template structure, not old business content.',
-    '- Keep those template assets and their local paths in the written page unless the user explicitly asks to remove them; text/data changes must not strip the visual shell.',
-    '- Keep color language, typography scale, spacing rhythm, component shapes, and chart/table styling unless a local adjustment is needed to avoid overlap.',
+    '- The existing target page file is a copied template page base. Your output must preserve its complete visual structure.',
+    '- Output the COMPLETE inner content of the template page with only the text/data changed. Do NOT generate a fresh slide design.',
+    '- Every background image layer, decorative image, logo, colored band, border decoration, and absolutely-positioned chrome element from the template MUST appear in your output fragment — unchanged.',
+    '- Replace old text/data/media content with new slide content, but keep every visual container, layout wrapper, and background element.',
+    '- Treat background images, texture images, decorative images, masks, overlay layers, CSS background-image/url(...) references, SVG shapes, corner logos, and footer elements as template chrome — never remove them.',
+    '- Do NOT add a new standalone title heading (h1/h2) at the top-left corner. If the template has a title element, update its text. If the template has no top-left title, do not add one.',
+    '- Keep color language, typography scale, spacing rhythm, component shapes, and chart/table styling.',
     '- Do not infer or invent a separate deck-wide design contract for this template run.',
-    '- If a design contract is present, treat it as inherited font/runtime metadata only; the page base remains the visual source of truth.',
+    '- If a design contract is present, treat it as inherited font/runtime metadata only; the page base is the visual source of truth.',
     '- Do not treat old template business text, numbers, company names, dates, or conclusions as facts.',
     hasTocPage
       ? '- This deck has a dedicated table-of-contents page (slide 2). If the current slide IS the TOC page, list all section titles without page-level detail. If it is a content page, do NOT duplicate the TOC — focus on its specific topic.'
