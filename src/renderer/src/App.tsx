@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, matchPath } from 'react-router-dom'
+import { AuthPage } from './pages/auth'
+import { useUserStore } from './store/userStore'
 import { Sidebar } from './components/layout/Sidebar'
 import { HomePage } from './pages/home'
 import { SessionCreatePage } from './pages/session-create'
@@ -25,6 +27,12 @@ function App(): React.JSX.Element {
   const isThinkingRoute = Boolean(matchPath('/thinking/:thinkingId', location.pathname))
   const { info } = useToastStore()
   const t = useT()
+  const { currentUser, _load } = useUserStore()
+
+  // Initialise user from localStorage on first mount
+  useEffect(() => {
+    _load()
+  }, [_load])
 
   useEffect(() => {
     const unsubscribe = ipc.onUpdateAvailable((update) => {
@@ -43,6 +51,21 @@ function App(): React.JSX.Element {
       unsubscribe?.()
     }
   }, [info, t])
+
+  // Auth guard — show login page if not authenticated
+  if (!currentUser) {
+    return (
+      <>
+        <div className="h-full min-h-0 overflow-hidden bg-background text-foreground">
+          <div className="app-drag-region app-titlebar bg-background/85 backdrop-blur-xl" />
+          <div className="h-[calc(100%-var(--titlebar-height,28px))] min-h-0">
+            <AuthPage />
+          </div>
+        </div>
+        <AppToaster />
+      </>
+    )
+  }
 
   if (isSessionDetailRoute) {
     return (

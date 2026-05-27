@@ -108,7 +108,36 @@ export const en = {
     settings: 'Settings',
     backToSessions: 'Back to sessions',
     newPresentation: 'New presentation',
-    tagline: 'AI presentation workbench'
+    tagline: 'AI presentation workbench',
+    logout: 'Log out',
+    profile: 'Profile'
+  },
+  auth: {
+    loginTitle: 'Welcome back',
+    loginSubtitle: 'Sign in to your account to continue',
+    registerTitle: 'Create account',
+    registerSubtitle: 'Register to start creating presentations',
+    username: 'Username',
+    usernamePlaceholder: 'Enter your username',
+    password: 'Password',
+    passwordPlaceholder: 'Enter your password',
+    nickname: 'Nickname',
+    nicknamePlaceholder: 'Your display name (optional)',
+    loginBtn: 'Sign in',
+    registerBtn: 'Create account',
+    switchToRegister: "Don't have an account? Sign up",
+    switchToLogin: 'Already have an account? Sign in',
+    errorEmpty: 'Username and password are required',
+    loggingIn: 'Signing in...',
+    registering: 'Creating account...'
+  },
+  profile: {
+    title: 'Profile',
+    nickname: 'Nickname',
+    avatar: 'Avatar character',
+    avatarHint: '1–2 characters, shown as your avatar',
+    save: 'Save',
+    saved: 'Saved'
   },
   home: {
     eyebrow: 'Unleash your creativity',

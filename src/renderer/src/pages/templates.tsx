@@ -9,6 +9,7 @@ import { TemplateCard, TemplateEmptyState } from '../components/templates/Templa
 import { useTemplateStore, useToastStore } from '../store'
 import { ipc, type TemplateListItem } from '../lib/ipc'
 import { useT } from '../i18n'
+import { useUserStore } from '../store/userStore'
 
 const MIN_PAGE_COUNT = 1
 const MAX_PAGE_COUNT = 40
@@ -281,6 +282,7 @@ export function TemplatesPage(): React.JSX.Element {
         pageCount: safePageCount,
         referenceDocumentPath: referenceDocumentPath || undefined
       })
+      useUserStore.getState().claimSession(sessionId)
       const initialPrompt = buildTemplateInitialPrompt({
         templateName: useTarget.name,
         title: deckTitle,

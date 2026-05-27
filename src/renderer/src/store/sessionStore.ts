@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { ipc } from '@renderer/lib/ipc'
 import type { FontSelection } from '@shared/generation'
+import { useUserStore } from './userStore'
 
 export interface Session {
   id: string
@@ -127,8 +128,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   fetchSessions: async () => {
     try {
-      const sessions = await ipc.listSessions()
-      set({ sessions: sessions as unknown as Session[] })
+      const allSessions = await ipc.listSessions()
+      const userStore = useUserStore.getState()
+      const ownedIds = userStore.getUserSessionIds()
+      // If user has no owned sessions yet, show all (first-time / migration scenario)
+      const sessions =
+        ownedIds.size === 0
+          ? (allSessions as unknown as Session[])
+          : (allSessions as unknown as Session[]).filter((s) => ownedIds.has(s.id))
+      set({ sessions })
     } catch {
       set({ error: 'Failed to fetch sessions' })
     }
@@ -136,6 +144,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   createSession: async (payload) => {
     const { sessionId } = await ipc.createSession(payload)
+    useUserStore.getState().claimSession(sessionId)
     await get().fetchSessions()
     return sessionId
   },

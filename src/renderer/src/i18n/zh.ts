@@ -104,7 +104,36 @@ export const zh = {
     settings: '设置',
     backToSessions: '返回会话',
     newPresentation: '新建演示',
-    tagline: 'AI presentation workbench'
+    tagline: 'AI presentation workbench',
+    logout: '退出登录',
+    profile: '个人资料'
+  },
+  auth: {
+    loginTitle: '欢迎回来',
+    loginSubtitle: '登录你的账户继续使用',
+    registerTitle: '创建账户',
+    registerSubtitle: '注册后即可开始创建演示',
+    username: '用户名',
+    usernamePlaceholder: '请输入用户名',
+    password: '密码',
+    passwordPlaceholder: '请输入密码',
+    nickname: '昵称',
+    nicknamePlaceholder: '你的显示名称（可选）',
+    loginBtn: '登录',
+    registerBtn: '注册',
+    switchToRegister: '没有账户？立即注册',
+    switchToLogin: '已有账户？去登录',
+    errorEmpty: '用户名和密码不能为空',
+    loggingIn: '登录中...',
+    registering: '注册中...'
+  },
+  profile: {
+    title: '个人资料',
+    nickname: '昵称',
+    avatar: '头像字符',
+    avatarHint: '1-2 个字符，显示为头像',
+    save: '保存',
+    saved: '已保存'
   },
   home: {
     eyebrow: 'Unleash your creativity',

@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { Home, FolderOpen, Settings, Plus, ArrowLeft, SwatchBook, Type, LayoutTemplate } from 'lucide-react'
+import { Home, FolderOpen, Settings, Plus, ArrowLeft, SwatchBook, Type, LayoutTemplate, LogOut, User } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import logoUrl from '@renderer/assets/images/logo.png'
 import { useT } from '@renderer/i18n'
 import { ipc } from '@renderer/lib/ipc'
+import { useUserStore } from '@renderer/store/userStore'
+import { ProfileDialog } from '../user/ProfileDialog'
 
 export function Sidebar(): React.JSX.Element {
   const location = useLocation()
   const t = useT()
   const isDetailPage = location.pathname.startsWith('/sessions/') && location.pathname !== '/sessions'
   const [appVersion, setAppVersion] = useState('')
+  const [profileOpen, setProfileOpen] = useState(false)
+  const { currentUser, logout } = useUserStore()
 
   useEffect(() => {
     let disposed = false
@@ -78,7 +82,7 @@ export function Sidebar(): React.JSX.Element {
         })}
       </nav>
 
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 flex flex-col gap-2">
         <Link
           to="/"
           className="flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-[#6f8159] to-[#4f613f] px-3 py-2.5 text-[12px] font-medium text-white shadow-lg shadow-[#5d6b4d]/30 transition-all hover:translate-y-[-1px]"
@@ -89,7 +93,37 @@ export function Sidebar(): React.JSX.Element {
           </span>
           {appVersion ? <span className="shrink-0 text-[10px] font-normal text-white/70">v{appVersion}</span> : null}
         </Link>
+
+        {currentUser && (
+          <div className="flex items-center gap-2 rounded-xl border border-[#e1d6c4]/60 bg-[#f5efe3]/60 px-3 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#8faa72] to-[#5a7845] text-sm font-bold text-white">
+              {currentUser.avatar.slice(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-medium text-[#2f3b28]">{currentUser.nickname}</p>
+              <p className="truncate text-[10px] text-[#9a8f80]">@{currentUser.username}</p>
+            </div>
+            <button
+              type="button"
+              title={t('nav.profile')}
+              onClick={() => setProfileOpen(true)}
+              className="shrink-0 rounded-md p-1 text-[#7a875f] transition-colors hover:bg-[#e0d8c8]/80 hover:text-[#3e4a32]"
+            >
+              <User className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              title={t('nav.logout')}
+              onClick={logout}
+              className="shrink-0 rounded-md p-1 text-[#9a8f80] transition-colors hover:bg-[#ffe8e8]/80 hover:text-[#9b4040]"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
+
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </aside>
   )
 }
