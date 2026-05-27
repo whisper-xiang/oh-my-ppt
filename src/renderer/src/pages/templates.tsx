@@ -297,11 +297,11 @@ export function TemplatesPage(): React.JSX.Element {
     dragCounterRef.current = 0
     setDocDragActive(false)
     if (parsingDocument || creating) return
-    if (!(await ensureUploadPrerequisites())) return
+    // Capture files before any async call — DataTransfer is cleared after the event
     const files = event.dataTransfer.files
-    if (files.length > 0) {
-      await handleDocumentFilesSelected(files)
-    }
+    if (files.length === 0) return
+    if (!(await ensureUploadPrerequisites())) return
+    await handleDocumentFilesSelected(files)
   }
 
   const handleCreate = async (): Promise<void> => {
