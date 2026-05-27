@@ -86,6 +86,8 @@ export const en = {
     parsingDocument: 'Parsing...',
     uploadDocument: 'Upload document outline',
     supportedDocuments: 'Supports md/txt/csv/docx, up to {maxSize}MB',
+    orDragDrop: 'or drag & drop a file here',
+    dropToUpload: 'Drop to upload document',
     creating: 'Creating...',
     creatingEditable: 'Creating editable session',
     createEditable: 'Create for editing',

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CircleAlert, FileText, FileUp, LayoutTemplate, Loader2, RefreshCw } from 'lucide-react'
+import { CircleAlert, FileText, FileUp, LayoutTemplate, Loader2, RefreshCw, Upload } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/Dialog'
 import { Input, Textarea } from '../components/ui/Input'
@@ -85,6 +85,8 @@ export function TemplatesPage(): React.JSX.Element {
   const pptxInputRef = useRef<HTMLInputElement | null>(null)
   const [importingPptxTemplate, setImportingPptxTemplate] = useState(false)
   const [pptxTemplateProgress, setPptxTemplateProgress] = useState<string | null>(null)
+  const [docDragActive, setDocDragActive] = useState(false)
+  const dragCounterRef = useRef(0)
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -124,6 +126,8 @@ export function TemplatesPage(): React.JSX.Element {
     setReferenceDocumentPath(null)
     setDocumentParseError(null)
     setHasParsedSource(false)
+    setDocDragActive(false)
+    dragCounterRef.current = 0
   }
 
   const ensureUploadPrerequisites = async (): Promise<boolean> => {
@@ -262,6 +266,41 @@ export function TemplatesPage(): React.JSX.Element {
       error(t('templates.documentParseFailed'), { description: message })
     } finally {
       setParsingDocument(false)
+    }
+  }
+
+  const handleDialogDragEnter = (event: React.DragEvent): void => {
+    event.preventDefault()
+    if (!event.dataTransfer.types.includes('Files')) return
+    dragCounterRef.current += 1
+    setDocDragActive(true)
+  }
+
+  const handleDialogDragOver = (event: React.DragEvent): void => {
+    event.preventDefault()
+    if (event.dataTransfer.types.includes('Files')) {
+      event.dataTransfer.dropEffect = 'copy'
+    }
+  }
+
+  const handleDialogDragLeave = (event: React.DragEvent): void => {
+    event.preventDefault()
+    dragCounterRef.current -= 1
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0
+      setDocDragActive(false)
+    }
+  }
+
+  const handleDialogDrop = async (event: React.DragEvent): Promise<void> => {
+    event.preventDefault()
+    dragCounterRef.current = 0
+    setDocDragActive(false)
+    if (parsingDocument || creating) return
+    if (!(await ensureUploadPrerequisites())) return
+    const files = event.dataTransfer.files
+    if (files.length > 0) {
+      await handleDocumentFilesSelected(files)
     }
   }
 
@@ -513,7 +552,24 @@ export function TemplatesPage(): React.JSX.Element {
       </Dialog>
 
       <Dialog open={Boolean(useTarget)} onOpenChange={(open) => !open && closeUseDialog()}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent
+          className="relative max-w-2xl overflow-hidden"
+          onDragEnter={handleDialogDragEnter}
+          onDragOver={handleDialogDragOver}
+          onDragLeave={handleDialogDragLeave}
+          onDrop={(event) => void handleDialogDrop(event)}
+        >
+          {/* Drag-over overlay */}
+          {docDragActive && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-[inherit] border-2 border-dashed border-[#7c6fd4] bg-[#f0eefb]/95 backdrop-blur-sm">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#7c6fd4]/15">
+                <Upload className="h-7 w-7 text-[#6b5fbd]" />
+              </div>
+              <p className="text-sm font-semibold text-[#4c3fa8]">{t('templates.dropToUpload')}</p>
+              <p className="text-xs text-[#7a75a0]">{t('templates.supportedDocuments', { maxSize: MAX_DOCUMENT_SIZE_MB })}</p>
+            </div>
+          )}
+
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <LayoutTemplate className="h-4 w-4" />
@@ -579,10 +635,12 @@ export function TemplatesPage(): React.JSX.Element {
               </Button>
               <span className="text-xs text-muted-foreground">
                 {t('templates.supportedDocuments', { maxSize: MAX_DOCUMENT_SIZE_MB })}
+                {' · '}
+                {t('templates.orDragDrop')}
               </span>
             </div>
             {documentParseError ? (
-              <div className="flex items-start gap-2 rounded-md border border-[#d58b7f]/45 bg-[#fff2ef] px-3 py-2 text-xs text-[#8a3d33]">
+              <div className="flex items-start gap-2 rounded-md border border-[#d4cef0]/45 bg-[#fff2ef] px-3 py-2 text-xs text-[#9b4040]">
                 <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{documentParseError}</span>
               </div>

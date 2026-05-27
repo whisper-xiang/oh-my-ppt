@@ -82,6 +82,8 @@ export const zh = {
     parsingDocument: '解析中...',
     uploadDocument: '上传文档解析大纲',
     supportedDocuments: '支持 md/txt/csv/docx，最大 {maxSize}MB',
+    orDragDrop: '或直接拖拽文档到此处',
+    dropToUpload: '松开鼠标上传文档',
     creating: '创建中...',
     creatingEditable: '正在创建可编辑会话',
     createEditable: '直接编辑创建',
