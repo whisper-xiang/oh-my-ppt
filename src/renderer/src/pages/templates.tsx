@@ -552,13 +552,14 @@ export function TemplatesPage(): React.JSX.Element {
       </Dialog>
 
       <Dialog open={Boolean(useTarget)} onOpenChange={(open) => !open && closeUseDialog()}>
-        <DialogContent
-          className="relative max-w-2xl overflow-hidden"
-          onDragEnter={handleDialogDragEnter}
-          onDragOver={handleDialogDragOver}
-          onDragLeave={handleDialogDragLeave}
-          onDrop={(event) => void handleDialogDrop(event)}
-        >
+        <DialogContent className="max-w-2xl">
+          <div
+            className="relative"
+            onDragEnter={handleDialogDragEnter}
+            onDragOver={handleDialogDragOver}
+            onDragLeave={handleDialogDragLeave}
+            onDrop={(event) => void handleDialogDrop(event)}
+          >
           {/* Drag-over overlay */}
           {docDragActive && (
             <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-[inherit] border-2 border-dashed border-[#7c6fd4] bg-[#f0eefb]/95 backdrop-blur-sm">
@@ -654,6 +655,7 @@ export function TemplatesPage(): React.JSX.Element {
               {creating ? t('templates.creating') : t('templates.createAndGenerate')}
             </Button>
           </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
