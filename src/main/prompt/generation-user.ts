@@ -164,8 +164,12 @@ export function buildSinglePageGenerationPrompt(args: {
 
 /**
  * Prompt for template-mode single-page generation.
- * Task: edit template content in-place, NOT design a new slide.
- * Intentionally omits expansion/design rules from buildSinglePageGenerationPrompt.
+ *
+ * The template background, decorative chrome, and title box are automatically
+ * restored by the write tool — the AI only needs to produce the BODY CONTENT
+ * (text blocks, lists, data, etc.) for the slide's content zone.
+ * This prompt intentionally omits expansion/design/animation rules so it does
+ * not override the template's visual identity.
  */
 export function buildTemplateSinglePagePrompt(args: {
   topic: string
@@ -175,6 +179,8 @@ export function buildTemplateSinglePagePrompt(args: {
   pageTitle: string
   pageOutline: string
   layoutIntent?: SessionDeckGenerationContext['outlineItems'][number]['layoutIntent']
+  /** All page titles in the deck — used to build the TOC on table-of-contents slides */
+  allPageTitles?: string[]
   sourceDocumentPaths?: string[]
   referenceDocumentSnippets?: string
   retryContext?: {
@@ -215,42 +221,45 @@ export function buildTemplateSinglePagePrompt(args: {
           ]
       : []
 
+  // TOC hint: when this is a table-of-contents slide, supply all section titles
+  const isToc = args.layoutIntent === 'toc'
+  const tocInstructions =
+    isToc && args.allPageTitles && args.allPageTitles.length > 1
+      ? [
+          '',
+          'Table of contents: this slide lists the deck sections. Use the following titles as the TOC entries (one per line/item):',
+          ...args.allPageTitles.map((t, i) => `  ${i + 1}. ${t}`)
+        ]
+      : []
+
   return [
-    '## Template page update — edit in-place, do NOT redesign',
+    '## Template slide — generate body content only',
     '',
     `Topic: ${args.topic}`,
     `Deck title: ${args.deckTitle}`,
     `Target page: ${args.pageId} (slide ${args.pageNumber})`,
-    `Slide title to use: ${args.pageTitle}`,
+    `Slide title: ${args.pageTitle}`,
     `Content outline: ${args.pageOutline || 'Derive content from the topic and slide title.'}`,
     args.layoutIntent ? formatLayoutIntentPrompt(args.layoutIntent) : '',
+    ...tocInstructions,
     ...sourceDocumentInstructions,
     '',
-    '### Steps',
-    `1. Read the full template page: call read_file(path="/${args.pageId}.html")`,
-    '2. Identify in the template:',
-    '   a. Chrome elements — ALL absolutely-positioned layers: background images, texture images, decorative images, masks, colored bands, corner logos, footer decorations, SVG shapes, any element with class "absolute"/"fixed" or style "position:absolute/fixed". Also any <img> used purely for decoration.',
-    '   b. Title element — where the slide title text lives in the template.',
-    '   c. Content zone — the area where body text, bullet points, and content modules sit.',
-    `3. Call update_single_page_file(pageId="${args.pageId}", content=...) where content is:`,
-    `   • The COMPLETE section[data-page-scaffold] block from the template (all children — chrome AND content zone), with ONLY these text changes:`,
-    `   • Replace the title element's text with the slide title above.`,
-    '   • Replace body text, list items, and data values in the content zone to match the content outline.',
-    '   • Everything else — HTML structure, CSS classes, inline styles, src/href/url() values, all attributes — must be copied verbatim from the template.',
+    '### What you must produce',
+    'Generate the BODY CONTENT for the slide content zone — text, headings, lists, data cards, etc.',
+    'The slide title heading, background, decorative layers, and logo are handled automatically — do NOT include them.',
     '',
-    '### Strict rules — must not be violated',
-    '- Output the ENTIRE template section block. Do NOT output only the new content portion — chrome elements must be in your output or all template styling is lost.',
-    '- Do NOT add HTML elements that are not in the template.',
-    '- Do NOT remove any element from the template (no removing background layers, logo images, bands, or decorations).',
-    '- Do NOT change CSS classes, inline styles, or any HTML attributes except text content nodes.',
-    '- Do NOT add a new standalone h1/h2 title if the template does not place the title at the top-left.',
-    '- Your output section block must look identical to the template visually, with only text updated.',
+    '### Strict rules',
+    '- Do NOT include background-image elements, colored-band divs, logo images, or any purely decorative layers.',
+    '- Do NOT output a section[data-page-scaffold] block or any outer wrapper — output the inner body content only.',
+    '- Do NOT add a standalone h1/h2/h3 title at the top of the content — the title is placed automatically.',
+    '- Do NOT include <!doctype>, <html>, <head>, <body>, .ppt-page-root, .ppt-page-content, .ppt-page-fit-scope, or data-ppt-guard-root.',
+    '- Respect the content outline — use the outline points as headings or list items, expand each into readable text.',
     '',
     CONTENT_LANGUAGE_RULES,
     '',
     'Tool constraint:',
-    `- Required: call update_single_page_file(pageId="${args.pageId}", content=...).`,
-    '- content must be the inner section block only — NOT <!doctype>, <html>, <head>, <body>, .ppt-page-root, .ppt-page-content, .ppt-page-fit-scope, or data-ppt-guard-root.',
+    `- Required: call update_single_page_file(pageId="${args.pageId}", content=<body content fragment>).`,
+    '- content is the inner body content only (divs, p, ul, etc.) — no outer wrappers or page shell.',
     '- After the tool call, respond with a one-line summary only.',
     '',
     'Tool context:',

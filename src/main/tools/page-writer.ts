@@ -343,6 +343,14 @@ const DEFAULT_MOTION_SCRIPT = `<script id="ppt-default-motion">
 
 const writeLocks = new Map<string, Promise<void>>()
 
+async function readPageHtmlIfExists(filePath: string): Promise<string> {
+  try {
+    return await fs.promises.readFile(filePath, 'utf-8')
+  } catch {
+    return ''
+  }
+}
+
 /**
  * Serializes async writes per lockKey via a promise chain.
  * `next` swallows both resolve/reject so the chain continues regardless of
@@ -376,6 +384,161 @@ export function getAgentNameFromToolConfig(config: unknown): string | undefined 
     return fromConfigurable.trim()
   return undefined
 }
+
+// ── Template chrome preservation ──────────────────────────────────────────────
+// For template-mode page generation, after the AI writes a fresh content
+// fragment, we restore the template's visual chrome from the original file:
+//   1. The section[data-page-scaffold] background CSS (color/image on the section itself)
+//   2. Absolutely-positioned decorative elements with no text (logos, shapes, bg layers)
+//   3. The title element ([data-role="title"]) at its original position, with updated text
+
+interface TemplateChrome {
+  /** background/overflow CSS that was on the original section element */
+  sectionBgStyle: string
+  /** HTML of abs-positioned, text-free decorative elements */
+  chromeHtml: string
+  /** HTML of the [data-role="title"] element (with original positioning) */
+  titleBoxHtml: string
+  /** top offset (px) of the title element, used to add content padding */
+  titleBottomPx: number
+}
+
+function extractTemplateChrome(templateHtml: string): TemplateChrome {
+  try {
+    const $ = cheerio.load(templateHtml, { scriptingEnabled: false })
+
+    // ── Section background CSS ──
+    const section = $('section[data-page-scaffold]').first()
+    const sectionStyle = section.attr('style') || ''
+    const sectionBgStyle = sectionStyle
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => {
+        const prop = s.split(':')[0]?.trim().toLowerCase() || ''
+        return prop.startsWith('background') || prop === 'overflow'
+      })
+      .join(';')
+
+    // ── Title element ──
+    const titleEl = $('[data-role="title"]').first()
+    const titleBoxHtml = titleEl.length ? ($.html(titleEl.get(0)) || '') : ''
+    let titleBottomPx = 0
+    if (titleEl.length) {
+      const ts = titleEl.attr('style') || ''
+      const topM = ts.match(/top\s*:\s*(\d+)px/)
+      const hM = ts.match(/height\s*:\s*(\d+)px/)
+      titleBottomPx = (topM ? parseInt(topM[1]) : 36) + (hM ? parseInt(hM[1]) : 56) + 16
+    }
+
+    // ── Decorative chrome: abs-positioned, no text ──
+    const contentMain = $('main[data-role="content"]').first()
+    const chromeParts: string[] = []
+    contentMain.children().each((_, child) => {
+      if (child.type !== 'tag') return
+      const el = $(child)
+      if (el.is('[data-role="title"]')) return // handled separately above
+      const style = el.attr('style') || ''
+      const cls = (el.attr('class') || '').split(/\s+/)
+      const isAbs =
+        /position\s*:\s*(absolute|fixed)/i.test(style) ||
+        cls.includes('absolute') ||
+        cls.includes('fixed')
+      if (!isAbs) return
+      if (el.text().trim().length > 0) return // skip text boxes
+      chromeParts.push($.html(child) || '')
+    })
+
+    return {
+      sectionBgStyle,
+      chromeHtml: chromeParts.join('\n'),
+      titleBoxHtml,
+      titleBottomPx
+    }
+  } catch {
+    return { sectionBgStyle: '', chromeHtml: '', titleBoxHtml: '', titleBottomPx: 0 }
+  }
+}
+
+function updateTitleBoxText(titleBoxHtml: string, newTitle: string): string {
+  if (!titleBoxHtml || !newTitle) return titleBoxHtml
+  try {
+    const $ = cheerio.load(titleBoxHtml, { scriptingEnabled: false }, false)
+    const heading = $('h1, h2, h3, h4, h5, h6').first()
+    if (heading.length) {
+      heading.text(newTitle)
+    } else {
+      $('p, span').first().text(newTitle)
+    }
+    return $.html() || titleBoxHtml
+  } catch {
+    return titleBoxHtml
+  }
+}
+
+function applyTemplateChrome(
+  pageHtml: string,
+  chrome: TemplateChrome,
+  newTitle: string
+): string {
+  if (!chrome.sectionBgStyle && !chrome.chromeHtml && !chrome.titleBoxHtml) return pageHtml
+  try {
+    const $ = cheerio.load(pageHtml, { scriptingEnabled: false })
+
+    // Apply section background CSS
+    if (chrome.sectionBgStyle) {
+      const section = $('section[data-page-scaffold]').first()
+      const existing = (section.attr('style') || '').trim()
+      // Merge: keep existing position/overflow, append bg from template
+      section.attr('style', [existing, chrome.sectionBgStyle].filter(Boolean).join(';'))
+    }
+
+    const contentMain = $('main[data-role="content"]').first()
+    if (!contentMain.length) return $.html()
+
+    // Remove any AI-generated title heading (h1/h2/h3 at the very start of content)
+    // since the template's title box will be injected at the correct position
+    if (chrome.titleBoxHtml) {
+      const firstChild = contentMain.children().first()
+      const tag = firstChild.get(0)?.type === 'tag' ? (firstChild.get(0) as { name?: string }).name?.toLowerCase() : ''
+      if (tag && /^h[1-6]$/.test(tag)) {
+        firstChild.remove()
+      }
+    }
+
+    // Add top padding so the AI's body content starts below the title area
+    if (chrome.titleBottomPx > 0) {
+      const currentPt = (() => {
+        const s = contentMain.attr('style') || ''
+        const m = s.match(/padding-top\s*:\s*(\d+)px/)
+        return m ? parseInt(m[1]) : 0
+      })()
+      if (currentPt < chrome.titleBottomPx) {
+        const styleWithoutPt = (contentMain.attr('style') || '')
+          .split(';')
+          .filter((d) => !d.trim().toLowerCase().startsWith('padding-top'))
+          .join(';')
+        contentMain.attr(
+          'style',
+          [styleWithoutPt, `padding-top:${chrome.titleBottomPx}px`].filter(Boolean).join(';')
+        )
+      }
+    }
+
+    // Inject chrome + updated title box BEFORE existing content (abs-positioned, won't shift flow)
+    const updatedTitleBox = newTitle ? updateTitleBoxText(chrome.titleBoxHtml, newTitle) : chrome.titleBoxHtml
+    const toInject = [chrome.chromeHtml, updatedTitleBox].filter(Boolean).join('\n')
+    if (toInject) {
+      const existing = contentMain.html() || ''
+      contentMain.html(toInject + '\n' + existing)
+    }
+
+    return $.html()
+  } catch {
+    return pageHtml
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function extractBackgroundStyle(styleAttr: string): string {
   const declarations = styleAttr
@@ -952,17 +1115,38 @@ export function createPageWriteTools(args: {
       pageId: resolvedPageId,
       agentName
     })
+
+    // For template mode: capture the original template chrome BEFORE overwriting.
+    // This preserves section background CSS, decorative elements, and the title box
+    // at their correct positions regardless of what the AI generates.
+    let templateChrome: TemplateChrome | null = null
+    if (context.templatePageReadRequired) {
+      try {
+        const existingHtml = await readPageHtmlIfExists(targetPath)
+        if (existingHtml) templateChrome = extractTemplateChrome(existingHtml)
+      } catch {
+        // non-fatal: fall back to standard write if chrome extraction fails
+      }
+    }
+
     const result = await serializedWrite(context.projectDir, async () => {
       const designFonts = {
         titleFont: context.designContract?.titleFont || 'Inter',
         bodyFont: context.designContract?.bodyFont || 'Inter'
       }
-      const normalized = await normalizeAndInjectPageRuntime(
+      let normalized = await normalizeAndInjectPageRuntime(
         preparedContent.content,
         resolvedPageId,
         context.projectDir,
         designFonts
       )
+
+      // Restore template chrome (background, logos, title box at correct position)
+      if (templateChrome) {
+        const pageTitle = context.outlineItems?.[0]?.title || ''
+        normalized = applyTemplateChrome(normalized, templateChrome, pageTitle)
+      }
+
       const persistedValidation = validatePersistedPageHtml(normalized, resolvedPageId)
       if (!persistedValidation.valid) {
         emitNormalizedToolStatus(config, {

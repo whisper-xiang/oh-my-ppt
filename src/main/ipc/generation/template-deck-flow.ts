@@ -170,34 +170,26 @@ export async function executeTemplateDeckGeneration(
       .join('\n')
 
   const templateSystemPromptAddendum = [
-    '## 模板设计系统模式（就地编辑，保留视觉结构）',
-    '- 当前页面文件是用户模板复制后的页面基底。每页输出必须是对该基底的就地更新，而非重新设计。',
-    '- 输出的内容片段必须包含模板页面的完整内部结构：所有背景图层、装饰图片、角标 logo、脚注、色带、SVG 装饰元素和绝对定位的样式容器，一个都不能少。',
-    '- 只允许更改：幻灯片标题文本（在模板已有的标题元素处就地修改）、正文文字、列表项、数据值。',
-    '- 严禁在左上角或页面顶部额外添加独立的标题 h1/h2。如果模板有标题元素，就更新该元素的文本；如果模板没有在顶部放置标题，就不要增加。',
-    '- 背景图、纹理图、装饰图片、蒙版、叠加层、CSS background-image/url(...)、SVG 图形、角标 logo、脚注装饰等属于模板骨架，不是旧业务内容；必须原封不动地保留在输出片段中，且使用模板中读到的本地资源路径。',
-    '- 不要因为替换文字/数据而删除任何背景层、装饰层或承载它们的结构容器。',
-    '- 不重算 designContract；页面基底是视觉事实来源。如上下文存在 designContract，仅视为字体/运行时元数据参考。',
-    '- 可以为适配新内容做局部调整：信息密度、模块数量、图表类型、局部排列、文字层级和避免遮挡的尺寸变化。',
-    '- 旧模板里的业务文字、数字、公司名、日期和结论不是事实来源，必须用用户 brief/source document 替换。',
+    '## 模板设计系统模式（正文内容生成）',
+    '- 当前任务是为每张幻灯片生成正文内容，模板背景、装饰图层和标题框由系统代码自动注入，无需在输出中包含。',
+    '- 只输出正文内容区域的 HTML：标题段落、列表、数据卡片、表格等。',
+    '- 不要输出 section[data-page-scaffold] 外层容器、背景图层、装饰图片、角标 logo、色带 div 或 SVG 装饰。',
+    '- 不要在内容顶部添加独立的 h1/h2/h3 标题——幻灯片标题已由代码自动放置。',
+    '- 不重算 designContract；如上下文存在 designContract，仅作为字体参考。',
+    '- 旧模板里的业务文字、数字、公司名、日期和结论是占位内容，必须用用户 brief/source document 替换。',
     '',
     tocInstruction
   ].join('\n')
 
   const templateSinglePagePromptAddendum = [
     'Template design system for this slide:',
-    '- The existing target page file is a copied template page base. Your output must preserve its complete visual structure.',
-    '- Output the COMPLETE inner content of the template page with only the text/data changed. Do NOT generate a fresh slide design.',
-    '- Every background image layer, decorative image, logo, colored band, border decoration, and absolutely-positioned chrome element from the template MUST appear in your output fragment — unchanged.',
-    '- Replace old text/data/media content with new slide content, but keep every visual container, layout wrapper, and background element.',
-    '- Treat background images, texture images, decorative images, masks, overlay layers, CSS background-image/url(...) references, SVG shapes, corner logos, and footer elements as template chrome — never remove them.',
-    '- Do NOT add a new standalone title heading (h1/h2) at the top-left corner. If the template has a title element, update its text. If the template has no top-left title, do not add one.',
-    '- Keep color language, typography scale, spacing rhythm, component shapes, and chart/table styling.',
-    '- Do not infer or invent a separate deck-wide design contract for this template run.',
-    '- If a design contract is present, treat it as inherited font/runtime metadata only; the page base is the visual source of truth.',
-    '- Do not treat old template business text, numbers, company names, dates, or conclusions as facts.',
+    '- Generate BODY CONTENT only — headings, text paragraphs, lists, data cards, table content.',
+    '- Do NOT include background-image elements, decorative image layers, logos, color-band divs, SVG shapes, or any absolutely-positioned chrome. The template background and decorative elements are restored automatically.',
+    '- Do NOT output a section[data-page-scaffold] wrapper or any outer page shell.',
+    '- Do NOT add a standalone h1/h2/h3 title at the top of the content. The slide title is placed automatically.',
+    '- Treat old template business text, numbers, company names, dates, and conclusions as placeholder content — replace them with the new slide content.',
     hasTocPage
-      ? '- This deck has a dedicated table-of-contents page (slide 2). If the current slide IS the TOC page, list all section titles without page-level detail. If it is a content page, do NOT duplicate the TOC — focus on its specific topic.'
+      ? '- This deck has a dedicated table-of-contents page. If the current slide IS the TOC page, your content should be a numbered list of all section titles. If it is a content page, do NOT duplicate the TOC — focus on its specific topic.'
       : ''
   ]
     .filter(Boolean)

@@ -1164,6 +1164,7 @@ export const runDeepAgentDeckGeneration = async (args: {
                       pageTitle: page.title,
                       pageOutline: page.outline,
                       layoutIntent: page.layoutIntent,
+                      allPageTitles: args.outlineTitles,
                       sourceDocumentPaths: args.sourceDocumentPaths,
                       referenceDocumentSnippets,
                       retryContext
