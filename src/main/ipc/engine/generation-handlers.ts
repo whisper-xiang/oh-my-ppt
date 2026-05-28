@@ -3,7 +3,11 @@ import log from 'electron-log/main.js'
 import type { IpcContext } from '../context'
 import type { SessionStatus } from '../../db/schema'
 import { createEmitAssistantMessage } from '../generation/generation-utils'
-import { executeDeckGeneration, resolveDeckContext } from '../generation/deck-flow'
+import {
+  executeDeckGeneration,
+  executeOutlinePlanning,
+  resolveDeckContext
+} from '../generation/deck-flow'
 import {
   executeTemplateDeckGeneration,
   resolveTemplateDeckContext
@@ -193,6 +197,53 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         await finalizeGenerationFailure(ctx, context, error)
       } else {
         logPreContextFailure('generate:start', requestedSessionId, error)
+      }
+      throw error
+    } finally {
+      if (requestedSessionId) {
+        releaseStartingSessionRun(requestedSessionId, startingRun)
+      }
+      if (context) {
+        agentManager.removeSession(context.sessionId)
+      }
+    }
+  })
+
+  ipcMain.handle('outline:generate', async (event, payload) => {
+    pruneFinishedSessionRunStates()
+    const requestedSessionId =
+      payload &&
+      typeof payload === 'object' &&
+      typeof (payload as { sessionId?: unknown }).sessionId === 'string'
+        ? String((payload as { sessionId?: string }).sessionId).trim()
+        : ''
+    const startingReservation = requestedSessionId
+      ? reserveStartingSessionRun('outline:generate', requestedSessionId)
+      : null
+    if (startingReservation?.alreadyRunning) {
+      return { success: true, runId: startingReservation.runId, alreadyRunning: true }
+    }
+    const startingRun =
+      startingReservation?.alreadyRunning === false ? startingReservation.startingRun : null
+
+    let context: DeckContext | null = null
+    try {
+      context = await resolveDeckContext(ctx, event, payload)
+      assertStartingRunNotCanceled(startingRun)
+      beginSessionRunState({
+        sessionId: context.sessionId,
+        runId: context.runId,
+        mode: context.effectiveMode,
+        totalPages: context.totalPages,
+        previousSessionStatus: context.previousSessionStatus
+      })
+      await executeOutlinePlanning(ctx, emitAssistant, context)
+      return { success: true, runId: context.runId }
+    } catch (error) {
+      if (context) {
+        await finalizeGenerationFailure(ctx, context, error)
+      } else {
+        logPreContextFailure('outline:generate', requestedSessionId, error)
       }
       throw error
     } finally {

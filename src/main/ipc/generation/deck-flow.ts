@@ -19,6 +19,9 @@ import {
   resolveCommonContext,
   resolveSourceDocuments
 } from './context'
+import { parseJsonObject } from '../utils'
+import { loadOutlineRulePrompt } from '../../utils/outline-rules'
+import type { OutlineItem, DesignContract } from '../../tools/types'
 
 const pageSlugId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 10)
 
@@ -90,21 +93,36 @@ export async function resolveDeckContext(
   }
 }
 
-export async function executeDeckGeneration(
+type DeckPlanningResult = {
+  pageRefs: Array<{ id: string; pageNumber: number; title: string; pageId: string; htmlPath: string }>
+  outlineItems: OutlineItem[]
+  outlineTitles: string[]
+  designContract: DesignContract
+  pageFileMap: Record<string, string>
+  indexPath: string
+  reused: boolean
+}
+
+/**
+ * Plan + design phase. Either:
+ *  (a) loads an existing outline snapshot (when the session has already run
+ *      through outline-only generation), or
+ *  (b) runs planner + design contract + scaffolds page shells from scratch.
+ *
+ * Persists outline rows under the current runId and updates session design
+ * contract in either case.
+ */
+export async function runDeckPlanningPhase(
   ctx: IpcContext,
   emitAssistant: EmitAssistantFn,
   context: DeckContext
-): Promise<void> {
+): Promise<DeckPlanningResult> {
   const {
     db,
-    agentManager,
-    getPageSourceUrl,
-    validateProjectIndexHtml,
     createDeckProgressEmitter,
     scaffoldProjectFiles,
     PLANNER_TEMPERATURE,
-    DESIGN_CONTRACT_TEMPERATURE,
-    PAGE_GENERATION_TEMPERATURE
+    DESIGN_CONTRACT_TEMPERATURE
   } = ctx
 
   if (!context.apiKey) {
@@ -112,6 +130,7 @@ export async function executeDeckGeneration(
   }
 
   const emitDeckChunk = createDeckProgressEmitter(context.sessionId, context.appLocale)
+  const indexPath = path.join(context.entry.projectDir, 'index.html')
 
   emitDeckChunk({
     type: 'stage_started',
@@ -136,6 +155,98 @@ export async function executeDeckGeneration(
   })
   await sleep(120, context.entry.abortController.signal)
 
+  // (a) Try to load an existing outline snapshot from a prior outline-only run.
+  const existingSnapshot = await db.listLatestGenerationPageSnapshot(context.sessionId)
+  const hasUsableSnapshot =
+    existingSnapshot.length > 0 &&
+    existingSnapshot.every((row) => row.html_path && (row.content_outline || '').trim().length > 0)
+
+  if (hasUsableSnapshot) {
+    const pageRefs = existingSnapshot.map((row) => ({
+      id: nanoid(),
+      pageNumber: row.page_number,
+      pageId: row.page_id,
+      title: row.title || `Slide ${row.page_number}`,
+      htmlPath: row.html_path as string
+    }))
+    const outlineItems: OutlineItem[] = existingSnapshot.map((row) => ({
+      title: row.title || '',
+      contentOutline: row.content_outline || '',
+      layoutIntent: (row.layout_intent || undefined) as OutlineItem['layoutIntent']
+    }))
+    const outlineTitles = outlineItems.map((item) => item.title)
+    const pageFileMap = Object.fromEntries(pageRefs.map((p) => [p.pageId, p.htmlPath]))
+
+    // Reuse existing design contract from the session (set during outline phase).
+    const sessionRow = await db.getSession(context.sessionId)
+    const rawContract =
+      sessionRow && typeof (sessionRow as { designContract?: unknown }).designContract === 'string'
+        ? ((sessionRow as { designContract: string }).designContract as string)
+        : ''
+    let designContract: DesignContract
+    try {
+      designContract = rawContract ? (JSON.parse(rawContract) as DesignContract) : ({} as DesignContract)
+    } catch {
+      designContract = {} as DesignContract
+    }
+
+    // Re-persist outline rows under the CURRENT runId so the page generation
+    // run owns its own rows (status will transition pending → completed/failed).
+    await db.createGenerationRun({
+      id: context.runId,
+      sessionId: context.sessionId,
+      mode: 'generate',
+      totalPages: pageRefs.length,
+      metadata: {
+        topic: context.topic,
+        styleId: context.styleId,
+        projectDir: context.entry.projectDir,
+        indexPath,
+        inheritedOutline: true
+      }
+    })
+    for (const page of pageRefs) {
+      await db.upsertGenerationPage({
+        runId: context.runId,
+        sessionId: context.sessionId,
+        pageId: page.pageId,
+        pageNumber: page.pageNumber,
+        title: page.title,
+        contentOutline: outlineItems[page.pageNumber - 1]?.contentOutline || '',
+        layoutIntent: outlineItems[page.pageNumber - 1]?.layoutIntent,
+        htmlPath: page.htmlPath,
+        status: 'pending'
+      })
+    }
+
+    emitDeckChunk({
+      type: 'llm_status',
+      payload: {
+        runId: context.runId,
+        stage: 'preflight',
+        label: progressText(context.appLocale, 'generating'),
+        progress: 10,
+        totalPages: pageRefs.length,
+        detail: uiText(
+          context.appLocale,
+          `沿用已确认的大纲（${pageRefs.length} 页），跳过规划阶段`,
+          `Reusing confirmed outline (${pageRefs.length} pages), skipping planning`
+        )
+      }
+    })
+
+    return {
+      pageRefs,
+      outlineItems,
+      outlineTitles,
+      designContract,
+      pageFileMap,
+      indexPath,
+      reused: true
+    }
+  }
+
+  // (b) Fresh planning flow.
   const pageRefs = Array.from({ length: context.totalPages }, (_unused, index) => {
     const pageNumber = index + 1
     const id = nanoid()
@@ -145,7 +256,7 @@ export async function executeDeckGeneration(
     return { id, pageNumber, title: fallbackTitle, pageId, htmlPath }
   })
   const pageFileMap = Object.fromEntries(pageRefs.map((page) => [page.pageId, page.htmlPath]))
-  const indexPath = path.join(context.entry.projectDir, 'index.html')
+
   await db.createGenerationRun({
     id: context.runId,
     sessionId: context.sessionId,
@@ -191,6 +302,21 @@ export async function executeDeckGeneration(
     })
   })
 
+  // Compose planningHint: outline-rule prompt from the session metadata, if any.
+  const sessionMeta = parseJsonObject(
+    (context.sessionRecord as { metadata?: unknown; metadata_json?: unknown }).metadata ??
+      (context.sessionRecord as { metadata_json?: unknown }).metadata_json
+  )
+  const outlineRuleId =
+    typeof sessionMeta.outlineRuleId === 'string' ? sessionMeta.outlineRuleId : ''
+  const outlineRulePrompt = outlineRuleId ? await loadOutlineRulePrompt(ctx, outlineRuleId) : ''
+  const planningHint = outlineRulePrompt
+    ? [
+        '## 结构性大纲规则（用户预设，必须严格遵循）',
+        outlineRulePrompt
+      ].join('\n')
+    : undefined
+
   const plannerPromise = planDeckWithLLM({
     provider: context.provider,
     apiKey: context.apiKey,
@@ -204,6 +330,8 @@ export async function executeDeckGeneration(
     appLocale: context.appLocale,
     topic: context.topic,
     userMessage: context.userMessage,
+    planningHint,
+    hasSourceDocuments: Boolean(context.sourceDocumentPaths?.length),
     emit: (chunk) => emitDeckChunk(chunk),
     runId: context.runId,
     signal: context.entry.abortController.signal
@@ -300,6 +428,75 @@ export async function executeDeckGeneration(
     )
   )
   await sleep(120, context.entry.abortController.signal)
+
+  return {
+    pageRefs,
+    outlineItems,
+    outlineTitles,
+    designContract,
+    pageFileMap,
+    indexPath,
+    reused: false
+  }
+}
+
+/**
+ * Outline-only entry point: runs planning + design contract, persists outline,
+ * scaffolds pages, but does NOT enter page generation.
+ *
+ * Result is left on disk + in DB so the renderer can show the outline review
+ * page and (optionally) revise via outline:revise; later `generate:start` will
+ * detect the snapshot and skip its own planner.
+ */
+export async function executeOutlinePlanning(
+  ctx: IpcContext,
+  emitAssistant: EmitAssistantFn,
+  context: DeckContext
+): Promise<void> {
+  const { createDeckProgressEmitter } = ctx
+  const emitDeckChunk = createDeckProgressEmitter(context.sessionId, context.appLocale)
+  const result = await runDeckPlanningPhase(ctx, emitAssistant, context)
+  emitDeckChunk({
+    type: 'stage_started',
+    payload: {
+      runId: context.runId,
+      stage: 'planning',
+      label: progressText(context.appLocale, 'completed'),
+      progress: 100,
+      totalPages: result.pageRefs.length
+    }
+  })
+  // Emit run_completed so sessionRunStates.status transitions to 'completed'.
+  // Without this the in-memory state stays 'running', causing session-generating.tsx
+  // to think there is an active page-generation run and skip calling startRun().
+  emitDeckChunk({
+    type: 'run_completed',
+    payload: {
+      runId: context.runId,
+      totalPages: result.pageRefs.length
+    }
+  })
+  await ctx.db.updateGenerationRunStatus(context.runId, 'completed')
+}
+
+export async function executeDeckGeneration(
+  ctx: IpcContext,
+  emitAssistant: EmitAssistantFn,
+  context: DeckContext
+): Promise<void> {
+  const {
+    db,
+    agentManager,
+    getPageSourceUrl,
+    validateProjectIndexHtml,
+    createDeckProgressEmitter,
+    PAGE_GENERATION_TEMPERATURE
+  } = ctx
+
+  const emitDeckChunk = createDeckProgressEmitter(context.sessionId, context.appLocale)
+
+  const { pageRefs, outlineItems, outlineTitles, designContract, pageFileMap, indexPath } =
+    await runDeckPlanningPhase(ctx, emitAssistant, context)
 
   const beforePageMap = new Map<string, string>()
   const beforePageResults = await Promise.all(

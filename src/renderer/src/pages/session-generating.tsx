@@ -17,6 +17,10 @@ type LocationState = {
   initialPrompt?: string
   retry?: boolean
   rerunToken?: number
+  /** Set to true when navigated here from the outline confirmation step.
+   *  Prevents an already-completed outline run from being mistaken for a
+   *  completed page-generation run and redirecting to the editor. */
+  fromOutlineConfirm?: boolean
 }
 
 type GenerationKind = 'standard' | 'template'
@@ -373,6 +377,7 @@ export function SessionGeneratingPage({
 
     const initialPrompt = state?.initialPrompt?.trim() || NEUTRAL_GENERATION_PROMPT
     const explicitRerun = typeof state?.rerunToken === 'number'
+    const fromOutlineConfirm = Boolean(state?.fromOutlineConfirm)
     if (state?.retry || explicitRerun) {
       startedSessionRef.current = null
       activeRunIdRef.current = null
@@ -787,7 +792,10 @@ export function SessionGeneratingPage({
               applyChunk(event, { replay: true })
             }
           }
-          if (runState.status === 'completed' && !state?.retry && !explicitRerun) {
+          // Don't redirect to the editor when arriving from the outline confirmation
+          // step: the completed run state belongs to outline-only generation, not
+          // full page generation. We need to call startRun() to begin page generation.
+          if (runState.status === 'completed' && !state?.retry && !explicitRerun && !fromOutlineConfirm) {
             navigate(`/sessions/${id}`, { replace: true })
             return
           }
@@ -801,7 +809,10 @@ export function SessionGeneratingPage({
             appendEvent(t('generating.keptFailed'), new Date().toISOString())
             return
           }
-          if (runState.hasActiveRun) {
+          // Don't resume the in-memory run when the user explicitly wants to start
+          // a new run (e.g. coming from outline confirmation). In that case the
+          // "active" run is the outline-only run, not a page-generation run.
+          if (runState.hasActiveRun && !fromOutlineConfirm) {
             setStatus('running')
             appendEvent(t('generating.resumed'), new Date().toISOString())
             return
@@ -810,11 +821,11 @@ export function SessionGeneratingPage({
 
         const fullyGenerated = isSessionFullyGenerated(snapshotGate)
 
-        if (fullyGenerated && !state?.retry && !explicitRerun) {
+        if (fullyGenerated && !state?.retry && !explicitRerun && !fromOutlineConfirm) {
           navigate(`/sessions/${id}`, { replace: true })
           return
         }
-        if (currentStatus === 'completed' && !state?.retry && !explicitRerun) {
+        if (currentStatus === 'completed' && !state?.retry && !explicitRerun && !fromOutlineConfirm) {
           navigate(`/sessions/${id}`, { replace: true })
           return
         }

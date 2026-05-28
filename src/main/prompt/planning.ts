@@ -1,7 +1,17 @@
 import { CONTENT_LANGUAGE_RULES } from './shared'
 import type { AvailableFont } from '../tools/font-registry'
 
-export function buildPlanningSystemPrompt(totalPages: number = 0): string {
+export function buildPlanningSystemPrompt(totalPages: number = 0, opts?: { hasSourceDocuments?: boolean }): string {
+  const sourceDocRules = opts?.hasSourceDocuments
+    ? [
+        '',
+        '## Source document fidelity (a source document was provided)',
+        '- Key points must be grounded in the source material. Identify specific tables, data comparisons, metrics, and named findings from the source and reference them explicitly in keyPoints.',
+        '- Do NOT invent generic industry statistics, placeholder metrics, or fabricated comparisons that are not present in the source.',
+        '- When the source contains a table or chart, designate a slide whose key points describe that data (e.g. "Revenue by region — table from source" or "YoY growth chart — actual data from source"). This signals to the page generator to reproduce it faithfully.',
+        '- Text slides may paraphrase or summarize source content, but data slides must commit to the actual values in the source.'
+      ]
+    : []
   return [
     "You are a PPT structure planner. Plan slide titles and concise key points from the user's topic, requirements, and source-material brief.",
     '',
@@ -11,6 +21,7 @@ export function buildPlanningSystemPrompt(totalPages: number = 0): string {
     `Return exactly ${totalPages} slide plans. The JSON array length must equal ${totalPages}.`,
     `Never return fewer or more than ${totalPages} items.`,
     `If the material does not naturally fill ${totalPages} slides, split sections thoughtfully or add useful transition slides such as agenda, data overview, synthesis, next steps, or outlook.`,
+    ...sourceDocRules,
     '',
     'Rules:',
     '- Titles should be concise, hierarchical, and aligned with the narrative.',

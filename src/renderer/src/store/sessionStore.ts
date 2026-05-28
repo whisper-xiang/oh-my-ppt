@@ -66,6 +66,8 @@ interface SessionStore {
     pageCount?: number
     referenceDocumentPath?: string
     fontSelection?: FontSelection
+    outlineRuleId?: string | null
+    initialPrompt?: string
   }) => Promise<string>
   loadSession: (sessionId: string) => Promise<void>
   loadMessages: (payload: { sessionId: string; chatType: 'main' | 'page'; pageId?: string }) => Promise<void>

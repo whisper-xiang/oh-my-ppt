@@ -334,6 +334,8 @@ export const planDeckWithLLM = async (args: {
   userMessage: string
   /** Optional structural hint forwarded to the planner prompt (e.g. TOC page requirement). */
   planningHint?: string
+  /** When true, adds source-document fidelity rules to the planning prompt. */
+  hasSourceDocuments?: boolean
   emit?: (chunk: GenerateChunkEvent) => void
   runId?: string
   signal?: AbortSignal
@@ -346,7 +348,7 @@ export const planDeckWithLLM = async (args: {
     args.temperature,
     args.maxTokens
   )
-  const systemPrompt = buildPlanningSystemPrompt(args.totalPages)
+  const systemPrompt = buildPlanningSystemPrompt(args.totalPages, { hasSourceDocuments: args.hasSourceDocuments })
   const userPrompt = buildPlanningUserPrompt({
     topic: args.topic,
     totalPages: args.totalPages,

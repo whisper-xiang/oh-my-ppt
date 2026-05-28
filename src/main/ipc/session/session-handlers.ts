@@ -246,6 +246,9 @@ export function registerSessionHandlers(ctx: IpcContext): void {
     const fontSelection = normalizeFontSelection(payload?.fontSelection)
     const referenceDocumentPath =
       typeof payload?.referenceDocumentPath === 'string' ? payload.referenceDocumentPath.trim() : ''
+    const rawOutlineRuleId = typeof payload?.outlineRuleId === 'string' ? payload.outlineRuleId.trim() : ''
+    const outlineRuleId = rawOutlineRuleId.length > 0 ? rawOutlineRuleId : null
+    const initialPrompt = typeof payload?.initialPrompt === 'string' ? payload.initialPrompt.trim() : ''
     const locale = await readAppLocale(ctx)
     const storagePath = await resolveStoragePath()
     const activeModel = await resolveActiveModelConfig(ctx)
@@ -347,8 +350,24 @@ export function registerSessionHandlers(ctx: IpcContext): void {
       pageCount,
       referenceDocumentPath: sessionReferenceDocumentPath
     })
+    // Validate outlineRuleId exists if provided.
+    if (outlineRuleId) {
+      const ruleRow = await db.getOutlineRuleRow(outlineRuleId)
+      if (!ruleRow) {
+        throw new Error(
+          uiText(
+            locale,
+            `创建会话失败：大纲规则不存在 ${outlineRuleId}`,
+            `Failed to create session: outline rule does not exist: ${outlineRuleId}`
+          )
+        )
+      }
+    }
+
     await db.updateSessionMetadata(sessionId, {
       fontSelection,
+      ...(outlineRuleId ? { outlineRuleId } : {}),
+      ...(initialPrompt ? { initialPrompt } : {}),
       ...(isThinkingSource ? { source: 'thinking' } : {})
     })
 

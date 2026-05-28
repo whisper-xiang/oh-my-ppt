@@ -74,6 +74,17 @@ export interface StyleListItem {
   updatedAt?: number
 }
 
+export interface OutlineRuleSummary {
+  id: string
+  ruleKey: string
+  name: string
+  description: string
+  rulePrompt: string
+  source: 'builtin' | 'custom'
+  createdAt: number
+  updatedAt: number
+}
+
 export interface StyleParseResult {
   label: string
   description: string
@@ -194,6 +205,9 @@ export interface CreateSessionPayload {
   pageCount?: number
   referenceDocumentPath?: string
   fontSelection?: FontSelection
+  outlineRuleId?: string | null
+  /** Initial user brief — persisted in metadata for use by outline planner */
+  initialPrompt?: string
 }
 
 export interface ModelConfig {
@@ -422,6 +436,37 @@ export const ipc = {
       runId?: string
       alreadyRunning?: boolean
     }>,
+  generateOutline: (payload: GenerateStartPayload) =>
+    getIpc().invoke('outline:generate', payload) as Promise<{
+      success: boolean
+      runId?: string
+      alreadyRunning?: boolean
+    }>,
+  getOutline: (payload: { sessionId: string }) =>
+    getIpc().invoke('outline:get', payload) as Promise<{
+      items: Array<{
+        pageNumber: number
+        pageId: string
+        title: string
+        contentOutline: string
+        layoutIntent?: string | null
+        htmlPath?: string | null
+      }>
+    }>,
+  reviseOutline: (payload: { sessionId: string; message: string }) =>
+    getIpc().invoke('outline:revise', payload) as Promise<{
+      success: boolean
+      items: Array<{
+        pageNumber: number
+        pageId: string
+        title: string
+        contentOutline: string
+        layoutIntent?: string | null
+        htmlPath?: string | null
+      }>
+    }>,
+  cancelReviseOutline: (sessionId: string) =>
+    getIpc().invoke('outline:revise:cancel', sessionId) as Promise<{ success: boolean }>,
   startTemplateGenerate: (payload: GenerateStartPayload & { retry?: boolean }) =>
     getIpc().invoke('generate:startTemplate', payload) as Promise<{
       success: boolean
@@ -464,6 +509,14 @@ export const ipc = {
     getIpc().invoke('assets:upload', payload) as Promise<{ assets: UploadedAsset[] }>,
   parseDocumentPlan: (payload: ParseDocumentPlanPayload) =>
     getIpc().invoke('documents:parsePlan', payload) as Promise<ParsedDocumentPlanResult>,
+  generateBrief: (payload: {
+    topic: string
+    pageCount: number
+    styleId: string
+    styleLabel?: string
+    outlineRuleId?: string | null
+    documentContext?: string | null
+  }) => getIpc().invoke('brief:generate', payload) as Promise<{ briefText: string }>,
   importPptx: (payload: PptxImportPayload) =>
     getIpc().invoke('pptx:import', payload) as Promise<PptxImportResult>,
   chooseAndUploadAssets: (sessionId: string, assetType: 'image' | 'video' = 'image') =>
@@ -598,6 +651,31 @@ export const ipc = {
     }>,
   deleteStyle: (styleId: string) =>
     getIpc().invoke('styles:delete', styleId) as Promise<{
+      success: boolean
+      deleted: boolean
+      message?: string
+    }>,
+  listOutlineRules: () =>
+    getIpc().invoke('outlineRules:list') as Promise<{ items: OutlineRuleSummary[] }>,
+  getOutlineRuleDetail: (ruleId: string) =>
+    getIpc().invoke('outlineRules:getDetail', ruleId) as Promise<OutlineRuleSummary | null>,
+  createOutlineRule: (payload: { name: string; description?: string; rulePrompt: string }) =>
+    getIpc().invoke('outlineRules:create', payload) as Promise<{
+      success: boolean
+      item: OutlineRuleSummary
+    }>,
+  updateOutlineRule: (payload: {
+    id: string
+    name: string
+    description?: string
+    rulePrompt: string
+  }) =>
+    getIpc().invoke('outlineRules:update', payload) as Promise<{
+      success: boolean
+      item: OutlineRuleSummary
+    }>,
+  deleteOutlineRule: (ruleId: string) =>
+    getIpc().invoke('outlineRules:delete', ruleId) as Promise<{
       success: boolean
       deleted: boolean
       message?: string

@@ -8,6 +8,8 @@ import { registerAssetHandlers, registerLocalAssetProtocol } from './io/assets-h
 import { registerGenerationHandlers } from './engine/generation-handlers'
 import { registerExportHandlers } from './io/export-handlers'
 import { registerStyleHandlers } from './config/style-handlers'
+import { registerOutlineRulesHandlers } from './config/outline-rules-handlers'
+import { registerOutlineHandlers } from './generation/outline-handlers'
 import { registerFontHandlers } from './config/font-handlers'
 import { registerSettingsHandlers } from './config/settings-handlers'
 import { registerPreviewHandlers } from './session/preview-handlers'
@@ -15,6 +17,7 @@ import { registerPageManagementHandlers } from './session/page-management-handle
 import { registerFileHandlers } from './io/file-handlers'
 import { registerEditorHandlers } from './editor'
 import { registerDocumentParseHandlers } from './io/document-parse-handlers'
+import { registerBriefGenerateHandlers } from './io/brief-generate-handlers'
 import { registerPptxImportHandlers } from './io/pptx-import-handlers'
 import { registerHistoryHandlers } from './history/history-handlers'
 import { registerPresentationHandlers } from './session/presentation-handlers'
@@ -38,12 +41,15 @@ export function setupIPC(
   registerGenerationHandlers(context)
   registerExportHandlers(context)
   registerStyleHandlers(context)
+  registerOutlineRulesHandlers(context)
+  registerOutlineHandlers(context)
   registerFontHandlers(context)
   registerSettingsHandlers(context)
   registerPreviewHandlers(context)
   registerFileHandlers(context)
   registerEditorHandlers(context)
   registerDocumentParseHandlers(context)
+  registerBriefGenerateHandlers(context)
   registerPptxImportHandlers(context)
   registerHistoryHandlers(context)
   registerPresentationHandlers(context)

@@ -182,6 +182,19 @@ export interface StyleRow {
   updatedAt: number
 }
 
+export type OutlineRuleSource = 'builtin' | 'custom'
+
+export interface OutlineRuleRow {
+  id: string
+  ruleKey: string
+  name: string
+  description: string
+  rulePrompt: string
+  source: OutlineRuleSource
+  createdAt: number
+  updatedAt: number
+}
+
 export interface ModelConfigRow {
   id: string
   name: string
@@ -1833,6 +1846,82 @@ export class PPTDatabase {
     if (!existing) return false
     await this.db.delete(schema.styles).where(eq(schema.styles.id, styleId)).run()
     await this._refreshStylesCache()
+    return true
+  }
+
+  // ── outline_rules CRUD ─────────────────────────────────────────────────────
+
+  async listOutlineRuleRows(): Promise<OutlineRuleRow[]> {
+    const results = await this.db
+      .select()
+      .from(schema.outlineRules)
+      .orderBy(asc(schema.outlineRules.name))
+      .all()
+    return results as unknown as OutlineRuleRow[]
+  }
+
+  async getOutlineRuleRow(ruleId: string): Promise<OutlineRuleRow | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.outlineRules)
+      .where(eq(schema.outlineRules.id, ruleId))
+      .get()
+    return result as unknown as OutlineRuleRow | undefined
+  }
+
+  async createOutlineRuleRow(data: {
+    id?: string
+    ruleKey?: string
+    name: string
+    description?: string
+    rulePrompt: string
+    source?: OutlineRuleSource
+  }): Promise<string> {
+    const id = data.id || crypto.randomUUID()
+    const now = Math.floor(Date.now() / 1000)
+    const ruleKey = (data.ruleKey || id).trim() || id
+    await this.db
+      .insert(schema.outlineRules)
+      .values({
+        id,
+        ruleKey,
+        name: data.name,
+        description: data.description || '',
+        rulePrompt: data.rulePrompt,
+        source: data.source || 'custom',
+        createdAt: now,
+        updatedAt: now
+      })
+      .run()
+    return id
+  }
+
+  async updateOutlineRuleRow(
+    ruleId: string,
+    data: {
+      name?: string
+      description?: string
+      rulePrompt?: string
+      source?: OutlineRuleSource
+    }
+  ): Promise<void> {
+    const now = Math.floor(Date.now() / 1000)
+    const set: Record<string, unknown> = { updatedAt: now }
+    if (data.name !== undefined) set.name = data.name
+    if (data.description !== undefined) set.description = data.description
+    if (data.rulePrompt !== undefined) set.rulePrompt = data.rulePrompt
+    if (data.source !== undefined) set.source = data.source
+    await this.db
+      .update(schema.outlineRules)
+      .set(set)
+      .where(eq(schema.outlineRules.id, ruleId))
+      .run()
+  }
+
+  async deleteOutlineRuleRow(ruleId: string): Promise<boolean> {
+    const existing = await this.getOutlineRuleRow(ruleId)
+    if (!existing) return false
+    await this.db.delete(schema.outlineRules).where(eq(schema.outlineRules.id, ruleId)).run()
     return true
   }
 }

@@ -91,7 +91,7 @@ export function buildSinglePageGenerationPrompt(args: {
             '',
             args.referenceDocumentSnippets.trim(),
             '',
-            'Source document requirements:',
+            'Source document requirements (STRICT — source document was provided):',
             '- This slide already has program-side retrieved snippets. Prioritize these snippets when generating slide content.',
             '- If the snippets cover this slide title and content points, you do not need to reread the entire source document.',
             `- If snippets are insufficient, conflicting, or missing key facts, use read_file to confirm the source document: ${args.sourceDocumentPaths.join(', ')}`,
@@ -99,18 +99,30 @@ export function buildSinglePageGenerationPrompt(args: {
             args.isRetryMode
               ? '- This is a failed-slide retry. Match source material only around this slide title and content points; do not reconstruct the whole deck outline.'
               : '',
-            '- Do not expand only from the outline. Do not invent exact numbers, dates, system names, or status claims not present in the snippets or source document.'
+            '- Do not expand only from the outline. Do not invent exact numbers, dates, system names, or status claims not present in the snippets or source document.',
+            '## Visual asset fidelity (highest priority when source document is present):',
+            '- Tables: if the source contains a table relevant to this slide, reproduce it as an HTML <table> with the exact same rows, columns, and cell values. Do NOT substitute with a simplified or invented table.',
+            '- Charts and graphs: if the source references data trends, comparisons, or quantitative series (even as text), render them using the ACTUAL values from the source. Do NOT substitute invented placeholder numbers.',
+            '- Figures and diagrams: if the source describes a specific structure, architecture, or flow diagram, replicate its elements faithfully rather than drawing a generic alternative.',
+            '- All numeric values, metric names, dates, and proper nouns that appear in the source must match exactly. Text may be reorganized or summarized, but source data must not be altered.',
+            '- Prefer to visualize data that exists in the source (tables → HTML tables, series data → charts with real values) over free-form narrative paragraphs.'
           ].filter(Boolean)
         : [
             '',
-            'Source document requirements:',
+            'Source document requirements (STRICT — source document was provided):',
             `- No retrieved snippets matched this slide. Before generating the slide, use read_file to read the source document: ${args.sourceDocumentPaths.join(', ')}`,
             '- First extract keywords, business objects, time points, system names, and metrics from this slide title and content points; then match relevant source passages.',
             '- Do not copy the whole document indiscriminately. Use only source-document facts directly relevant to this slide outline.',
             args.isRetryMode
               ? '- This is a failed-slide retry. Match source material only around this slide title and content points; do not reconstruct the whole deck outline.'
               : '',
-            '- Do not expand only from the outline. Do not invent exact numbers, dates, system names, or status claims not present in the source document.'
+            '- Do not expand only from the outline. Do not invent exact numbers, dates, system names, or status claims not present in the source document.',
+            '## Visual asset fidelity (highest priority when source document is present):',
+            '- Tables: if the source contains a table relevant to this slide, reproduce it as an HTML <table> with the exact same rows, columns, and cell values. Do NOT substitute with a simplified or invented table.',
+            '- Charts and graphs: if the source references data trends, comparisons, or quantitative series (even as text), render them using the ACTUAL values from the source. Do NOT substitute invented placeholder numbers.',
+            '- Figures and diagrams: if the source describes a specific structure, architecture, or flow diagram, replicate its elements faithfully rather than drawing a generic alternative.',
+            '- All numeric values, metric names, dates, and proper nouns that appear in the source must match exactly. Text may be reorganized or summarized, but source data must not be altered.',
+            '- Prefer to visualize data that exists in the source (tables → HTML tables, series data → charts with real values) over free-form narrative paragraphs.'
           ].filter(Boolean)
       : []
   return [
@@ -145,6 +157,9 @@ export function buildSinglePageGenerationPrompt(args: {
     '- If there are 2-4 points, the final slide should cover all of them. You may add 1-2 supporting information blocks by priority.',
     '- You may complete reasonable data framing, examples, and structure, but do not drift away from the slide title and points.',
     '- Prefer visualization-friendly expression. When points involve trends, comparisons, or proportions, use charts or data cards when appropriate.',
+    args.sourceDocumentPaths && args.sourceDocumentPaths.length > 0
+      ? '- SOURCE DOCUMENT OVERRIDE: data-driven visuals (tables, charts, diagrams) MUST use values extracted from the source document. Do NOT invent new data series, substitute placeholder numbers, or fabricate metrics that are not present in the source.'
+      : '',
     '',
     'Single-slide tool constraints:',
     `- Required action: call update_single_page_file(pageId="${args.pageId}", content=complete creative page fragment).`,
@@ -211,13 +226,19 @@ export function buildTemplateSinglePagePrompt(args: {
             '',
             args.referenceDocumentSnippets.trim(),
             '',
-            "Source document: use the retrieved snippets above for this slide's text content. Do not invent facts not present in the snippets or source document.",
-            `- If snippets are insufficient, use read_file to confirm: ${args.sourceDocumentPaths.join(', ')}`
+            "Source document requirements (STRICT): use the retrieved snippets above for this slide's content. Do not invent facts not present in the snippets or source document.",
+            `- If snippets are insufficient, use read_file to confirm: ${args.sourceDocumentPaths.join(', ')}`,
+            '- Tables in source → reproduce as HTML <table> with exact rows/columns/values.',
+            '- Charts/data series in source → render with ACTUAL values from source, not invented placeholders.',
+            '- All numbers, metric names, dates, and proper nouns must come from the source exactly.'
           ]
         : [
             '',
-            `Source document: before writing, read the source for relevant facts: ${args.sourceDocumentPaths.join(', ')}`,
-            '- Extract only content relevant to this slide title and outline. Do not copy unrelated sections.'
+            `Source document requirements (STRICT): before writing, use read_file to read relevant sections: ${args.sourceDocumentPaths.join(', ')}`,
+            '- Extract only content relevant to this slide title and outline. Do not copy unrelated sections.',
+            '- Tables in source → reproduce as HTML <table> with exact rows/columns/values.',
+            '- Charts/data series in source → render with ACTUAL values from source, not invented placeholders.',
+            '- All numbers, metric names, dates, and proper nouns must come from the source exactly.'
           ]
       : []
 

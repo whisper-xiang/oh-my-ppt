@@ -161,6 +161,20 @@ export const styles = sqliteTable('styles', {
   updatedAt: integer('updated_at').notNull()
 })
 
+// User-maintained library of structural PPT outline rules
+// (e.g. "page 1 must be cover, page 2 must be TOC covering N sections").
+// Selected at session-create time and merged into planning prompt.
+export const outlineRules = sqliteTable('outline_rules', {
+  id: text('id').primaryKey(),
+  ruleKey: text('rule_key').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  rulePrompt: text('rule_prompt').notNull().default(''),
+  source: text('source').notNull().default('custom'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull()
+})
+
 export const sessionOperations = sqliteTable('session_operations', {
   id: text('id').primaryKey(),
   sessionId: text('session_id')

@@ -14,6 +14,9 @@ import { SettingsPage } from './pages/settings'
 import { StylesPage } from './pages/styles'
 import { FontsPage } from './pages/fonts'
 import { StyleEditorPage } from './pages/style-editor'
+import { OutlineRulesPage } from './pages/outline-rules'
+import { OutlineRuleEditorPage } from './pages/outline-rule-editor'
+import { OutlineReviewPage } from './pages/outline-review'
 import { TemplatesPage } from './pages/templates'
 import { AppToaster } from './components/AppToaster'
 import { ScrollArea } from './components/ui/ScrollArea'
@@ -74,6 +77,7 @@ function App(): React.JSX.Element {
           <Routes>
             <Route path="/sessions/:id/template-generating" element={<TemplateSessionsGeneratingPage />} />
             <Route path="/sessions/:id/generating" element={<SessionGeneratingPage />} />
+            <Route path="/sessions/:id/outline" element={<OutlineReviewPage />} />
             <Route path="/sessions/:id" element={<SessionDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -111,6 +115,9 @@ function App(): React.JSX.Element {
                   <Route path="/fonts" element={<FontsPage />} />
                   <Route path="/styles/new" element={<StyleEditorPage />} />
                   <Route path="/styles/:styleId" element={<StyleEditorPage />} />
+                  <Route path="/outline-rules" element={<OutlineRulesPage />} />
+                  <Route path="/outline-rules/new" element={<OutlineRuleEditorPage />} />
+                  <Route path="/outline-rules/:ruleId" element={<OutlineRuleEditorPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

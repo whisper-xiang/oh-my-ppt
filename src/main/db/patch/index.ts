@@ -223,6 +223,18 @@ CREATE TABLE IF NOT EXISTS session_operation_pages (
 );
 CREATE INDEX IF NOT EXISTS idx_session_operation_pages_order ON session_operation_pages(operation_id, page_number);
 CREATE INDEX IF NOT EXISTS idx_session_operation_pages_session ON session_operation_pages(session_id, operation_id);
+
+CREATE TABLE IF NOT EXISTS outline_rules (
+  id TEXT PRIMARY KEY,
+  rule_key TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  rule_prompt TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'custom',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_outline_rules_rule_key ON outline_rules(rule_key);
 `
 
 const getRowValue = (row: unknown, key: string): unknown => {
