@@ -181,6 +181,15 @@ export function OutlineReviewPage(): React.JSX.Element {
     void ipc.cancelReviseOutline(sessionId)
   }
 
+  // Cancel any in-flight revision when this page unmounts (e.g. user navigates away)
+  useEffect(() => {
+    return () => {
+      if (sessionId) {
+        void ipc.cancelReviseOutline(sessionId)
+      }
+    }
+  }, [sessionId])
+
   const handleConfirm = async (): Promise<void> => {
     if (!sessionId || isConfirming) return
     if (outline.length === 0) {
@@ -188,6 +197,9 @@ export function OutlineReviewPage(): React.JSX.Element {
       return
     }
     setIsConfirming(true)
+    // Cancel any in-flight revision before navigating so the pending IPC call
+    // does not resolve later and unexpectedly activate the app window.
+    void ipc.cancelReviseOutline(sessionId)
     try {
       success('大纲已确认，开始生成 PPT', { duration: 1500 })
       navigate(`/sessions/${sessionId}/generating`, {

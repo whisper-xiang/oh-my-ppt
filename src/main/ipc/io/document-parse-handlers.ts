@@ -446,8 +446,44 @@ const extractAssistantTextsFromState = (data: unknown): string[] => {
   return texts
 }
 
-const convertDocxToMarkdown = async (filePath: string): Promise<string> => {
-  const result = await mammoth.convertToHtml({ path: filePath })
+type ExtractedDocxImage = { fileName: string; absolutePath: string }
+
+/**
+ * Convert a .docx file to Markdown.
+ *
+ * When `imagesDir` and `imagePrefix` are supplied, embedded images are saved to
+ * `imagesDir/{imagePrefix}-img-N.{ext}` instead of being stripped.  The returned
+ * `extractedImages` list maps each image to its saved absolute path so the caller
+ * can rewrite the markdown references to project-root-relative `./images/` paths.
+ */
+const convertDocxToMarkdown = async (
+  filePath: string,
+  imagesDir?: string,
+  imagePrefix?: string
+): Promise<{ markdown: string; extractedImages: ExtractedDocxImage[] }> => {
+  const extractedImages: ExtractedDocxImage[] = []
+
+  type MammothImageDesc = { read: () => Promise<Buffer>; contentType: string }
+  const convertImage =
+    imagesDir && imagePrefix
+      ? mammoth.images.imgElement(async (image: MammothImageDesc) => {
+          const buffer = await image.read()
+          const rawExt = (image.contentType.split('/')[1] ?? 'png').split('+')[0] ?? 'png'
+          const ext = rawExt === 'jpeg' ? 'jpg' : rawExt
+          const fileName = `${imagePrefix}-img-${extractedImages.length}.${ext}`
+          const absolutePath = path.join(imagesDir, fileName)
+          await fs.promises.writeFile(absolutePath, buffer)
+          extractedImages.push({ fileName, absolutePath })
+          return { src: absolutePath }
+        })
+      : undefined
+
+  // mammoth's published types omit the convertImage option; cast to bypass the gap
+  type MammothInput = Parameters<typeof mammoth.convertToHtml>[0] & { convertImage?: unknown }
+  const mammothInput: MammothInput = convertImage
+    ? { path: filePath, convertImage }
+    : { path: filePath }
+  const result = await mammoth.convertToHtml(mammothInput as Parameters<typeof mammoth.convertToHtml>[0])
   if (result.messages.length > 0) {
     log.info('[documents:parsePlan] mammoth warnings', {
       filePath,
@@ -460,9 +496,12 @@ const convertDocxToMarkdown = async (filePath: string): Promise<string> => {
     codeBlockStyle: 'fenced'
   })
   turndown.use(gfm)
-  return compactText(
-    stripMarkdownDataImages(turndown.turndown(stripInlineImagesFromHtml(result.value)))
-  )
+
+  // Strip inline images only when we did not extract them to files
+  const html = convertImage ? result.value : stripInlineImagesFromHtml(result.value)
+  const markdown = compactText(stripMarkdownDataImages(turndown.turndown(html)))
+
+  return { markdown, extractedImages }
 }
 
 const toSafeFileName = (value: string): string =>
@@ -529,24 +568,38 @@ const prepareSourceFile = async (
       size: stat.size
     })
   } else if (ext === '.docx') {
-    const markdown = await convertDocxToMarkdown(filePath)
-    if (!markdown) throw new Error(`${name} 未解析出可用文本`)
+    // Extract embedded images into a companion directory alongside the markdown.
+    // Image filenames use the unique workspace id as prefix to avoid collisions.
+    const docId = `${stamp}-${uniqueId}-${safeBaseName || 'source'}`
+    const imagesSubDir = path.join(workspaceDir, `${docId}-images`)
+    await fs.promises.mkdir(imagesSubDir, { recursive: true })
+
+    const { markdown, extractedImages } = await convertDocxToMarkdown(filePath, imagesSubDir, docId)
+    if (!markdown && extractedImages.length === 0) throw new Error(`${name} 未解析出可用文本`)
+
+    // Replace absolute image paths with project-root-relative ./images/ paths.
+    // session-handlers will copy these files to projectDir/images/ when creating the session.
+    let processedMarkdown = markdown
+    for (const img of extractedImages) {
+      processedMarkdown = processedMarkdown.split(img.absolutePath).join(`./images/${img.fileName}`)
+    }
+
+    const imageNote =
+      extractedImages.length > 0
+        ? `> Converted from Word .docx. ${extractedImages.length} embedded image(s) extracted as ./images/*.`
+        : '> Converted from Word .docx for agent reading. Inline images were omitted; image alt text may be preserved when available.'
+
     await fs.promises.writeFile(
       workspacePath,
-      [
-        `# ${path.basename(name, ext)}`,
-        '',
-        '> Converted from Word .docx for agent reading. Inline images were omitted; image alt text may be preserved when available.',
-        '',
-        markdown
-      ].join('\n'),
+      [`# ${path.basename(name, ext)}`, '', imageNote, '', processedMarkdown].join('\n'),
       'utf-8'
     )
-    characterCount = markdown.length
+    characterCount = processedMarkdown.length
     log.info('[documents:parsePlan] docx converted for reading', {
       originalName: name,
       workspaceName,
-      characterCount
+      characterCount,
+      extractedImageCount: extractedImages.length
     })
   } else {
     if (path.resolve(filePath) !== path.resolve(workspacePath)) {

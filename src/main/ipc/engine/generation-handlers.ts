@@ -184,28 +184,36 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         totalPages: context.totalPages,
         previousSessionStatus: context.previousSessionStatus
       })
-      if (isDeckAllPageEdit && context.effectiveMode === 'edit') {
-        await executeDeckAllPageEditGeneration(ctx, emitAssistant, context)
-      } else if (context.effectiveMode === 'edit') {
-        await executeEditGeneration(ctx, emitAssistant, context)
-      } else {
-        await executeDeckGeneration(ctx, emitAssistant, context)
-      }
+      const capturedContext = context
+      const capturedSessionId = capturedContext.sessionId
+      void (async () => {
+        try {
+          if (isDeckAllPageEdit && capturedContext.effectiveMode === 'edit') {
+            await executeDeckAllPageEditGeneration(ctx, emitAssistant, capturedContext)
+          } else if (capturedContext.effectiveMode === 'edit') {
+            await executeEditGeneration(ctx, emitAssistant, capturedContext)
+          } else {
+            await executeDeckGeneration(ctx, emitAssistant, capturedContext)
+          }
+        } catch (error) {
+          await finalizeGenerationFailure(ctx, capturedContext, error)
+        } finally {
+          releaseStartingSessionRun(capturedSessionId, startingRun)
+          agentManager.removeSession(capturedSessionId)
+        }
+      })()
       return { success: true, runId: context.runId }
     } catch (error) {
       if (context) {
         await finalizeGenerationFailure(ctx, context, error)
+        agentManager.removeSession(context.sessionId)
       } else {
         logPreContextFailure('generate:start', requestedSessionId, error)
       }
-      throw error
-    } finally {
       if (requestedSessionId) {
         releaseStartingSessionRun(requestedSessionId, startingRun)
       }
-      if (context) {
-        agentManager.removeSession(context.sessionId)
-      }
+      throw error
     }
   })
 
@@ -237,22 +245,30 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         totalPages: context.totalPages,
         previousSessionStatus: context.previousSessionStatus
       })
-      await executeOutlinePlanning(ctx, emitAssistant, context)
+      const capturedContext = context
+      const capturedSessionId = capturedContext.sessionId
+      void (async () => {
+        try {
+          await executeOutlinePlanning(ctx, emitAssistant, capturedContext)
+        } catch (error) {
+          await finalizeGenerationFailure(ctx, capturedContext, error)
+        } finally {
+          releaseStartingSessionRun(capturedSessionId, startingRun)
+          agentManager.removeSession(capturedSessionId)
+        }
+      })()
       return { success: true, runId: context.runId }
     } catch (error) {
       if (context) {
         await finalizeGenerationFailure(ctx, context, error)
+        agentManager.removeSession(context.sessionId)
       } else {
         logPreContextFailure('outline:generate', requestedSessionId, error)
       }
-      throw error
-    } finally {
       if (requestedSessionId) {
         releaseStartingSessionRun(requestedSessionId, startingRun)
       }
-      if (context) {
-        agentManager.removeSession(context.sessionId)
-      }
+      throw error
     }
   })
 
@@ -284,22 +300,30 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         totalPages: context.totalPages,
         previousSessionStatus: context.previousSessionStatus
       })
-      await executeTemplateDeckGeneration(ctx, emitAssistant, context)
+      const capturedContext = context
+      const capturedSessionId = capturedContext.sessionId
+      void (async () => {
+        try {
+          await executeTemplateDeckGeneration(ctx, emitAssistant, capturedContext)
+        } catch (error) {
+          await finalizeGenerationFailure(ctx, capturedContext, error)
+        } finally {
+          releaseStartingSessionRun(capturedSessionId, startingRun)
+          agentManager.removeSession(capturedSessionId)
+        }
+      })()
       return { success: true, runId: context.runId }
     } catch (error) {
       if (context) {
         await finalizeGenerationFailure(ctx, context, error)
+        agentManager.removeSession(context.sessionId)
       } else {
         logPreContextFailure('generate:startTemplate', requestedSessionId, error)
       }
-      throw error
-    } finally {
       if (requestedSessionId) {
         releaseStartingSessionRun(requestedSessionId, startingRun)
       }
-      if (context) {
-        agentManager.removeSession(context.sessionId)
-      }
+      throw error
     }
   })
 
@@ -338,22 +362,30 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         previousSessionStatus: context.previousSessionStatus,
         totalPages: retryTotalPages
       })
-      await executeRetryFailedPages(ctx, emitAssistant, context)
+      const capturedContext = context
+      const capturedSessionId = capturedContext.sessionId
+      void (async () => {
+        try {
+          await executeRetryFailedPages(ctx, emitAssistant, capturedContext)
+        } catch (error) {
+          await finalizeGenerationFailure(ctx, capturedContext, error)
+        } finally {
+          releaseStartingSessionRun(capturedSessionId, startingRun)
+          agentManager.removeSession(capturedSessionId)
+        }
+      })()
       return { success: true, runId: context.runId }
     } catch (error) {
       if (context) {
         await finalizeGenerationFailure(ctx, context, error)
+        agentManager.removeSession(context.sessionId)
       } else {
         logPreContextFailure('generate:retryFailedPages', requestedSessionId, error)
       }
-      throw error
-    } finally {
       if (requestedSessionId) {
         releaseStartingSessionRun(requestedSessionId, startingRun)
       }
-      if (context) {
-        agentManager.removeSession(context.sessionId)
-      }
+      throw error
     }
   })
 
@@ -402,22 +434,30 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         totalPages: 1
       })
 
-      await executeAddPageGeneration(ctx, addPageCtx)
+      const capturedCtx = addPageCtx
+      const capturedSessionId = capturedCtx.sessionId
+      void (async () => {
+        try {
+          await executeAddPageGeneration(ctx, capturedCtx)
+        } catch (error) {
+          await finalizeGenerationFailure(ctx, capturedCtx, error)
+        } finally {
+          releaseStartingSessionRun(capturedSessionId, startingRun)
+          agentManager.removeSession(capturedSessionId)
+        }
+      })()
       return { success: true, runId: addPageCtx.runId }
     } catch (error) {
       if (addPageCtx) {
         await finalizeGenerationFailure(ctx, addPageCtx, error)
+        agentManager.removeSession(addPageCtx.sessionId)
       } else {
         logPreContextFailure('generate:addPage', requestedSessionId, error)
       }
-      throw error
-    } finally {
       if (requestedSessionId) {
         releaseStartingSessionRun(requestedSessionId, startingRun)
       }
-      if (addPageCtx) {
-        agentManager.removeSession(addPageCtx.sessionId)
-      }
+      throw error
     }
   })
 
@@ -458,22 +498,30 @@ export function registerGenerationHandlers(ctx: IpcContext): void {
         totalPages: 1
       })
 
-      await executeRetrySinglePageGeneration(ctx, retryCtx)
+      const capturedCtx = retryCtx
+      const capturedSessionId = capturedCtx.sessionId
+      void (async () => {
+        try {
+          await executeRetrySinglePageGeneration(ctx, capturedCtx)
+        } catch (error) {
+          await finalizeGenerationFailure(ctx, capturedCtx, error)
+        } finally {
+          releaseStartingSessionRun(capturedSessionId, startingRun)
+          agentManager.removeSession(capturedSessionId)
+        }
+      })()
       return { success: true, runId: retryCtx.runId }
     } catch (error) {
       if (retryCtx) {
         await finalizeGenerationFailure(ctx, retryCtx, error)
+        agentManager.removeSession(retryCtx.sessionId)
       } else {
         logPreContextFailure('generate:retrySinglePage', requestedSessionId, error)
       }
-      throw error
-    } finally {
       if (requestedSessionId) {
         releaseStartingSessionRun(requestedSessionId, startingRun)
       }
-      if (retryCtx) {
-        agentManager.removeSession(retryCtx.sessionId)
-      }
+      throw error
     }
   })
 

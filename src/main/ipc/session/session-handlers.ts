@@ -327,6 +327,33 @@ export function registerSessionHandlers(ctx: IpcContext): void {
       const fileName = `${Date.now()}${ext}`
       const targetPath = path.join(docsDir, fileName)
       await fs.promises.copyFile(validatedReferenceSourcePath, targetPath)
+
+      // Copy companion extracted-images directory (produced by docx image extraction).
+      // The companion dir lives next to the source markdown: {baseName}-images/
+      // Images inside use the same prefix so they don't collide across sessions.
+      const sourceBaseName = path.basename(validatedReferenceSourcePath, ext)
+      const companionImagesDir = path.join(
+        path.dirname(validatedReferenceSourcePath),
+        `${sourceBaseName}-images`
+      )
+      if (fs.existsSync(companionImagesDir)) {
+        const imagesTargetDir = path.join(projectDir, 'images')
+        await fs.promises.mkdir(imagesTargetDir, { recursive: true })
+        const entries = await fs.promises.readdir(companionImagesDir, { withFileTypes: true })
+        for (const entry of entries) {
+          if (entry.isFile()) {
+            await fs.promises.copyFile(
+              path.join(companionImagesDir, entry.name),
+              path.join(imagesTargetDir, entry.name)
+            )
+          }
+        }
+        log.info('[session:create] copied docx companion images', {
+          companionImagesDir,
+          count: entries.filter((e) => e.isFile()).length
+        })
+      }
+
       return `/docs/${fileName}`
     }
     const sessionReferenceDocumentPath = await copyReferenceDocumentToSession()

@@ -45,17 +45,53 @@ const stripInlineImagesFromHtml = (html: string): string =>
 const stripMarkdownDataImages = (markdown: string): string =>
   markdown.replace(/!\[[^\]]*]\(data:[^)]+\)/gi, '').replace(/!\[[^\]]*]\(\s*\)/g, '')
 
-const convertDocxToMarkdown = async (filePath: string): Promise<string> => {
-  const result = await mammoth.convertToHtml({ path: filePath })
+type ExtractedDocxImage = { fileName: string; absolutePath: string }
+
+/**
+ * Convert a .docx to Markdown.  When `assetsDir` and `imagePrefix` are provided,
+ * embedded images are saved to `assetsDir/{imagePrefix}-img-N.{ext}` and the
+ * returned `extractedImages` list lets the caller rewrite markdown references to
+ * project-root-relative `./images/` paths.
+ */
+const convertDocxToMarkdown = async (
+  filePath: string,
+  assetsDir?: string,
+  imagePrefix?: string
+): Promise<{ markdown: string; extractedImages: ExtractedDocxImage[] }> => {
+  const extractedImages: ExtractedDocxImage[] = []
+
+  type MammothImageDesc = { read: () => Promise<Buffer>; contentType: string }
+  const convertImage =
+    assetsDir && imagePrefix
+      ? mammoth.images.imgElement(async (image: MammothImageDesc) => {
+          const buffer = await image.read()
+          const rawExt = (image.contentType.split('/')[1] ?? 'png').split('+')[0] ?? 'png'
+          const ext = rawExt === 'jpeg' ? 'jpg' : rawExt
+          const fileName = `${imagePrefix}-img-${extractedImages.length}.${ext}`
+          const absolutePath = path.join(assetsDir, fileName)
+          await fs.promises.writeFile(absolutePath, buffer)
+          extractedImages.push({ fileName, absolutePath })
+          return { src: absolutePath }
+        })
+      : undefined
+
+  // mammoth's published types omit the convertImage option; cast to bypass the gap
+  type MammothInput = Parameters<typeof mammoth.convertToHtml>[0] & { convertImage?: unknown }
+  const mammothInput: MammothInput = convertImage
+    ? { path: filePath, convertImage }
+    : { path: filePath }
+  const result = await mammoth.convertToHtml(mammothInput as Parameters<typeof mammoth.convertToHtml>[0])
   const turndown = new TurndownService({
     headingStyle: 'atx',
     bulletListMarker: '-',
     codeBlockStyle: 'fenced'
   })
   turndown.use(gfm)
-  return compactText(
-    stripMarkdownDataImages(turndown.turndown(stripInlineImagesFromHtml(result.value)))
-  )
+
+  const html = convertImage ? result.value : stripInlineImagesFromHtml(result.value)
+  const markdown = compactText(stripMarkdownDataImages(turndown.turndown(html)))
+
+  return { markdown, extractedImages }
 }
 
 const toSafeFileName = (value: string): string =>
@@ -274,12 +310,30 @@ export async function prepareSourceFile(
   if (kind === 'docx') {
     const mdName = `${id}.md`
     sourcePath = path.join(sourcesDir, mdName)
-    const markdown = await convertDocxToMarkdown(resolved)
+    // Extract embedded images into assetsDir using the source id as a unique prefix.
+    // copyThinkingAssetsToSession will pick them up automatically from assetsDir.
+    const { markdown, extractedImages } = await convertDocxToMarkdown(resolved, assetsDir, id)
+
+    // Replace absolute image paths with project-root-relative ./images/ paths.
+    let processedMarkdown = markdown
+    for (const img of extractedImages) {
+      processedMarkdown = processedMarkdown.split(img.absolutePath).join(`./images/${img.fileName}`)
+    }
+
+    const imageNote =
+      extractedImages.length > 0
+        ? `> Converted from Word .docx. ${extractedImages.length} embedded image(s) extracted as ./images/*.`
+        : `> Converted from Word .docx`
+
     await fs.promises.writeFile(
       sourcePath,
-      [`# ${baseName}`, '', `> Converted from Word .docx`, '', markdown].join('\n'),
+      [`# ${baseName}`, '', imageNote, '', processedMarkdown].join('\n'),
       'utf-8'
     )
+    log.info('[thinking:source-prepare] docx converted', {
+      name: path.basename(resolved),
+      extractedImageCount: extractedImages.length
+    })
   } else if (kind === 'image') {
     const imgName = `${id}${ext}`
     const mdName = `${id}.image.md`

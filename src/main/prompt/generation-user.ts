@@ -105,7 +105,8 @@ export function buildSinglePageGenerationPrompt(args: {
             '- Charts and graphs: if the source references data trends, comparisons, or quantitative series (even as text), render them using the ACTUAL values from the source. Do NOT substitute invented placeholder numbers.',
             '- Figures and diagrams: if the source describes a specific structure, architecture, or flow diagram, replicate its elements faithfully rather than drawing a generic alternative.',
             '- All numeric values, metric names, dates, and proper nouns that appear in the source must match exactly. Text may be reorganized or summarized, but source data must not be altered.',
-            '- Prefer to visualize data that exists in the source (tables → HTML tables, series data → charts with real values) over free-form narrative paragraphs.'
+            '- Prefer to visualize data that exists in the source (tables → HTML tables, series data → charts with real values) over free-form narrative paragraphs.',
+            '- Embedded images from the source document are pre-extracted and available as ./images/*.{ext} paths. When the source markdown references an image as `![alt](./images/filename.ext)`, include it in the slide HTML using `<img src="./images/filename.ext" alt="...">` at the relevant position.'
           ].filter(Boolean)
         : [
             '',
@@ -122,7 +123,8 @@ export function buildSinglePageGenerationPrompt(args: {
             '- Charts and graphs: if the source references data trends, comparisons, or quantitative series (even as text), render them using the ACTUAL values from the source. Do NOT substitute invented placeholder numbers.',
             '- Figures and diagrams: if the source describes a specific structure, architecture, or flow diagram, replicate its elements faithfully rather than drawing a generic alternative.',
             '- All numeric values, metric names, dates, and proper nouns that appear in the source must match exactly. Text may be reorganized or summarized, but source data must not be altered.',
-            '- Prefer to visualize data that exists in the source (tables → HTML tables, series data → charts with real values) over free-form narrative paragraphs.'
+            '- Prefer to visualize data that exists in the source (tables → HTML tables, series data → charts with real values) over free-form narrative paragraphs.',
+            '- Embedded images from the source document are pre-extracted and available as ./images/*.{ext} paths. When you find image references like `![alt](./images/filename.ext)` in the source, include them in the slide HTML using `<img src="./images/filename.ext" alt="...">` at the relevant position.'
           ].filter(Boolean)
       : []
   return [
@@ -230,7 +232,8 @@ export function buildTemplateSinglePagePrompt(args: {
             `- If snippets are insufficient, use read_file to confirm: ${args.sourceDocumentPaths.join(', ')}`,
             '- Tables in source → reproduce as HTML <table> with exact rows/columns/values.',
             '- Charts/data series in source → render with ACTUAL values from source, not invented placeholders.',
-            '- All numbers, metric names, dates, and proper nouns must come from the source exactly.'
+            '- All numbers, metric names, dates, and proper nouns must come from the source exactly.',
+            '- Embedded images pre-extracted as ./images/*.{ext}: if the source references `![alt](./images/filename.ext)`, include it as `<img src="./images/filename.ext" alt="...">` in the slide.'
           ]
         : [
             '',
@@ -238,7 +241,8 @@ export function buildTemplateSinglePagePrompt(args: {
             '- Extract only content relevant to this slide title and outline. Do not copy unrelated sections.',
             '- Tables in source → reproduce as HTML <table> with exact rows/columns/values.',
             '- Charts/data series in source → render with ACTUAL values from source, not invented placeholders.',
-            '- All numbers, metric names, dates, and proper nouns must come from the source exactly.'
+            '- All numbers, metric names, dates, and proper nouns must come from the source exactly.',
+            '- Embedded images pre-extracted as ./images/*.{ext}: if the source references `![alt](./images/filename.ext)`, include it as `<img src="./images/filename.ext" alt="...">` in the slide.'
           ]
       : []
 

@@ -228,6 +228,23 @@ function createWindow(): BrowserWindow {
     }
   })
 
+  // Log unexpected window focus events to help diagnose spurious macOS activation.
+  // On macOS the window should only receive focus when the user explicitly
+  // switches to the app (dock click, Cmd+Tab, clicking the window).
+  let lastFocusTime = 0
+  window.on('focus', () => {
+    const now = Date.now()
+    const gap = now - lastFocusTime
+    lastFocusTime = now
+    log.info('[app] window focused', {
+      platform: process.platform,
+      timeSinceLastFocusMs: gap > 0 && gap < 3_600_000 ? gap : null
+    })
+  })
+  window.on('blur', () => {
+    log.info('[app] window blurred')
+  })
+
   log.info('[app] creating window', {
     preloadPath,
     contextIsolation: true,
